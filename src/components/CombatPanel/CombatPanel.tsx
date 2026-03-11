@@ -117,6 +117,11 @@ export function CombatPanel({
   const naturalHpMax = calcNaturalHpMax(character)
   const extraHpTotal = calcHpBonusTotal(character)
   const effectiveHpMax = calcEffectiveHpMax(character)
+  const suggestedHpMax = Math.max(0, naturalHpMax + extraHpTotal)
+  const totalHitDiceAvailable = character.classes.reduce(
+    (sum, currentClass) => sum + Math.max(0, Math.trunc(currentClass.level)),
+    0,
+  )
 
   function set<K extends keyof Character>(key: K, value: Character[K]) {
     onChangeCharacter({ ...character, [key]: value })
@@ -175,6 +180,34 @@ export function CombatPanel({
 
   const displayedCurrentHp = clamp(character.hpCurrent, 0, effectiveHpMax + character.hpTemp)
   const isDowned = displayedCurrentHp === 0
+  const remainingHitDice = Math.max(0, totalHitDiceAvailable - character.hitDiceSpent)
+
+  function renderDeathDots(field: 'success' | 'failure', label: string) {
+    const currentValue = character.deathSaves[field]
+
+    return (
+      <div className={styles.deathRow}>
+        <span className={styles.deathLabel}>{label}</span>
+
+        <div className={styles.deathDots}>
+          {[0, 1, 2].map((index) => {
+            const isFilled = currentValue > index
+
+            return (
+              <button
+                key={index}
+                type="button"
+                className={isFilled ? `${styles.deathDot} ${styles.deathDotFilled}` : styles.deathDot}
+                aria-label={`${label} ${index + 1}`}
+                aria-pressed={isFilled}
+                onClick={() => setDeathSave(field, isFilled ? index : index + 1)}
+              />
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <section className={panelStyles.panel}>
@@ -183,83 +216,79 @@ export function CombatPanel({
         <p className={styles.summary}>CA, iniciativa, pontos de vida e recuperação.</p>
       </div>
 
-      <div className={styles.metricsGrid}>
-        <div className={styles.metricCard}>
-          <span className={styles.metricLabel}>CA</span>
-          <strong className={styles.metricValue}>{ac}</strong>
-          {isEditMode && (
-            <label className={styles.metricField}>
-              Valor
+      <div className={styles.statsRow}>
+        <div className={styles.statBox}>
+          <span className={styles.statLabel}>CA</span>
+          <strong className={styles.statValue}>{ac}</strong>
+
+          {isEditMode ? (
+            <label className={styles.editField}>
+              Valor base
               <input
-                className={panelStyles.compactInput}
+                className={`${panelStyles.compactInput} ${styles.statInput}`}
                 type="number"
                 value={character.armorClassBase}
                 onChange={(e) => set('armorClassBase', Number(e.target.value))}
               />
             </label>
+          ) : (
+            <span className={styles.statNote}>Base da defesa atual</span>
           )}
         </div>
 
-        <div className={styles.metricCard}>
-          <span className={styles.metricLabel}>Iniciativa</span>
-          <strong className={styles.metricValue}>{formatModifier(initiative)}</strong>
-          {isEditMode && (
-            <label className={styles.metricField}>
+        <div className={styles.statBox}>
+          <span className={styles.statLabel}>Iniciativa</span>
+          <strong className={styles.statValue}>{formatModifier(initiative)}</strong>
+
+          {isEditMode ? (
+            <label className={styles.editField}>
               Bônus extra
               <input
-                className={panelStyles.compactInput}
+                className={`${panelStyles.compactInput} ${styles.statInput}`}
                 type="number"
                 value={character.initiativeBonusExtra}
-                onChange={(e) =>
-                  set('initiativeBonusExtra', Number(e.target.value))
-                }
+                onChange={(e) => set('initiativeBonusExtra', Number(e.target.value))}
               />
             </label>
-          )}
-        </div>
-
-        <div className={styles.metricCard}>
-          <span className={styles.metricLabel}>Velocidade</span>
-          {isEditMode ? (
-            <input
-              className={panelStyles.narrowInput}
-              type="text"
-              value={character.speed}
-              onChange={(e) => set('speed', e.target.value)}
-            />
           ) : (
-            <strong className={styles.metricValue}>{character.speed}</strong>
+            <span className={styles.statNote}>Destreza + ajustes</span>
           )}
         </div>
 
-        <div className={styles.metricCard}>
-          <span className={styles.metricLabel}>Proficiência</span>
-          <strong className={styles.metricValue}>{formatModifier(profBonus)}</strong>
+        <div className={styles.statBox}>
+          <span className={styles.statLabel}>Velocidade</span>
+
+          {isEditMode ? (
+            <label className={styles.editField}>
+              Deslocamento
+              <input
+                className={`${panelStyles.mediumInput} ${styles.textInput}`}
+                type="text"
+                value={character.speed}
+                onChange={(e) => set('speed', e.target.value)}
+              />
+            </label>
+          ) : (
+            <>
+              <strong className={styles.statValue}>{character.speed}</strong>
+              <span className={styles.statNote}>Deslocamento atual</span>
+            </>
+          )}
+        </div>
+
+        <div className={styles.statBox}>
+          <span className={styles.statLabel}>Proficiência</span>
+          <strong className={styles.statValue}>{formatModifier(profBonus)}</strong>
+          <span className={styles.statNote}>Derivada do nível total</span>
         </div>
       </div>
 
-      <div className={styles.metricsGrid}>
-        <div className={styles.metricCard}>
-          <span className={styles.metricLabel}>HP Máximo</span>
-          {isEditMode && !character.hpAutoCalc ? (
-            <input
-              className={panelStyles.compactInput}
-              type="number"
-              min={0}
-              value={character.hpMax}
-              onChange={(e) => set('hpMax', Number(e.target.value))}
-            />
-          ) : (
-            <strong className={styles.metricValue}>{effectiveHpMax}</strong>
-          )}
-          {character.hpAutoCalc && (
-            <div className={styles.metricMeta}>
-              <small>Base: {naturalHpMax}</small>
-              <small> · Extra: {formatModifier(extraHpTotal)}</small>
-            </div>
-          )}
+      <div className={styles.hpSection}>
+        <div className={styles.hpHeader}>
+          <h3 className={styles.hpTitle}>Pontos de Vida</h3>
+
           {isEditMode && (
-            <label className={panelStyles.checkboxLabel}>
+            <label className={`${panelStyles.checkboxLabel} ${styles.hpToggle}`}>
               <input
                 type="checkbox"
                 checked={character.hpAutoCalc}
@@ -268,174 +297,285 @@ export function CombatPanel({
               HP automático
             </label>
           )}
-          {isEditMode && !character.hpAutoCalc && (
-            <div className={styles.metricMeta}>
-              <small>HP sugerido pelas regras: {Math.max(0, naturalHpMax + extraHpTotal)}</small>
-            </div>
-          )}
         </div>
 
-        <div className={styles.metricCard}>
-          <span className={styles.metricLabel}>HP Atual</span>
-          <div className={styles.counterRow}>
-            <button onClick={() => setHpCurrent(displayedCurrentHp - 1)}>−</button>
-            <strong className={styles.counterValue}>{displayedCurrentHp}</strong>
-            <button onClick={() => setHpCurrent(displayedCurrentHp + 1)}>+</button>
+        <div className={styles.hpRow}>
+          <div className={styles.hpBlock}>
+            <span className={styles.hpBlockLabel}>Máximo</span>
+
+            {isEditMode && !character.hpAutoCalc ? (
+              <input
+                className={`${panelStyles.compactInput} ${styles.hpInput}`}
+                type="number"
+                min={0}
+                value={character.hpMax}
+                onChange={(e) => set('hpMax', Number(e.target.value))}
+              />
+            ) : (
+              <strong className={styles.hpValue}>{effectiveHpMax}</strong>
+            )}
+
+            {character.hpAutoCalc ? (
+              <span className={styles.hpMaxAuto}>
+                Base: {naturalHpMax} · Extra: {formatModifier(extraHpTotal)}
+              </span>
+            ) : (
+              isEditMode && (
+                <span className={styles.hpMaxAuto}>Sugestão pelas regras: {suggestedHpMax}</span>
+              )
+            )}
+          </div>
+
+          <div className={styles.hpBlock}>
+            <span className={styles.hpBlockLabel}>Atual</span>
+
+            <div className={styles.stepper}>
+              <button
+                type="button"
+                className={styles.stepperButton}
+                aria-label="Reduzir HP atual"
+                onClick={() => setHpCurrent(displayedCurrentHp - 1)}
+              >
+                −
+              </button>
+
+              {isEditMode ? (
+                <input
+                  className={`${panelStyles.compactInput} ${styles.hpInput}`}
+                  type="number"
+                  min={0}
+                  max={effectiveHpMax + character.hpTemp}
+                  value={displayedCurrentHp}
+                  onChange={(e) => setHpCurrent(Number(e.target.value))}
+                />
+              ) : (
+                <strong className={`${styles.hpValue} ${styles.stepperValue}`}>
+                  {displayedCurrentHp}
+                </strong>
+              )}
+
+              <button
+                type="button"
+                className={styles.stepperButton}
+                aria-label="Aumentar HP atual"
+                onClick={() => setHpCurrent(displayedCurrentHp + 1)}
+              >
+                +
+              </button>
+            </div>
+
+            <span className={styles.hpMaxAuto}>Limite: {effectiveHpMax + character.hpTemp}</span>
+          </div>
+
+          <div className={styles.hpBlock}>
+            <span className={styles.hpBlockLabel}>Temporário</span>
+
+            <div className={styles.stepper}>
+              <button
+                type="button"
+                className={styles.stepperButton}
+                aria-label="Reduzir HP temporário"
+                onClick={() => set('hpTemp', Math.max(0, character.hpTemp - 1))}
+              >
+                −
+              </button>
+
+              {isEditMode ? (
+                <input
+                  className={`${panelStyles.compactInput} ${styles.hpInput}`}
+                  type="number"
+                  min={0}
+                  value={character.hpTemp}
+                  onChange={(e) => set('hpTemp', Math.max(0, Number(e.target.value)))}
+                />
+              ) : (
+                <strong className={`${styles.hpValue} ${styles.stepperValue}`}>
+                  {character.hpTemp}
+                </strong>
+              )}
+
+              <button
+                type="button"
+                className={styles.stepperButton}
+                aria-label="Aumentar HP temporário"
+                onClick={() => set('hpTemp', character.hpTemp + 1)}
+              >
+                +
+              </button>
+            </div>
+
+            <span className={styles.hpMaxAuto}>Absorve dano antes do HP atual</span>
           </div>
         </div>
 
-        <div className={styles.metricCard}>
-          <span className={styles.metricLabel}>HP Temporário</span>
-          <div className={styles.counterRow}>
+        {(isEditMode || character.hpBonusEntries.length > 0) && (
+          <div className={styles.bonusSection}>
+            <span className={styles.hpBlockLabel}>Bônus de HP</span>
+
+            {character.hpBonusEntries.length === 0 ? (
+              <p className={panelStyles.emptyState}>Nenhum ajuste extra cadastrado.</p>
+            ) : (
+              character.hpBonusEntries.map((entry, index) => (
+                <div className={styles.bonusEntry} key={`${entry.source}-${index}`}>
+                  {isEditMode ? (
+                    <>
+                      <input
+                        className={styles.bonusValueInput}
+                        type="number"
+                        value={entry.value}
+                        onChange={(e) =>
+                          setHpBonusEntry(index, { value: Number(e.target.value) })
+                        }
+                        placeholder="Valor"
+                      />
+
+                      <input
+                        className={styles.bonusSourceInput}
+                        type="text"
+                        value={entry.source}
+                        onChange={(e) =>
+                          setHpBonusEntry(index, { source: e.target.value })
+                        }
+                        placeholder="Origem do bônus"
+                      />
+
+                      <button
+                        type="button"
+                        className={panelStyles.removeButton}
+                        onClick={() => removeHpBonusEntry(index)}
+                      >
+                        Remover
+                      </button>
+                    </>
+                  ) : (
+                    <span className={styles.bonusText}>
+                      <strong>{formatModifier(entry.value)}</strong> ·{' '}
+                      {entry.source || 'Sem origem informada'}
+                    </span>
+                  )}
+                </div>
+              ))
+            )}
+
+            {isEditMode && (
+              <div className={styles.bonusActions}>
+                <button
+                  type="button"
+                  className={panelStyles.addButton}
+                  onClick={addHpBonusEntry}
+                >
+                  + Ajuste de HP
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className={styles.hitDiceRow}>
+        <div className={styles.hitDiceInfo}>
+          <span className={styles.hitDiceLabel}>Dados de vida</span>
+          <strong className={styles.hitDiceValue}>{totalHitDice(character)}</strong>
+          <span className={styles.statNote}>
+            Restantes: {remainingHitDice} de {totalHitDiceAvailable}
+          </span>
+        </div>
+
+        <div className={styles.hitDiceControls}>
+          <span className={styles.statNote}>Gastos</span>
+
+          <div className={styles.stepper}>
             <button
-              onClick={() =>
-                set('hpTemp', Math.max(0, character.hpTemp - 1))
-              }
+              type="button"
+              className={styles.stepperButton}
+              aria-label="Reduzir dados de vida gastos"
+              onClick={() => set('hitDiceSpent', Math.max(0, character.hitDiceSpent - 1))}
             >
               −
             </button>
-            <strong className={styles.counterValue}>{character.hpTemp}</strong>
-            <button onClick={() => set('hpTemp', character.hpTemp + 1)}>+</button>
+
+            {isEditMode ? (
+              <input
+                className={`${panelStyles.compactInput} ${styles.statInput}`}
+                type="number"
+                min={0}
+                max={totalHitDiceAvailable}
+                value={character.hitDiceSpent}
+                onChange={(e) =>
+                  set(
+                    'hitDiceSpent',
+                    clamp(Number(e.target.value), 0, totalHitDiceAvailable),
+                  )
+                }
+              />
+            ) : (
+              <strong className={styles.stepperCounter}>{character.hitDiceSpent}</strong>
+            )}
+
+            <button
+              type="button"
+              className={styles.stepperButton}
+              aria-label="Aumentar dados de vida gastos"
+              onClick={() =>
+                set('hitDiceSpent', Math.min(totalHitDiceAvailable, character.hitDiceSpent + 1))
+              }
+            >
+              +
+            </button>
           </div>
-        </div>
-      </div>
-
-      {(isEditMode || character.hpBonusEntries.length > 0) && (
-        <div className={panelStyles.section}>
-          <h3 className={panelStyles.sectionTitle}>Ajustes extras de HP</h3>
-
-          {character.hpBonusEntries.length === 0 ? (
-            <p className={panelStyles.emptyState}>Nenhum ajuste extra cadastrado.</p>
-          ) : (
-            <div className={styles.bonusList}>
-              {character.hpBonusEntries.map((entry, index) => (
-                <div className={styles.bonusRow} key={`${entry.source}-${index}`}>
-                {isEditMode ? (
-                  <>
-                    <input
-                      className={panelStyles.narrowInput}
-                      type="number"
-                      value={entry.value}
-                      onChange={(e) =>
-                        setHpBonusEntry(index, { value: Number(e.target.value) })
-                      }
-                      placeholder="Valor"
-                    />
-                    <input
-                      className={panelStyles.wideInput}
-                      type="text"
-                      value={entry.source}
-                      onChange={(e) =>
-                        setHpBonusEntry(index, { source: e.target.value })
-                      }
-                      placeholder="Origem do bônus"
-                    />
-                    <button className={panelStyles.removeButton} onClick={() => removeHpBonusEntry(index)}>
-                      Remover
-                    </button>
-                  </>
-                ) : (
-                  <span className={styles.bonusRead}>
-                    <strong>{formatModifier(entry.value)}</strong> · {entry.source || 'Sem origem informada'}
-                  </span>
-                )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {isEditMode && (
-            <button className={panelStyles.addButton} onClick={addHpBonusEntry}>+ Ajuste de HP</button>
-          )}
-        </div>
-      )}
-
-      <div className={styles.trackRow}>
-        <div className={styles.trackInfo}>
-          <span className={styles.trackLabel}>Dados de vida</span>
-          <span className={styles.trackDetail}>{totalHitDice(character)}</span>
-        </div>
-        <div className={styles.counterRow}>
-          <span className={styles.trackDetail}>Gastos:</span>
-          <button
-            onClick={() =>
-              set('hitDiceSpent', Math.max(0, character.hitDiceSpent - 1))
-            }
-          >
-            −
-          </button>
-          <strong className={styles.counterValue}>{character.hitDiceSpent}</strong>
-          <button
-            onClick={() => {
-              const total = character.classes.reduce((s, c) => s + c.level, 0)
-              set('hitDiceSpent', Math.min(total, character.hitDiceSpent + 1))
-            }}
-          >
-            +
-          </button>
         </div>
       </div>
 
       {(isDowned || isEditMode) && (
-        <div className={panelStyles.section}>
-          <h3 className={panelStyles.sectionTitle}>Testes de morte</h3>
-
-          <div className={styles.deathGrid}>
-            <div className={styles.deathRow}>
-              <span className={styles.trackLabel}>Sucessos</span>
-              <div className={styles.deathChecks}>
-                {[0, 1, 2].map((i) => (
-                  <input
-                    key={i}
-                    type="checkbox"
-                    checked={character.deathSaves.success > i}
-                    onChange={(e) =>
-                      setDeathSave('success', e.target.checked ? i + 1 : i)
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className={styles.deathRow}>
-              <span className={styles.trackLabel}>Falhas</span>
-              <div className={styles.deathChecks}>
-                {[0, 1, 2].map((i) => (
-                  <input
-                    key={i}
-                    type="checkbox"
-                    checked={character.deathSaves.failure > i}
-                    onChange={(e) =>
-                      setDeathSave('failure', e.target.checked ? i + 1 : i)
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
+        <div className={styles.deathSaves}>
+          <h3 className={styles.deathSavesTitle}>Testes de morte</h3>
+          {renderDeathDots('success', 'Sucessos')}
+          {renderDeathDots('failure', 'Falhas')}
         </div>
       )}
 
-      <div className={styles.trackRow}>
-        <div className={styles.trackInfo}>
-          <span className={styles.trackLabel}>Inspiração heroica</span>
-          <span className={styles.trackDetail}>Controle manual do total disponível.</span>
-        </div>
-        <div className={styles.counterRow}>
+      <div className={styles.inspirationRow}>
+        <span className={styles.inspirationLabel}>Inspiração heroica</span>
+
+        <div className={styles.inspirationControls}>
           <button
+            type="button"
+            className={styles.stepperButton}
+            aria-label="Reduzir inspiração heroica"
             onClick={() =>
               set('heroicInspiration', Math.max(0, character.heroicInspiration - 1))
             }
           >
             −
           </button>
-          <strong className={styles.counterValue}>{character.heroicInspiration}</strong>
+
           <button
+            type="button"
+            className={
+              character.heroicInspiration > 0
+                ? `${styles.inspirationBtn} ${styles.inspirationActive}`
+                : styles.inspirationBtn
+            }
+            aria-label="Alternar inspiração heroica"
+            aria-pressed={character.heroicInspiration > 0}
+            onClick={() =>
+              set('heroicInspiration', character.heroicInspiration > 0 ? 0 : 1)
+            }
+          >
+            {character.heroicInspiration}
+          </button>
+
+          <button
+            type="button"
+            className={styles.stepperButton}
+            aria-label="Aumentar inspiração heroica"
             onClick={() => set('heroicInspiration', character.heroicInspiration + 1)}
           >
             +
           </button>
         </div>
+
+        <span className={styles.statNote}>Controle manual do total disponível.</span>
       </div>
     </section>
   )

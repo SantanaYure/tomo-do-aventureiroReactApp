@@ -1,115 +1,389 @@
 .summary {
   color: var(--ink-muted);
+  font-style: italic;
 }
 
-.metricsGrid {
-  display: grid;
-  gap: var(--space-3);
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+/* ── Estatísticas de combate ── */
+.statsRow {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
 }
 
-.metricCard {
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border: 1px solid var(--border-light);
+.statBox {
+  flex: 1;
+  min-width: 5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: var(--parchment-bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: rgba(255, 250, 241, 0.72);
+  padding: var(--space-4) var(--space-3);
+  position: relative;
+  gap: var(--space-2);
 }
 
-.metricLabel {
+.statBox::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border: 1px solid var(--border-light);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.statBox > * {
+  position: relative;
+  z-index: 1;
+}
+
+.statLabel {
+  font-family: var(--font-display);
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--ink-soft);
+  color: var(--ink-muted);
+  margin-bottom: var(--space-2);
 }
 
-.metricValue {
-  font-size: var(--text-xl);
+.statValue {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
   font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
 }
 
-.metricField {
-  max-width: 10rem;
+.editField {
+  width: 100%;
+  align-items: center;
+  text-align: center;
 }
 
-.metricMeta {
+.statInput {
+  font-family: var(--font-display) !important;
+  font-size: var(--text-2xl) !important;
+  font-weight: 700 !important;
+  text-align: center;
+  width: 5rem !important;
+  max-width: 100%;
+}
+
+.textInput {
+  font-family: var(--font-display) !important;
+  font-size: var(--text-lg) !important;
+  font-weight: 700 !important;
+  text-align: center;
+  width: min(100%, 9rem) !important;
+}
+
+.statNote {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  margin-top: var(--space-1);
+  font-style: italic;
+}
+
+/* ── HP ── */
+.hpSection {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  background: var(--parchment-bg);
+  margin-bottom: var(--space-4);
+}
+
+.hpHeader {
   display: flex;
-  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
   flex-wrap: wrap;
+}
+
+.hpTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+}
+
+.hpToggle {
+  font-size: var(--text-xs) !important;
+  font-style: italic;
+  color: var(--ink-faint) !important;
+}
+
+.hpRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.hpBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.hpBlockLabel {
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--ink-muted);
 }
 
-.counterRow {
+.hpValue {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.hpInput {
+  font-family: var(--font-display) !important;
+  font-size: var(--text-2xl) !important;
+  font-weight: 700 !important;
+  text-align: center;
+  width: 5rem !important;
+}
+
+.hpMaxAuto {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  font-style: italic;
+  text-align: center;
+}
+
+.stepper {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.counterValue {
-  min-width: 2.8rem;
-  text-align: center;
+.stepperButton {
+  min-width: 2rem;
+  padding-inline: 0;
+  font-family: var(--font-display);
   font-size: var(--text-lg);
   font-weight: 700;
 }
 
-.bonusList {
+.stepperValue,
+.stepperCounter {
+  min-width: 3rem;
+  text-align: center;
+}
+
+.stepperCounter {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.bonusSection {
   display: grid;
   gap: var(--space-2);
+  margin-top: var(--space-4);
 }
 
-.bonusRow {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 250, 241, 0.6);
-}
-
-.bonusRead {
-  color: var(--ink-muted);
-}
-
-.trackRow {
+/* Bônus de HP */
+.bonusEntry {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
   flex-wrap: wrap;
-  padding: var(--space-3);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 250, 241, 0.66);
 }
 
-.trackInfo {
-  display: grid;
-  gap: 0.2rem;
+.bonusEntry input {
+  flex: 1;
 }
 
-.trackLabel {
-  font-weight: 700;
+.bonusValueInput {
+  flex: 0 0 5rem !important;
+  width: 5rem !important;
 }
 
-.trackDetail {
+.bonusSourceInput {
+  flex: 1 1 12rem !important;
+}
+
+.bonusText {
   color: var(--ink-muted);
 }
 
-.deathGrid {
-  display: grid;
-  gap: var(--space-3);
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+.bonusActions {
+  margin-top: var(--space-1);
+}
+
+/* ── Death Saves ── */
+.deathSaves {
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  background: var(--accent-faint);
+  margin-bottom: var(--space-4);
+}
+
+.deathSavesTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: var(--space-3);
+  letter-spacing: 0.04em;
 }
 
 .deathRow {
-  display: grid;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
+.deathLabel {
+  font-size: var(--text-sm);
+  min-width: 3.5rem;
+  color: var(--ink-muted);
+}
+
+.deathDots {
+  display: flex;
   gap: var(--space-2);
 }
 
-.deathChecks {
+.deathDot {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: transparent;
+  cursor: pointer;
+  padding: 0 !important;
+  transition: background var(--transition);
+}
+
+.deathDotFilled {
+  background: var(--accent) !important;
+}
+
+/* ── Dados de vida ── */
+.hitDiceRow {
   display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3);
+  background: var(--parchment-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.hitDiceInfo {
+  display: grid;
+  gap: var(--space-1);
+  flex: 1;
+}
+
+.hitDiceLabel {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  flex: 1;
+}
+
+.hitDiceValue {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.hitDiceControls {
+  display: flex;
+  align-items: center;
   gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ── Inspiração ── */
+.inspirationRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.inspirationLabel {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  letter-spacing: 0.03em;
+  color: var(--ink-muted);
+}
+
+.inspirationControls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inspirationBtn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50% !important;
+  font-size: var(--text-lg) !important;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.inspirationActive {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+}
+
+@media (max-width: 720px) {
+  .statsRow,
+  .hpRow,
+  .deathRow,
+  .hitDiceRow,
+  .inspirationRow {
+    align-items: flex-start;
+  }
+
+  .statBox {
+    min-width: calc(50% - var(--space-2));
+  }
+
+  .hitDiceControls {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 520px) {
+  .statBox {
+    min-width: 100%;
+  }
+
+  .stepper,
+  .inspirationControls {
+    width: 100%;
+    justify-content: center;
+  }
 }

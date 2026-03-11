@@ -1,1 +1,0 @@
-export { ResourcesPanel } from '../ResourcesPanel/ResourcesPanel'
