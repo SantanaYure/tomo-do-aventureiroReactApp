@@ -8,6 +8,7 @@ import {
   getCharacterSheet,
   saveCharacterSheet,
 } from '../../store/characterSheetStore'
+import { CharacterHeader } from '../../components/CharacterHeader/CharacterHeader'
 
 export function CharacterSheetPage() {
   const { id } = useParams<{ id: string }>()
@@ -46,9 +47,19 @@ export function CharacterSheetPage() {
   return (
     <main>
       <Link to="/">← Voltar</Link>
-      <h1>{sheet.character.name || '(sem nome)'}</h1>
 
-      {/* TODO: renderizar seções com sheet e handleUpdate */}
+      <CharacterHeader
+        character={sheet.character}
+        isEditMode={sheet.isEditMode}
+        onChangeCharacter={(updated) =>
+          handleUpdate({ ...sheet, character: updated })
+        }
+        onToggleEditMode={() =>
+          handleUpdate({ ...sheet, isEditMode: !sheet.isEditMode })
+        }
+      />
+
+      {/* TODO: Resources, Attributes, Inventory, Spells, Attacks */}
     </main>
   )
 }
