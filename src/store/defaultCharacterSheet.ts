@@ -45,6 +45,7 @@ export function createDefaultCharacterSheet(): CharacterSheet {
         shields: false,
       },
       weaponProficiencies: [],
+      weaponMasteries: [],
       toolProficiencies: [],
       attunementItems: [],
       currency: {

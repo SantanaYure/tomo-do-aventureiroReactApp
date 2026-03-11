@@ -1,5 +1,6 @@
 import type { AttunementItem, Character, CharacterSheet } from '../types/system/dnd'
 import {
+  mergeWeaponProficiencies,
   createDefaultCharacterSheet,
   defaultCharacterSheet,
 } from './defaultCharacterSheet'

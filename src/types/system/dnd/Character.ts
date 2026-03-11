@@ -31,6 +31,7 @@ export interface Character {
   languages: string[]
   armorTraining: ArmorTraining
   weaponProficiencies: string[]
+  weaponMasteries: string[]
   toolProficiencies: string[]
   attunementItems: AttunementItem[]
   currency: Currency
