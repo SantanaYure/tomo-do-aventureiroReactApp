@@ -1,7 +1,18 @@
 // src/components/CharacterDetailsPanel/CharacterDetailsPanel.tsx
 // Backstory, aparência, traços de espécie, feats, proficiências, idiomas e itens sintonizados
 
+import { useId, useState } from 'react'
 import type { AttunementItem, Character } from '../../types/system/dnd'
+import {
+  addUniqueTextEntry,
+  getCustomWeaponProficiencies,
+  getSelectedWeaponCategories,
+  getSuggestedWeaponMasteries,
+  setCustomWeaponProficiencyValues,
+  toggleWeaponCategory,
+  WEAPON_PROFICIENCY_OPTIONS,
+  type WeaponProficiencyLabel,
+} from '../../utils/weaponCatalog'
 
 const ATTUNEMENT_RARITIES = [
   '',
@@ -73,8 +84,45 @@ export function CharacterDetailsPanel({
   isEditMode,
   onChangeCharacter,
 }: CharacterDetailsPanelProps) {
+  const weaponMasteryOptionsId = useId()
+  const [weaponMasteryInput, setWeaponMasteryInput] = useState('')
+  const selectedWeaponCategories = getSelectedWeaponCategories(character.weaponProficiencies)
+  const customWeaponProficiencies = getCustomWeaponProficiencies(character.weaponProficiencies)
+  const weaponMasterySuggestions = getSuggestedWeaponMasteries(character.weaponProficiencies)
+
   function set<K extends keyof Character>(key: K, value: Character[K]) {
     onChangeCharacter({ ...character, [key]: value })
+  }
+
+  function setWeaponCategory(category: WeaponProficiencyLabel, checked: boolean) {
+    set(
+      'weaponProficiencies',
+      toggleWeaponCategory(character.weaponProficiencies, category, checked),
+    )
+  }
+
+  function setCustomWeaponProficiencies(values: string[]) {
+    set(
+      'weaponProficiencies',
+      setCustomWeaponProficiencyValues(character.weaponProficiencies, values),
+    )
+  }
+
+  function addWeaponMastery() {
+    const updated = addUniqueTextEntry(character.weaponMasteries, weaponMasteryInput)
+
+    if (updated.length !== character.weaponMasteries.length) {
+      set('weaponMasteries', updated)
+    }
+
+    setWeaponMasteryInput('')
+  }
+
+  function removeWeaponMastery(index: number) {
+    set(
+      'weaponMasteries',
+      character.weaponMasteries.filter((_, currentIndex) => currentIndex !== index),
+    )
   }
 
   function setAttunementItem(index: number, partial: Partial<AttunementItem>) {
@@ -137,12 +185,6 @@ export function CharacterDetailsPanel({
             onChange={(v) => set('languages', v)}
           />
           <StringListEditor
-            label="Proficiências com armas"
-            values={character.weaponProficiencies}
-            placeholder="Ex: Espadas longas…"
-            onChange={(v) => set('weaponProficiencies', v)}
-          />
-          <StringListEditor
             label="Proficiências com ferramentas"
             values={character.toolProficiencies}
             placeholder="Ex: Ferramentas de ladrão…"
@@ -155,12 +197,6 @@ export function CharacterDetailsPanel({
             <div>
               <strong>Idiomas: </strong>
               <span>{character.languages.join(', ')}</span>
-            </div>
-          )}
-          {character.weaponProficiencies.length > 0 && (
-            <div>
-              <strong>Armas: </strong>
-              <span>{character.weaponProficiencies.join(', ')}</span>
             </div>
           )}
           {character.toolProficiencies.length > 0 && (
@@ -194,6 +230,91 @@ export function CharacterDetailsPanel({
             </label>
           )
         })}
+      </div>
+
+      <div>
+        <h3>Armas</h3>
+        {WEAPON_PROFICIENCY_OPTIONS.map(({ label }) => (
+          <label key={label}>
+            <input
+              type="checkbox"
+              checked={selectedWeaponCategories.includes(label)}
+              disabled={!isEditMode}
+              onChange={(e) => setWeaponCategory(label, e.target.checked)}
+            />
+            {label}
+          </label>
+        ))}
+
+        {isEditMode ? (
+          <>
+            <StringListEditor
+              label="Proficiências específicas com armas"
+              values={customWeaponProficiencies}
+              placeholder="Ex: Espada longa, Rede…"
+              onChange={setCustomWeaponProficiencies}
+            />
+
+            <div>
+              <strong>Maestrias</strong>
+
+              {character.weaponMasteries.length === 0 ? (
+                <p>Nenhuma maestria cadastrada.</p>
+              ) : (
+                <ul>
+                  {character.weaponMasteries.map((mastery, index) => (
+                    <li key={`${mastery}-${index}`}>
+                      <span>{mastery}</span>
+                      <button onClick={() => removeWeaponMastery(index)}>−</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <input
+                type="text"
+                list={weaponMasteryOptionsId}
+                value={weaponMasteryInput}
+                placeholder="Selecione ou digite uma arma"
+                onChange={(e) => setWeaponMasteryInput(e.target.value)}
+              />
+              <datalist id={weaponMasteryOptionsId}>
+                {weaponMasterySuggestions.map((weaponName) => (
+                  <option key={weaponName} value={weaponName} />
+                ))}
+              </datalist>
+              <button onClick={addWeaponMastery}>+ Maestria</button>
+
+              {weaponMasterySuggestions.length > 0 && (
+                <p>As sugestões mudam conforme os tipos de arma marcados.</p>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            {selectedWeaponCategories.length > 0 && (
+              <div>
+                <strong>Proficiências: </strong>
+                <span>{selectedWeaponCategories.join(', ')}</span>
+              </div>
+            )}
+            {customWeaponProficiencies.length > 0 && (
+              <div>
+                <strong>Armas específicas: </strong>
+                <span>{customWeaponProficiencies.join(', ')}</span>
+              </div>
+            )}
+            {character.weaponMasteries.length > 0 && (
+              <div>
+                <strong>Maestrias: </strong>
+                <span>{character.weaponMasteries.join(', ')}</span>
+              </div>
+            )}
+            {selectedWeaponCategories.length === 0 &&
+              customWeaponProficiencies.length === 0 &&
+              character.weaponMasteries.length === 0 && <p>Nenhuma arma cadastrada.</p>}
+          </>
+        )}
       </div>
 
       {/* ── Itens sintonizados ── */}

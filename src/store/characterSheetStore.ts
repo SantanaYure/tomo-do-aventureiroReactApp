@@ -1,6 +1,11 @@
 import type { AttunementItem, Character, CharacterSheet } from '../types/system/dnd'
 import {
+  addUniqueTextEntry,
+  getCustomWeaponProficiencies,
+  getSelectedWeaponCategories,
   mergeWeaponProficiencies,
+} from '../utils/weaponCatalog'
+import {
   createDefaultCharacterSheet,
   defaultCharacterSheet,
 } from './defaultCharacterSheet'
@@ -69,6 +74,24 @@ function normalizeCharacter(character: Character | LegacyCharacter | undefined):
         description: typeof item.description === 'string' ? item.description : '',
       }))
     : legacyAttunements.map((itemName: string) => createDefaultAttunementItem(itemName))
+  const rawWeaponProficiencies = Array.isArray(nextCharacter.weaponProficiencies)
+    ? nextCharacter.weaponProficiencies.filter(
+        (item): item is string => typeof item === 'string',
+      )
+    : []
+  const normalizedWeaponProficiencies = mergeWeaponProficiencies(
+    getSelectedWeaponCategories(rawWeaponProficiencies),
+    getCustomWeaponProficiencies(rawWeaponProficiencies),
+  )
+  const normalizedWeaponMasteries = Array.isArray(nextCharacter.weaponMasteries)
+    ? nextCharacter.weaponMasteries.reduce<string[]>((acc, item) => {
+        if (typeof item !== 'string') {
+          return acc
+        }
+
+        return addUniqueTextEntry(acc, item)
+      }, [])
+    : defaultCharacter.weaponMasteries
 
   return {
     ...defaultCharacter,
@@ -77,11 +100,8 @@ function normalizeCharacter(character: Character | LegacyCharacter | undefined):
       ...defaultCharacter.armorTraining,
       ...(nextCharacter.armorTraining ?? {}),
     },
-    weaponProficiencies: Array.isArray(nextCharacter.weaponProficiencies)
-      ? nextCharacter.weaponProficiencies.filter(
-          (item): item is string => typeof item === 'string',
-        )
-      : [],
+    weaponProficiencies: normalizedWeaponProficiencies,
+    weaponMasteries: normalizedWeaponMasteries,
     toolProficiencies: Array.isArray(nextCharacter.toolProficiencies)
       ? nextCharacter.toolProficiencies.filter(
           (item): item is string => typeof item === 'string',

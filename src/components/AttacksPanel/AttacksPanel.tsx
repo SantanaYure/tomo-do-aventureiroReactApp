@@ -2,6 +2,7 @@
 // Lista de ataques com nome, bônus, dano, tipo e alcance
 
 import type { Attack, Character } from '../../types/system/dnd'
+import { findMatchingWeaponProficiency } from '../../utils/weaponCatalog'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
 
 function createAttack(): Attack {
@@ -22,36 +23,6 @@ function formatBonus(value?: number): string {
   return value >= 0 ? `+${value}` : `${value}`
 }
 
-function normalizeText(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-}
-
-function findMatchingWeaponProficiency(
-  attack: Attack,
-  weaponProficiencies: string[],
-): string | null {
-  const normalizedAttackName = normalizeText(attack.name ?? '')
-
-  if (!normalizedAttackName) {
-    return null
-  }
-
-  return (
-    weaponProficiencies.find((proficiency) => {
-      const normalizedProficiency = normalizeText(proficiency)
-      return (
-        normalizedProficiency.length > 0 &&
-        (normalizedAttackName.includes(normalizedProficiency) ||
-          normalizedProficiency.includes(normalizedAttackName))
-      )
-    }) ?? null
-  )
-}
-
 function getCalculatedAttackBonus(attack: Attack, character: Character): number | undefined {
   if (!attack.attributeKey) {
     return attack.attackBonus
@@ -60,7 +31,7 @@ function getCalculatedAttackBonus(attack: Attack, character: Character): number 
   const attribute = character.attributes.find((item) => item.name === attack.attributeKey)
   const attributeModifier = attribute ? calcModifier(attribute.value) : 0
   const matchedWeaponProficiency = findMatchingWeaponProficiency(
-    attack,
+    attack.name ?? '',
     character.weaponProficiencies,
   )
   const proficiencyBonus =
@@ -131,7 +102,7 @@ export function AttacksPanel({
           <tbody>
             {attacks.map((attack, i) => {
               const matchedWeaponProficiency = findMatchingWeaponProficiency(
-                attack,
+                attack.name ?? '',
                 character.weaponProficiencies,
               )
               const calculatedAttackBonus = getCalculatedAttackBonus(attack, character)
