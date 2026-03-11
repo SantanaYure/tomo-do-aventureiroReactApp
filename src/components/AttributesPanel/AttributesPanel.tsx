@@ -49,6 +49,15 @@ const PROF_LABEL: Record<SavingThrowProficiency, string> = {
   1: '●',
 }
 
+const ATTRIBUTE_DISPLAY_ORDER: Attribute['name'][] = [
+  'Força',
+  'Destreza',
+  'Constituição',
+  'Inteligência',
+  'Sabedoria',
+  'Carisma',
+]
+
 interface AttributesPanelProps {
   character: Character
   isEditMode: boolean
@@ -61,6 +70,20 @@ export function AttributesPanel({
   onChangeCharacter,
 }: AttributesPanelProps) {
   const profBonus = calcProficiencyBonus(character.classes)
+  const orderedAttributes = ATTRIBUTE_DISPLAY_ORDER.map((attributeName) => {
+    const currentIndex = character.attributes.findIndex(
+      (attribute) => attribute.name === attributeName,
+    )
+
+    return {
+      attribute: character.attributes[currentIndex],
+      currentIndex,
+    }
+  }).filter(
+    (
+      value,
+    ): value is { attribute: Attribute; currentIndex: number } => value.currentIndex >= 0,
+  )
 
   function setAttrValue(index: number, value: number) {
     const updated = character.attributes.map<Attribute>((attribute, currentIndex) =>
@@ -91,12 +114,12 @@ export function AttributesPanel({
       </div>
 
       <div className={styles.grid}>
-        {character.attributes.map((attribute, index) => {
+        {orderedAttributes.map(({ attribute, currentIndex }) => {
           const modifier = calcModifier(attribute.value)
           const saveKey = ATTR_TO_SAVE[attribute.name]
           const profLevel = normalizeProficiencyLevel(character.savingThrows[saveKey])
           const saveTotal = modifier + profLevel * profBonus
-          const inputId = `attribute-${attribute.name}-${index}`
+          const inputId = `attribute-${attribute.name}-${currentIndex}`
 
           return (
             <article className={styles.card} key={attribute.name}>
@@ -118,7 +141,7 @@ export function AttributesPanel({
                       max={30}
                       value={attribute.value}
                       onChange={(event) =>
-                        setAttrValue(index, parseNumberInput(event.target.value, 1))
+                        setAttrValue(currentIndex, parseNumberInput(event.target.value, 1))
                       }
                     />
                   </label>

@@ -1,5 +1,5 @@
 // src/components/SkillsPanel/SkillsPanel.tsx
-// Lista as 18 perícias com valor calculado (mod do atributo + proficiência + misc)
+// Lista as 18 perícias com valor calculado (mod do atributo + proficiência + mod extra)
 
 import type { AttributeName, Character, SkillName } from '../../types/system/dnd'
 import panelStyles from '../../styles/panel.module.css'
@@ -156,7 +156,7 @@ export function SkillsPanel({
                   </button>
 
                   <label className={styles.miscField}>
-                    Misc
+                    Mod Extra
                     <input
                       type="number"
                       value={misc}
