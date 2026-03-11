@@ -32,6 +32,7 @@ function createResource(): Resource {
   return {
     name: '',
     description: '',
+    duration: '',
     range: '',
     action: '',
     current: 0,
@@ -79,12 +80,23 @@ export function ResourcesPanel({
   }
 
   function setMax(index: number, value: number) {
+    const resource = resources[index]
     const nextMax = Math.max(0, value)
-    const current = resources[index].current ?? 0
+    const previousMax = resource.max ?? 0
+    const current = Math.max(0, resource.current ?? 0)
+    const nextCurrent = previousMax === 0 || current >= previousMax
+      ? nextMax
+      : Math.min(nextMax, current)
 
     setResource(index, {
       max: nextMax,
-      current: Math.min(nextMax, Math.max(0, current)),
+      current: nextCurrent,
+    })
+  }
+
+  function setLevel(index: number, value: string) {
+    setResource(index, {
+      level: value.trim() ? Math.max(1, Math.trunc(Number(value))) : undefined,
     })
   }
 
@@ -175,6 +187,29 @@ export function ResourcesPanel({
                         min={0}
                         value={resource.max ?? 0}
                         onChange={(event) => setMax(index, Number(event.target.value))}
+                      />
+                    </label>
+
+                    <label className={styles.metaField}>
+                      Nível
+                      <input
+                        type="number"
+                        min={1}
+                        value={resource.level ?? ''}
+                        placeholder="1"
+                        onChange={(event) => setLevel(index, event.target.value)}
+                      />
+                    </label>
+
+                    <label className={styles.metaField}>
+                      Duração
+                      <input
+                        type="text"
+                        value={resource.duration ?? ''}
+                        placeholder="1 min, 10 min, 1 h..."
+                        onChange={(event) =>
+                          setResource(index, { duration: event.target.value })
+                        }
                       />
                     </label>
 
@@ -289,6 +324,12 @@ export function ResourcesPanel({
                       <span className={styles.resourceMeta}>
                         Origem: {getResourceOriginLabel(resource)}
                       </span>
+                    )}
+                    {typeof resource.level === 'number' && Number.isFinite(resource.level) && (
+                      <span className={styles.resourceMeta}>Nível: {resource.level}</span>
+                    )}
+                    {resource.duration?.trim() && (
+                      <span className={styles.resourceMeta}>Duração: {resource.duration}</span>
                     )}
                     {resource.action?.trim() && (
                       <span className={styles.resourceMeta}>Ação: {resource.action}</span>

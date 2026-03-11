@@ -15,6 +15,8 @@ export type ResourceOrigin =
 export interface Resource {
   name?: string
   description?: string
+  duration?: string
+  level?: number
   range?: string
   action?: string
   current?: number

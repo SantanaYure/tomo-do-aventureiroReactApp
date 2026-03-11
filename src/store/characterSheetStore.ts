@@ -121,6 +121,7 @@ function createDefaultResource(): Resource {
   return {
     name: '',
     description: '',
+    duration: '',
     range: '',
     action: '',
     current: 0,
@@ -201,6 +202,11 @@ function normalizeResource(resource: Resource | undefined): Resource {
     name: typeof nextResource.name === 'string' ? nextResource.name : '',
     description:
       typeof nextResource.description === 'string' ? nextResource.description : '',
+    duration: typeof nextResource.duration === 'string' ? nextResource.duration : '',
+    level:
+      typeof nextResource.level === 'number' && Number.isFinite(nextResource.level)
+        ? Math.max(1, Math.trunc(nextResource.level))
+        : undefined,
     range: typeof nextResource.range === 'string' ? nextResource.range : '',
     action: typeof nextResource.action === 'string' ? nextResource.action : '',
     current: Math.min(max, current),
