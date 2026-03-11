@@ -2,13 +2,14 @@
   display: grid;
   justify-items: center;
   gap: var(--space-3);
-  padding: var(--space-6) 0 var(--space-7);
+  padding: 0.475rem;
   text-align: center;
 }
 
 .title {
   font-size: clamp(2.4rem, 5vw, 4rem);
   line-height: 1;
+  margin-top: 3.75rem;
 }
 
 .subtitle {
