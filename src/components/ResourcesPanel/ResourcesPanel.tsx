@@ -8,11 +8,24 @@ const RESET_LABEL: Record<ResourceReset, string> = {
   manual: 'Manual',
 }
 
+const ORIGIN_OPTIONS: ResourceOrigin[] = [
+  'class',
+  'subclass',
+  'species',
+  'background',
+  'feat',
+  'magic-item',
+  'homebrew',
+]
+
 const ORIGIN_LABEL: Record<ResourceOrigin, string> = {
   class: 'Classe',
-  lineage: 'Linhagem',
+  subclass: 'Subclasse',
+  species: 'Espécie',
+  background: 'Antecedente',
+  feat: 'Talento',
   'magic-item': 'Item Mágico',
-  divine: 'Divino',
+  homebrew: 'Homebrew',
 }
 
 function createResource(): Resource {
@@ -237,7 +250,7 @@ export function ResourcesPanel({
                         onChange={(event) => setOrigin(index, event.target.value)}
                       >
                         <option value="">Origem</option>
-                        {(Object.keys(ORIGIN_LABEL) as ResourceOrigin[]).map((key) => (
+                        {ORIGIN_OPTIONS.map((key) => (
                           <option key={key} value={key}>
                             {ORIGIN_LABEL[key]}
                           </option>

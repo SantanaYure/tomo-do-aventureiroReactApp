@@ -134,10 +134,33 @@ function createDefaultResource(): Resource {
 function isResourceOrigin(value: unknown): value is ResourceOrigin {
   return (
     value === 'class' ||
-    value === 'lineage' ||
+    value === 'subclass' ||
+    value === 'species' ||
+    value === 'background' ||
+    value === 'feat' ||
     value === 'magic-item' ||
-    value === 'divine'
+    value === 'homebrew'
   )
+}
+
+function normalizeLegacyResourceOrigin(value: unknown): ResourceOrigin | undefined {
+  if (isResourceOrigin(value)) {
+    return value
+  }
+
+  if (value === 'lineage') {
+    return 'species'
+  }
+
+  return undefined
+}
+
+function normalizeLegacyResourceOriginLabel(value: string): string {
+  if (value === 'divine') {
+    return 'Divino'
+  }
+
+  return value
 }
 
 function normalizeResource(resource: Resource | undefined): Resource {
@@ -155,19 +178,20 @@ function normalizeResource(resource: Resource | undefined): Resource {
   const rawOriginText = typeof rawOrigin === 'string' ? rawOrigin : ''
   const customOrigin =
     typeof nextResource.customOrigin === 'string' ? nextResource.customOrigin : ''
+  const normalizedOrigin = normalizeLegacyResourceOrigin(rawOrigin)
+  const resolvedCustomOrigin =
+    customOrigin.trim().length > 0
+      ? customOrigin
+      : rawOriginText.trim().length > 0 && !normalizedOrigin
+        ? normalizeLegacyResourceOriginLabel(rawOriginText)
+        : ''
   let allowCustomOrigin =
     typeof nextResource.allowCustomOrigin === 'boolean'
       ? nextResource.allowCustomOrigin
       : false
-  let origin: ResourceOrigin | undefined
+  const origin = normalizedOrigin
 
-  if (isResourceOrigin(rawOrigin)) {
-    origin = rawOrigin
-  } else if (rawOriginText.trim().length > 0) {
-    allowCustomOrigin = true
-  }
-
-  if (!allowCustomOrigin && customOrigin.trim().length > 0 && !origin) {
+  if (!allowCustomOrigin && resolvedCustomOrigin.trim().length > 0 && !origin) {
     allowCustomOrigin = true
   }
 
@@ -188,7 +212,7 @@ function normalizeResource(resource: Resource | undefined): Resource {
         ? nextResource.resetOn
         : defaultResource.resetOn,
     origin,
-    customOrigin: rawOriginText.trim().length > 0 && !isResourceOrigin(rawOrigin) ? rawOriginText : customOrigin,
+    customOrigin: resolvedCustomOrigin,
     allowCustomOrigin,
   }
 }

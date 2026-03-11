@@ -3,7 +3,14 @@
 // Tipo: interface/type
 
 export type ResourceReset = 'short-rest' | 'long-rest' | 'manual'
-export type ResourceOrigin = 'class' | 'lineage' | 'magic-item' | 'divine'
+export type ResourceOrigin =
+  | 'class'
+  | 'subclass'
+  | 'species'
+  | 'background'
+  | 'feat'
+  | 'magic-item'
+  | 'homebrew'
 
 export interface Resource {
   name?: string
