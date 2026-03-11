@@ -1,4 +1,10 @@
-import type { Attribute, Character, Class, SavingThrows } from '../../types/system/dnd'
+import type {
+  Attribute,
+  Character,
+  Class,
+  SavingThrowProficiency,
+  SavingThrows,
+} from '../../types/system/dnd'
 import './AttributesPanel.css'
 
 export function calcModifier(value: number): number {
@@ -23,6 +29,11 @@ function clampAttributeValue(value: number): number {
   return Math.min(30, Math.max(1, Math.trunc(value)))
 }
 
+function normalizeProficiencyLevel(value: number): SavingThrowProficiency {
+  if (value <= 0) return 0
+  return 1
+}
+
 const ATTR_TO_SAVE: Record<Attribute['name'], keyof SavingThrows> = {
   Força: 'str',
   Destreza: 'dex',
@@ -30,6 +41,11 @@ const ATTR_TO_SAVE: Record<Attribute['name'], keyof SavingThrows> = {
   Inteligência: 'int',
   Sabedoria: 'wis',
   Carisma: 'cha',
+}
+
+const PROF_LABEL: Record<SavingThrowProficiency, string> = {
+  0: '○',
+  1: '●',
 }
 
 interface AttributesPanelProps {
@@ -55,10 +71,12 @@ export function AttributesPanel({
     onChangeCharacter({ ...character, attributes: updated })
   }
 
-  function setSavingThrow(key: keyof SavingThrows, value: number) {
+  function cycleSavingThrowProf(key: keyof SavingThrows) {
+    const current = normalizeProficiencyLevel(character.savingThrows[key])
+
     onChangeCharacter({
       ...character,
-      savingThrows: { ...character.savingThrows, [key]: Math.trunc(value) },
+      savingThrows: { ...character.savingThrows, [key]: ((current + 1) % 2) as SavingThrowProficiency },
     })
   }
 
@@ -75,10 +93,9 @@ export function AttributesPanel({
         {character.attributes.map((attribute, index) => {
           const modifier = calcModifier(attribute.value)
           const saveKey = ATTR_TO_SAVE[attribute.name]
-          const saveBonus = character.savingThrows[saveKey]
-          const saveTotal = modifier + saveBonus
+          const profLevel = normalizeProficiencyLevel(character.savingThrows[saveKey])
+          const saveTotal = modifier + profLevel * profBonus
           const inputId = `attribute-${attribute.name}-${index}`
-          const saveInputId = `save-bonus-${attribute.name}-${index}`
 
           return (
             <article className="attributes-panel__card" key={attribute.name}>
@@ -111,23 +128,20 @@ export function AttributesPanel({
 
               <div className="attributes-panel__saveBlock">
                 <span className="attributes-panel__saveLabel">Teste de resistência</span>
-                <strong className="attributes-panel__saveTotal">
-                  {formatModifier(saveTotal)}
-                </strong>
-
-                {isEditMode && (
-                  <label className="attributes-panel__field" htmlFor={saveInputId}>
-                    Bônus extra
-                    <input
-                      id={saveInputId}
-                      type="number"
-                      value={saveBonus}
-                      onChange={(event) =>
-                        setSavingThrow(saveKey, parseNumberInput(event.target.value))
-                      }
-                    />
-                  </label>
-                )}
+                <div className="attributes-panel__saveRow">
+                  <button
+                    type="button"
+                    className="attributes-panel__profButton"
+                    title={isEditMode ? 'Clique para alternar proficiência' : undefined}
+                    disabled={!isEditMode}
+                    onClick={() => cycleSavingThrowProf(saveKey)}
+                  >
+                    {PROF_LABEL[profLevel]}
+                  </button>
+                  <strong className="attributes-panel__saveTotal">
+                    {formatModifier(saveTotal)}
+                  </strong>
+                </div>
               </div>
             </article>
           )
