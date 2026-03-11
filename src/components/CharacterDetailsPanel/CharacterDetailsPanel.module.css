@@ -1,121 +1,149 @@
-.textSections {
-  display: grid;
-  gap: var(--space-4);
-}
+﻿/* â”€â”€ Generic section â”€â”€ */
 
-.textBlock {
+.section {
   display: grid;
   gap: var(--space-2);
 }
 
-.blockTitle {
-  font-size: var(--text-lg);
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-.textContent {
+/* â”€â”€ Textarea read view â”€â”€ */
+
+.textareaView {
   white-space: pre-wrap;
+  color: var(--ink);
+}
+
+.emptyText {
   color: var(--ink-muted);
+  font-style: italic;
 }
 
-.listEditor {
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 250, 241, 0.72);
-}
+/* â”€â”€ Tag chip list (StringListEditor) â”€â”€ */
 
-.inlineList {
-  display: grid;
-  gap: var(--space-2);
-  list-style: none;
-}
-
-.inlineListItem {
+.tagList {
   display: flex;
-  gap: var(--space-2);
-  align-items: flex-end;
   flex-wrap: wrap;
-}
-
-.listInput {
-  flex: 1 1 14rem;
-}
-
-.sectionBlock {
-  display: grid;
-  gap: var(--space-3);
-}
-
-.checkboxGrid {
-  display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
-.summaryList {
-  display: grid;
   gap: var(--space-2);
+  min-height: 1.5rem;
 }
 
-.summaryRow {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.masteryList {
-  display: grid;
-  gap: var(--space-2);
-  list-style: none;
-}
-
-.masteryItem {
-  display: flex;
+.tag {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  padding: var(--space-2) var(--space-3);
+  gap: var(--space-1);
+  padding: 0.25rem 0.6rem;
+  background: rgba(138, 100, 40, 0.1);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 252, 245, 0.74);
+  border-radius: 999px;
+  font-size: var(--text-sm);
 }
 
-.masteryInputRow {
+.tagRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  font-size: 0.65rem;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.addRow {
   display: flex;
   gap: var(--space-2);
-  align-items: flex-end;
+  align-items: center;
+}
+
+.addRow input {
+  flex: 1 1 12rem;
+}
+
+.addRow button {
+  flex-shrink: 0;
+}
+
+/* â”€â”€ Armor â”€â”€ */
+
+.armorGrid {
+  display: flex;
+  gap: var(--space-4);
   flex-wrap: wrap;
 }
 
-.inlineInfo {
-  color: var(--ink-muted);
+.armorCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  cursor: pointer;
 }
 
-.attunementGrid {
+/* â”€â”€ Attunement â”€â”€ */
+
+.attunementList {
   display: grid;
   gap: var(--space-3);
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
 .attunementCard {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-2);
   padding: var(--space-3);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   background: rgba(255, 250, 241, 0.72);
 }
 
-.attunementMeta {
-  display: grid;
+.attunementCardHeader {
+  display: flex;
+  align-items: center;
   gap: var(--space-2);
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 
-.attunementDescription {
+.attunementMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.raritySelect {
+  width: auto;
+  min-width: 9rem;
+}
+
+.attunementCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.attunementViewName {
+  font-weight: 700;
+}
+
+.attunementViewRarity {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.attunementViewDesc {
   white-space: pre-wrap;
   color: var(--ink-muted);
+  font-size: var(--text-sm);
 }

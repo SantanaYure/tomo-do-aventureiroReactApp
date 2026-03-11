@@ -5,7 +5,7 @@
 export type { ArmorTraining } from './ArmorTraining'
 export type { Attack, AttackAttributeKey } from './Attack'
 export type { Attribute, AttributeName, SpellcastingAbility } from './Attribute'
-export type { AttunementItem } from './AttunementItem'
+export type { AttunementItem, ItemRarity } from './AttunementItem'
 export type { Character, HpBonusEntry } from './Character'
 export type { CharacterSheet } from './CharacterSheet'
 export type { Class } from './Class'
