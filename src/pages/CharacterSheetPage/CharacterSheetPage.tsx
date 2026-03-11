@@ -10,7 +10,7 @@ import {
 } from '../../store/characterSheetStore'
 import { CharacterHeader } from '../../components/CharacterHeader/CharacterHeader'
 import { AttributesPanel } from '../../components/AttributesPanel/AttributesPanel'
-import { SkillsPanel } from '../../components/SkillPanel/SkillPanel'
+import { SkillsPanel } from '../../components/SkillsPanel/SkillsPanel'
 import { CombatPanel } from '../../components/CombatPanel/CombatPanel'
 import { ResourcesPanel } from '../../components/ResourcesPanel/ResourcesPanel'
 import { AttacksPanel } from '../../components/AttacksPanel/AttacksPanel'

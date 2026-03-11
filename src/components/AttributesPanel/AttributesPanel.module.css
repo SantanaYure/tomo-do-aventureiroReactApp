@@ -1,141 +1,141 @@
-.summary {
-  color: var(--ink-muted);
-  font-size: var(--text-sm);
-}
-
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+@media (max-width: 480px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.attrBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--parchment-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4) var(--space-3);
+  text-align: center;
+  position: relative;
+}
+
+.attrBox::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border: 1px solid var(--border-light);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.attrLabel {
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-muted);
+  margin-bottom: var(--space-2);
+}
+
+.attrValue {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+  margin-bottom: var(--space-1);
+}
+
+.attrInput {
+  font-family: var(--font-display) !important;
+  font-size: var(--text-2xl) !important;
+  font-weight: 700 !important;
+  text-align: center;
+  width: 4rem !important;
+  background: var(--input-bg) !important;
+}
+
+.attrMod {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--parchment-light);
+  border: 1px solid var(--border-light);
+  border-radius: 50%;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+/* Saving Throws */
+.savingList {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
 }
 
-.card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.65rem 0.55rem;
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
-  background: rgba(255, 250, 241, 0.72);
-  box-shadow: var(--shadow-card);
-  text-align: center;
-  min-width: 0;
-}
-
-.name {
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  line-height: 1;
-}
-
-.modifier {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--ink-muted);
-  line-height: 1.1;
-}
-
-.valueBlock {
+.savingRow {
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-height: 2.5rem;
-  width: 100%;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--parchment-dark);
 }
 
-.value {
-  font-size: 1.75rem;
-  line-height: 1;
-  font-weight: 700;
+.savingRow:last-child {
+  border-bottom: none;
 }
 
-.saveBlock {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  width: 100%;
-}
-
-.saveLabel {
-  font-size: var(--text-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ink-soft);
-  line-height: 1;
-}
-
-.saveRow {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.saveTotal {
+.profIcon {
   font-size: 1rem;
-  line-height: 1;
-}
-
-.profButton {
-  min-width: 2.7rem;
-  min-height: 2rem;
-  padding: 0.2rem 0.45rem;
-  border-radius: 999px;
-  font-size: 0.95rem;
-  line-height: 1;
-}
-
-.field {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-}
-
-.valueInput {
-  width: 100%;
-  max-width: 3.5rem;
-  padding: 0.35rem 0.25rem;
-  font-size: 1.2rem;
-  font-weight: 700;
-  line-height: 1;
+  cursor: default;
+  color: var(--accent);
+  width: 1rem;
   text-align: center;
 }
 
-@media (max-width: 420px) {
-  .grid {
-    gap: 0.4rem;
-  }
+.profIconClickable {
+  cursor: pointer;
+  transition: transform var(--transition);
+}
 
-  .card {
-    padding: 0.55rem 0.45rem;
-  }
+.profIconClickable:hover {
+  transform: scale(1.3);
+}
 
-  .name {
-    font-size: 0.85rem;
-  }
+.profIconClickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
 
-  .modifier,
-  .saveTotal {
-    font-size: 0.95rem;
-  }
+.savingName {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
 
-  .value {
-    font-size: 1.5rem;
-  }
+.savingBonus {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 2.5rem;
+  text-align: right;
+}
 
-  .valueInput {
-    max-width: 3rem;
-    font-size: 1.05rem;
-  }
-
-  .profButton {
-    min-width: 2.35rem;
-    min-height: 1.85rem;
-  }
+.profBonus {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  font-style: italic;
 }

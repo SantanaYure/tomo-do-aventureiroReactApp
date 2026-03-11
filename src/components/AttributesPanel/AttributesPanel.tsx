@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from 'react'
 import type {
   Attribute,
   Character,
@@ -113,11 +114,23 @@ export function AttributesPanel({
     })
   }
 
+  function handleSavingThrowKeyDown(
+    event: KeyboardEvent<HTMLSpanElement>,
+    key: keyof SavingThrows,
+  ) {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return
+    }
+
+    event.preventDefault()
+    cycleSavingThrowProf(key)
+  }
+
   return (
     <section className={panelStyles.panel}>
       <div className={panelStyles.panelHeader}>
         <h2 className={panelStyles.panelTitle}>Atributos</h2>
-        <p className={styles.summary}>
+        <p className={panelStyles.panelSubtitle}>
           Bônus de proficiência: {formatModifier(profBonus)}
         </p>
       </div>
@@ -125,29 +138,22 @@ export function AttributesPanel({
       <div className={styles.grid}>
         {orderedAttributes.map(({ attribute, currentIndex }) => {
           const modifier = calcModifier(attribute.value)
-          const saveKey = ATTR_TO_SAVE[attribute.name]
-          const profLevel = normalizeProficiencyLevel(character.savingThrows[saveKey])
-          const saveTotal = modifier + profLevel * profBonus
           const inputId = `attribute-${attribute.name}-${currentIndex}`
 
           return (
-            <article className={styles.card} key={attribute.name}>
-              <span className={styles.modifier}>Mod {formatModifier(modifier)}</span>
+            <article className={styles.attrBox} key={attribute.name}>
+              <strong className={styles.attrLabel}>{ATTRIBUTE_ABBREVIATION[attribute.name]}</strong>
 
-              <strong className={styles.name} title={attribute.name}>
-                {ATTRIBUTE_ABBREVIATION[attribute.name]}
-              </strong>
-
-              <div className={styles.valueBlock}>
+              <div>
                 {isEditMode ? (
-                  <label className={styles.field} htmlFor={inputId}>
+                  <label htmlFor={inputId}>
                     <input
                       id={inputId}
                       type="number"
                       min={1}
                       max={30}
                       aria-label={`Valor de ${attribute.name}`}
-                      className={styles.valueInput}
+                      className={styles.attrInput}
                       value={attribute.value}
                       onChange={(event) =>
                         setAttrValue(currentIndex, parseNumberInput(event.target.value, 1))
@@ -155,30 +161,53 @@ export function AttributesPanel({
                     />
                   </label>
                 ) : (
-                  <span className={styles.value}>{attribute.value}</span>
+                  <span className={styles.attrValue}>{attribute.value}</span>
                 )}
               </div>
 
-              <div className={styles.saveBlock}>
-                <span className={styles.saveLabel}>TR</span>
-                <div className={styles.saveRow}>
-                  <button
-                    type="button"
-                    className={styles.profButton}
-                    title={isEditMode ? 'Clique para alternar proficiência' : undefined}
-                    disabled={!isEditMode}
-                    onClick={() => cycleSavingThrowProf(saveKey)}
-                  >
-                    {PROF_LABEL[profLevel]}
-                  </button>
-                  <strong className={styles.saveTotal}>
-                    {formatModifier(saveTotal)}
-                  </strong>
-                </div>
-              </div>
+              <span className={styles.attrMod}>{formatModifier(modifier)}</span>
             </article>
           )
         })}
+      </div>
+
+      <div className={panelStyles.section}>
+        <h3 className={panelStyles.sectionTitle}>Testes de Resistência</h3>
+
+        <div className={styles.savingList}>
+          {orderedAttributes.map(({ attribute }) => {
+            const modifier = calcModifier(attribute.value)
+            const saveKey = ATTR_TO_SAVE[attribute.name]
+            const profLevel = normalizeProficiencyLevel(character.savingThrows[saveKey])
+            const isProficient = profLevel > 0
+            const saveTotal = modifier + profLevel * profBonus
+
+            return (
+              <div className={styles.savingRow} key={saveKey}>
+                <span
+                  aria-label={`Proficiência em ${attribute.name}: ${isProficient ? 'ativada' : 'desativada'}`}
+                  aria-pressed={isEditMode ? isProficient : undefined}
+                  className={`${styles.profIcon}${isEditMode ? ` ${styles.profIconClickable}` : ''}`}
+                  role={isEditMode ? 'button' : undefined}
+                  tabIndex={isEditMode ? 0 : undefined}
+                  title={isEditMode ? `Clique para alternar proficiência em ${attribute.name}` : undefined}
+                  onClick={isEditMode ? () => cycleSavingThrowProf(saveKey) : undefined}
+                  onKeyDown={isEditMode ? (event) => handleSavingThrowKeyDown(event, saveKey) : undefined}
+                >
+                  {PROF_LABEL[profLevel]}
+                </span>
+
+                <span className={styles.savingName}>{attribute.name}</span>
+
+                {isProficient ? (
+                  <span className={styles.profBonus}>Prof. {formatModifier(profBonus)}</span>
+                ) : null}
+
+                <strong className={styles.savingBonus}>{formatModifier(saveTotal)}</strong>
+              </div>
+            )
+          })}
+        </div>
       </div>
     </section>
   )
