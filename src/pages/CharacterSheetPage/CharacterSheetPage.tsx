@@ -10,6 +10,7 @@ import {
 } from '../../store/characterSheetStore'
 import { CharacterHeader } from '../../components/CharacterHeader/CharacterHeader'
 import { AttributesPanel } from '../../components/AttributesPanel/AttributesPanel'
+import { SkillsPanel } from '../../components/SkillsPanel/SkillsPanel'
 
 export function CharacterSheetPage() {
   const { id } = useParams<{ id: string }>()
@@ -61,6 +62,14 @@ export function CharacterSheetPage() {
       />
 
       <AttributesPanel
+        character={sheet.character}
+        isEditMode={sheet.isEditMode}
+        onChangeCharacter={(updated) =>
+          handleUpdate({ ...sheet, character: updated })
+        }
+      />
+
+      <SkillsPanel
         character={sheet.character}
         isEditMode={sheet.isEditMode}
         onChangeCharacter={(updated) =>
