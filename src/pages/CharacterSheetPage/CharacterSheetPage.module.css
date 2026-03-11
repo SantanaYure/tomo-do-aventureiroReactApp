@@ -95,7 +95,7 @@
 /* ── Botão Editar/Concluir flutuante ── */
 .editToggleSlot {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   min-height: calc(var(--space-12) + var(--space-6));
 }
 
@@ -109,7 +109,7 @@
 }
 
 .editToggleAnchored {
-  margin-left: auto;
+  margin: 0 auto;
 }
 
 .editToggleButton {
