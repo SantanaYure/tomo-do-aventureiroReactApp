@@ -88,6 +88,11 @@ export function SkillsPanel({
   onChangeCharacter,
 }: SkillsPanelProps) {
   const profBonus = calcProficiencyBonus(character.classes)
+  const skillColumns: SkillName[][] = [
+    SKILL_ORDER.slice(0, 6),
+    SKILL_ORDER.slice(6, 12),
+    SKILL_ORDER.slice(12, 18),
+  ]
 
   function getAttrMod(attrName: AttributeName): number {
     const attr = character.attributes.find((a) => a.name === attrName)
@@ -131,48 +136,52 @@ export function SkillsPanel({
         <p className={styles.summary}>Percepção passiva: {passivePerception}</p>
       </div>
 
-      <ul className={styles.list}>
-        {SKILL_ORDER.map((skill) => {
-          const total = calcSkillTotal(skill)
-          const { proficiency, misc } = character.skills[skill]
-          const attrAbbr = SKILL_ATTR[skill].slice(0, 3).toUpperCase()
+      <div className={styles.columns}>
+        {skillColumns.map((column, columnIndex) => (
+          <ul className={styles.list} key={columnIndex}>
+            {column.map((skill) => {
+              const total = calcSkillTotal(skill)
+              const { proficiency, misc } = character.skills[skill]
+              const attrAbbr = SKILL_ATTR[skill].slice(0, 3).toUpperCase()
 
-          return (
-            <li className={styles.skillRow} key={skill}>
-              <span className={styles.total}>{formatModifier(total)}</span>
-              <div className={styles.skillInfo}>
-                <span className={styles.skillName}>{SKILL_LABEL[skill]}</span>
-                <span className={styles.skillAttribute}>({attrAbbr})</span>
-              </div>
+              return (
+                <li className={styles.skillRow} key={skill}>
+                  <span className={styles.total}>{formatModifier(total)}</span>
+                  <div className={styles.skillInfo}>
+                    <span className={styles.skillName}>{SKILL_LABEL[skill]}</span>
+                    <span className={styles.skillAttribute}>({attrAbbr})</span>
+                  </div>
 
-              {isEditMode ? (
-                <div className={styles.skillControls}>
-                  <button
-                    className={styles.profButton}
-                    title="Proficiência: clique para alternar"
-                    onClick={() => setProficiency(skill, (proficiency + 1) % 3)}
-                  >
-                    {PROFICIENCY_LABEL[proficiency]}
-                  </button>
+                  {isEditMode ? (
+                    <div className={styles.skillControls}>
+                      <button
+                        className={styles.profButton}
+                        title="Proficiência: clique para alternar"
+                        onClick={() => setProficiency(skill, (proficiency + 1) % 3)}
+                      >
+                        {PROFICIENCY_LABEL[proficiency]}
+                      </button>
 
-                  <label className={styles.miscField}>
-                    Mod Extra
-                    <input
-                      type="number"
-                      value={misc}
-                      onChange={(e) => setMisc(skill, Number(e.target.value))}
-                    />
-                  </label>
-                </div>
-              ) : (
-                <div className={styles.skillControls}>
-                  <span className={panelStyles.badge} title="Proficiência">{PROFICIENCY_LABEL[proficiency]}</span>
-                </div>
-              )}
-            </li>
-          )
-        })}
-      </ul>
+                      <label className={styles.miscField}>
+                        Mod Extra
+                        <input
+                          type="number"
+                          value={misc}
+                          onChange={(e) => setMisc(skill, Number(e.target.value))}
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className={styles.skillControls}>
+                      <span className={panelStyles.badge} title="Proficiência">{PROFICIENCY_LABEL[proficiency]}</span>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        ))}
+      </div>
 
       {isEditMode && (
         <label className={styles.passiveField}>
