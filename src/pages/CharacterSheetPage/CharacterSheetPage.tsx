@@ -9,6 +9,7 @@ import {
   saveCharacterSheet,
 } from '../../store/characterSheetStore'
 import { CharacterHeader } from '../../components/CharacterHeader/CharacterHeader'
+import { AttributesPanel } from '../../components/AttributesPanel/AttributesPanel'
 
 export function CharacterSheetPage() {
   const { id } = useParams<{ id: string }>()
@@ -59,7 +60,15 @@ export function CharacterSheetPage() {
         }
       />
 
-      {/* TODO: Resources, Attributes, Inventory, Spells, Attacks */}
+      <AttributesPanel
+        character={sheet.character}
+        isEditMode={sheet.isEditMode}
+        onChangeCharacter={(updated) =>
+          handleUpdate({ ...sheet, character: updated })
+        }
+      />
+
+      {/* TODO: Resources, Inventory, Spells, Attacks */}
     </main>
   )
 }
