@@ -4,6 +4,8 @@
 
 import type { Character, Class } from '../../types/system/dnd'
 
+const HIT_DICE_OPTIONS = ['1d6', '1d8', '1d10', '1d12']
+
 interface CharacterHeaderProps {
   character: Character
   isEditMode: boolean
@@ -44,7 +46,7 @@ export function CharacterHeader({
       className: '',
       subclass: '',
       level: 1,
-      hitDice: '1d8',
+      hitDice: '',
       notes: '',
     }
     onChangeCharacter({ ...character, classes: [...character.classes, newClass] })
@@ -134,6 +136,17 @@ export function CharacterHeader({
                   onChange={(e) => setClass(i, 'className', e.target.value)}
                   placeholder="Classe"
                 />
+                <select
+                  value={c.hitDice}
+                  onChange={(e) => setClass(i, 'hitDice', e.target.value)}
+                >
+                  <option value="">Dado de vida</option>
+                  {HIT_DICE_OPTIONS.map((hitDice) => (
+                    <option key={hitDice} value={hitDice}>
+                      {hitDice}
+                    </option>
+                  ))}
+                </select>
                 <input
                   type="number"
                   min={1}

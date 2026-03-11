@@ -107,6 +107,7 @@ export function CharacterSheetPage() {
 
       <AttacksPanel
         attacks={sheet.attacks}
+        character={sheet.character}
         isEditMode={sheet.isEditMode}
         onChangeAttacks={(updated) =>
           handleUpdate({ ...sheet, attacks: updated })

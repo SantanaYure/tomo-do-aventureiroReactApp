@@ -1,7 +1,8 @@
 // src/components/CombatPanel/CombatPanel.tsx
 // CA, iniciativa, HP (máx/atual/temp), velocidade, dados de vida e death saves
 
-import type { Character } from '../../types/system/dnd'
+import { useEffect } from 'react'
+import type { Character, HpBonusEntry } from '../../types/system/dnd'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -15,9 +16,60 @@ function getAttrMod(character: Character, name: string): number {
   return attr ? calcModifier(attr.value) : 0
 }
 
+function parseHitDie(hitDice: string): number {
+  const match = /d(\d+)/i.exec(hitDice)
+  if (!match) return 0
+
+  const parsed = Number(match[1])
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function calcHitDieAverage(hitDice: string): number {
+  const sides = parseHitDie(hitDice)
+  return sides > 0 ? Math.floor(sides / 2) + 1 : 0
+}
+
+function calcNaturalHpMax(character: Character): number {
+  const constitutionModifier = getAttrMod(character, 'Constituição')
+  let total = 0
+  let consumedFirstLevel = false
+
+  character.classes.forEach((currentClass) => {
+    const levels = Math.max(0, Math.trunc(currentClass.level))
+    const fullHitDie = parseHitDie(currentClass.hitDice)
+    const averageHitDie = calcHitDieAverage(currentClass.hitDice)
+
+    if (levels === 0 || fullHitDie === 0) {
+      return
+    }
+
+    for (let level = 0; level < levels; level += 1) {
+      const baseGain = consumedFirstLevel ? averageHitDie : fullHitDie
+      total += Math.max(1, baseGain + constitutionModifier)
+      consumedFirstLevel = true
+    }
+  })
+
+  return Math.max(0, total)
+}
+
+function calcHpBonusTotal(character: Character): number {
+  return character.hpBonusEntries.reduce((sum, entry) => {
+    const value = Number(entry.value)
+    return sum + (Number.isFinite(value) ? Math.trunc(value) : 0)
+  }, 0)
+}
+
+function calcEffectiveHpMax(character: Character): number {
+  if (!character.hpAutoCalc) {
+    return Math.max(0, Math.trunc(character.hpMax))
+  }
+
+  return Math.max(0, calcNaturalHpMax(character) + calcHpBonusTotal(character))
+}
+
 function calcAC(character: Character): number {
-  const dexMod = getAttrMod(character, 'Destreza')
-  return character.armorClassBase + dexMod
+  return Math.max(0, Math.trunc(character.armorClassBase))
 }
 
 function calcInitiative(character: Character): number {
@@ -25,9 +77,21 @@ function calcInitiative(character: Character): number {
 }
 
 function totalHitDice(character: Character): string {
-  return character.classes
-    .map((c) => `${c.level}${c.hitDice.replace(/^\d+/, '')}`)
-    .join(' + ')
+  const hitDiceSummary = character.classes
+    .map((currentClass) => {
+      const hitDieSuffix = currentClass.hitDice.replace(/^\d+/, '')
+      return hitDieSuffix ? `${currentClass.level}${hitDieSuffix}` : ''
+    })
+    .filter(Boolean)
+
+  return hitDiceSummary.join(' + ') || '—'
+}
+
+function createHpBonusEntry(): HpBonusEntry {
+  return {
+    value: 0,
+    source: '',
+  }
 }
 
 // ─── props ───────────────────────────────────────────────────────────────────
@@ -48,6 +112,9 @@ export function CombatPanel({
   const ac = calcAC(character)
   const initiative = calcInitiative(character)
   const profBonus = calcProficiencyBonus(character.classes)
+  const naturalHpMax = calcNaturalHpMax(character)
+  const extraHpTotal = calcHpBonusTotal(character)
+  const effectiveHpMax = calcEffectiveHpMax(character)
 
   function set<K extends keyof Character>(key: K, value: Character[K]) {
     onChangeCharacter({ ...character, [key]: value })
@@ -59,7 +126,7 @@ export function CombatPanel({
 
   // HP atual nunca ultrapassa hpMax + hpTemp
   function setHpCurrent(value: number) {
-    set('hpCurrent', clamp(value, 0, character.hpMax + character.hpTemp))
+    set('hpCurrent', clamp(value, 0, effectiveHpMax + character.hpTemp))
   }
 
   function setDeathSave(field: 'success' | 'failure', value: number) {
@@ -72,7 +139,40 @@ export function CombatPanel({
     })
   }
 
-  const isDowned = character.hpCurrent === 0
+  function setHpBonusEntry(index: number, partial: Partial<HpBonusEntry>) {
+    set(
+      'hpBonusEntries',
+      character.hpBonusEntries.map((entry, currentIndex) =>
+        currentIndex === index ? { ...entry, ...partial } : entry,
+      ),
+    )
+  }
+
+  function addHpBonusEntry() {
+    set('hpBonusEntries', [...character.hpBonusEntries, createHpBonusEntry()])
+  }
+
+  function removeHpBonusEntry(index: number) {
+    set(
+      'hpBonusEntries',
+      character.hpBonusEntries.filter((_, currentIndex) => currentIndex !== index),
+    )
+  }
+
+  useEffect(() => {
+    const clampedCurrentHp = clamp(
+      character.hpCurrent,
+      0,
+      effectiveHpMax + character.hpTemp,
+    )
+
+    if (clampedCurrentHp !== character.hpCurrent) {
+      onChangeCharacter({ ...character, hpCurrent: clampedCurrentHp })
+    }
+  }, [character, effectiveHpMax, onChangeCharacter])
+
+  const displayedCurrentHp = clamp(character.hpCurrent, 0, effectiveHpMax + character.hpTemp)
+  const isDowned = displayedCurrentHp === 0
 
   return (
     <section>
@@ -85,7 +185,7 @@ export function CombatPanel({
           <strong>{ac}</strong>
           {isEditMode && (
             <label>
-              Base
+              Valor
               <input
                 type="number"
                 value={character.armorClassBase}
@@ -138,7 +238,7 @@ export function CombatPanel({
       <div>
         <div>
           <span>HP Máximo</span>
-          {isEditMode ? (
+          {isEditMode && !character.hpAutoCalc ? (
             <input
               type="number"
               min={0}
@@ -147,15 +247,36 @@ export function CombatPanel({
               style={{ width: '4rem' }}
             />
           ) : (
-            <strong>{character.hpMax}</strong>
+            <strong>{effectiveHpMax}</strong>
+          )}
+          {character.hpAutoCalc && (
+            <div>
+              <small>Base: {naturalHpMax}</small>
+              <small> · Extra: {formatModifier(extraHpTotal)}</small>
+            </div>
+          )}
+          {isEditMode && (
+            <label>
+              HP automático
+              <input
+                type="checkbox"
+                checked={character.hpAutoCalc}
+                onChange={(e) => set('hpAutoCalc', e.target.checked)}
+              />
+            </label>
+          )}
+          {isEditMode && !character.hpAutoCalc && (
+            <div>
+              <small>HP sugerido pelas regras: {Math.max(0, naturalHpMax + extraHpTotal)}</small>
+            </div>
           )}
         </div>
 
         <div>
           <span>HP Atual</span>
-          <button onClick={() => setHpCurrent(character.hpCurrent - 1)}>−</button>
-          <strong>{character.hpCurrent}</strong>
-          <button onClick={() => setHpCurrent(character.hpCurrent + 1)}>+</button>
+          <button onClick={() => setHpCurrent(displayedCurrentHp - 1)}>−</button>
+          <strong>{displayedCurrentHp}</strong>
+          <button onClick={() => setHpCurrent(displayedCurrentHp + 1)}>+</button>
         </div>
 
         <div>
@@ -171,6 +292,52 @@ export function CombatPanel({
           <button onClick={() => set('hpTemp', character.hpTemp + 1)}>+</button>
         </div>
       </div>
+
+      {(isEditMode || character.hpBonusEntries.length > 0) && (
+        <div>
+          <h3>Ajustes extras de HP</h3>
+
+          {character.hpBonusEntries.length === 0 ? (
+            <p>Nenhum ajuste extra cadastrado.</p>
+          ) : (
+            character.hpBonusEntries.map((entry, index) => (
+              <div key={`${entry.source}-${index}`}>
+                {isEditMode ? (
+                  <>
+                    <input
+                      type="number"
+                      value={entry.value}
+                      onChange={(e) =>
+                        setHpBonusEntry(index, { value: Number(e.target.value) })
+                      }
+                      placeholder="Valor"
+                      style={{ width: '4.5rem' }}
+                    />
+                    <input
+                      type="text"
+                      value={entry.source}
+                      onChange={(e) =>
+                        setHpBonusEntry(index, { source: e.target.value })
+                      }
+                      placeholder="Origem do bônus"
+                      style={{ width: '16rem' }}
+                    />
+                    <button onClick={() => removeHpBonusEntry(index)}>Remover</button>
+                  </>
+                ) : (
+                  <span>
+                    <strong>{formatModifier(entry.value)}</strong> · {entry.source || 'Sem origem informada'}
+                  </span>
+                )}
+              </div>
+            ))
+          )}
+
+          {isEditMode && (
+            <button onClick={addHpBonusEntry}>+ Ajuste de HP</button>
+          )}
+        </div>
+      )}
 
       {/* ── Dados de vida ── */}
       <div>

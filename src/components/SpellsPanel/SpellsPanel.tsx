@@ -11,6 +11,16 @@ interface SpellSlots {
 }
 
 const SPELL_LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+const SPELL_SCHOOLS = [
+  'Abjuração',
+  'Adivinhação',
+  'Conjuração',
+  'Encantamento',
+  'Evocação',
+  'Ilusão',
+  'Necromancia',
+  'Transmutação',
+]
 const LEVEL_LABEL: Record<number, string> = {
   0: 'Truques',
   1: '1º nível', 2: '2º nível', 3: '3º nível',
@@ -170,6 +180,19 @@ export function SpellsPanel({
                               setSpell(globalIndex, { name: e.target.value })
                             }
                           />
+                          <select
+                            value={spell.school ?? ''}
+                            onChange={(e) =>
+                              setSpell(globalIndex, { school: e.target.value })
+                            }
+                          >
+                            <option value="">Escola</option>
+                            {SPELL_SCHOOLS.map((school) => (
+                              <option key={school} value={school}>
+                                {school}
+                              </option>
+                            ))}
+                          </select>
                           <input
                             type="text"
                             value={spell.castingTime ?? ''}
@@ -201,11 +224,9 @@ export function SpellsPanel({
                             Conc.
                             <input
                               type="checkbox"
-                              checked={!!(spell as any).concentration}
+                              checked={spell.concentration ?? false}
                               onChange={(e) =>
-                                setSpell(globalIndex, {
-                                  concentration: e.target.checked,
-                                } as any)
+                                setSpell(globalIndex, { concentration: e.target.checked })
                               }
                             />
                           </label>
@@ -234,8 +255,11 @@ export function SpellsPanel({
                       ) : (
                         <>
                           <span>{spell.prepared ? '★' : '☆'}</span>
-                          <strong>{spell.name || '—'}</strong>
-                          {(spell as any).concentration && <span> [C]</span>}
+                          <strong>
+                            {spell.name || '—'}
+                            {spell.school ? ` (${spell.school})` : ''}
+                          </strong>
+                          {spell.concentration && <span> [C]</span>}
                           <span> · {spell.castingTime || '—'}</span>
                           <span> · {spell.range || '—'}</span>
                           <span> · {spell.duration || '—'}</span>

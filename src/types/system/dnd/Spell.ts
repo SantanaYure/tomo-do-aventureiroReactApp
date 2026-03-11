@@ -10,6 +10,7 @@ export interface Spell {
   range?: string
   duration?: string
   components?: string[]
+  concentration?: boolean
   prepared?: boolean
   description?: string
   [key: string]: unknown

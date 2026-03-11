@@ -4,13 +4,17 @@
 
 import type { ArmorTraining } from './ArmorTraining'
 import type { Attribute, SpellcastingAbility } from './Attribute'
+import type { AttunementItem } from './AttunementItem'
 import type { Class } from './Class'
 import type { Currency } from './Currency'
 import type { DeathSaves } from './DeathSaves'
 import type { SavingThrows } from './SavingThrows'
 import type { Skills } from './Skill'
 
-export type Attunements = [string, string, string]
+export interface HpBonusEntry {
+  value: number
+  source: string
+}
 
 export interface Character {
   name: string
@@ -28,7 +32,7 @@ export interface Character {
   armorTraining: ArmorTraining
   weaponProficiencies: string[]
   toolProficiencies: string[]
-  attunements: Attunements
+  attunementItems: AttunementItem[]
   currency: Currency
   deathSaves: DeathSaves
   heroicInspiration: number
@@ -39,6 +43,8 @@ export interface Character {
   speed: string
   proficiencyOverride: string
   spellcastingAbility: SpellcastingAbility
+  hpAutoCalc: boolean
+  hpBonusEntries: HpBonusEntry[]
   hpMax: number
   hpCurrent: number
   hpTemp: number

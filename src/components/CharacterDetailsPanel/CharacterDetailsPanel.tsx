@@ -1,7 +1,26 @@
 // src/components/CharacterDetailsPanel/CharacterDetailsPanel.tsx
-// Backstory, aparência, traços de espécie, feats, proficiências, idiomas e sintonias
+// Backstory, aparência, traços de espécie, feats, proficiências, idiomas e itens sintonizados
 
-import type { Character } from '../../types/system/dnd'
+import type { AttunementItem, Character } from '../../types/system/dnd'
+
+const ATTUNEMENT_RARITIES = [
+  '',
+  'Comum',
+  'Incomum',
+  'Raro',
+  'Muito raro',
+  'Lendário',
+  'Artefato',
+]
+
+function createAttunementItem(): AttunementItem {
+  return {
+    name: '',
+    rarity: '',
+    requiresAttunement: true,
+    description: '',
+  }
+}
 
 interface CharacterDetailsPanelProps {
   character: Character
@@ -58,10 +77,24 @@ export function CharacterDetailsPanel({
     onChangeCharacter({ ...character, [key]: value })
   }
 
-  function setAttunement(index: number, value: string) {
-    const updated = [...character.attunements] as [string, string, string]
-    updated[index] = value
-    set('attunements', updated)
+  function setAttunementItem(index: number, partial: Partial<AttunementItem>) {
+    set(
+      'attunementItems',
+      character.attunementItems.map((item, currentIndex) =>
+        currentIndex === index ? { ...item, ...partial } : item,
+      ),
+    )
+  }
+
+  function addAttunementItem() {
+    set('attunementItems', [...character.attunementItems, createAttunementItem()])
+  }
+
+  function removeAttunementItem(index: number) {
+    set(
+      'attunementItems',
+      character.attunementItems.filter((_, currentIndex) => currentIndex !== index),
+    )
   }
 
   const textareaFields: { key: keyof Character; label: string; placeholder: string }[] = [
@@ -163,21 +196,90 @@ export function CharacterDetailsPanel({
         })}
       </div>
 
-      {/* ── Sintonias (3 slots) ── */}
+      {/* ── Itens sintonizados ── */}
       <div>
-        <h3>Sintonias</h3>
-        {character.attunements.map((slot, i) =>
-          isEditMode ? (
-            <input
-              key={i}
-              type="text"
-              value={slot}
-              placeholder={`Sintonia ${i + 1}`}
-              onChange={(e) => setAttunement(i, e.target.value)}
-            />
-          ) : (
-            <span key={i}>{slot || `(vazio)`}{i < 2 ? ' · ' : ''}</span>
+        <h3>Itens sintonizados</h3>
+
+        {character.attunementItems.length === 0 ? (
+          <p>Nenhum item cadastrado.</p>
+        ) : (
+          character.attunementItems.map((item, index) =>
+            isEditMode ? (
+              <article key={`${item.name}-${index}`}>
+                <div>
+                  <label>
+                    Nome do item
+                    <input
+                      type="text"
+                      value={item.name}
+                      placeholder="Nome do item"
+                      onChange={(e) =>
+                        setAttunementItem(index, { name: e.target.value })
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    Raridade
+                    <select
+                      value={item.rarity}
+                      onChange={(e) =>
+                        setAttunementItem(index, { rarity: e.target.value })
+                      }
+                    >
+                      <option value="">Selecione</option>
+                      {ATTUNEMENT_RARITIES.filter(Boolean).map((rarity) => (
+                        <option key={rarity} value={rarity}>
+                          {rarity}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={item.requiresAttunement}
+                    onChange={(e) =>
+                      setAttunementItem(index, {
+                        requiresAttunement: e.target.checked,
+                      })
+                    }
+                  />
+                  Requer sintonia
+                </label>
+
+                <label>
+                  Descrição
+                  <textarea
+                    value={item.description}
+                    rows={3}
+                    placeholder="Descrição do item"
+                    onChange={(e) =>
+                      setAttunementItem(index, { description: e.target.value })
+                    }
+                    style={{ width: '100%' }}
+                  />
+                </label>
+
+                <button onClick={() => removeAttunementItem(index)}>Remover</button>
+              </article>
+            ) : (
+              <article key={`${item.name}-${index}`}>
+                <strong>{item.name || 'Item sem nome'}</strong>
+                <p>
+                  {item.rarity || 'Raridade não informada'} ·{' '}
+                  {item.requiresAttunement ? 'Requer sintonia' : 'Sem sintonia'}
+                </p>
+                <p>{item.description || 'Sem descrição.'}</p>
+              </article>
+            ),
           )
+        )}
+
+        {isEditMode && (
+          <button onClick={addAttunementItem}>+ Item sintonizado</button>
         )}
       </div>
     </section>
