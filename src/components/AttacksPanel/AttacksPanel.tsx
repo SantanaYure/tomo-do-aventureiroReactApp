@@ -1,56 +1,65 @@
-// src/components/AttacksPanel/AttacksPanel.tsx
-// Lista de ataques com nome, bônus, dano, tipo e alcance
-
-import type { Attack, Character } from '../../types/system/dnd'
+import type { Attack, AttackAttributeKey, Character } from '../../types/system/dnd'
+import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './AttacksPanel.module.css'
-import { findMatchingWeaponProficiency } from '../../utils/weaponCatalog'
-import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
+
+const ATTACK_ATTRIBUTE_KEYS: AttackAttributeKey[] = [
+  'str',
+  'dex',
+  'con',
+  'int',
+  'wis',
+  'cha',
+  'manual',
+]
+
+const ATTR_KEY_LABEL: Record<AttackAttributeKey, string> = {
+  str: 'Força',
+  dex: 'Destreza',
+  con: 'Constituição',
+  int: 'Inteligência',
+  wis: 'Sabedoria',
+  cha: 'Carisma',
+  manual: 'Manual',
+}
+
+const ATTR_NAME_BY_KEY: Record<Exclude<AttackAttributeKey, 'manual'>, string> = {
+  str: 'Força',
+  dex: 'Destreza',
+  con: 'Constituição',
+  int: 'Inteligência',
+  wis: 'Sabedoria',
+  cha: 'Carisma',
+}
+
+function calcAttackBonus(attack: Attack, character: Character): number {
+  const profBonus = calcProficiencyBonus(character.classes)
+
+  if (attack.attributeKey === 'manual' || !attack.attributeKey) {
+    return attack.attackBonus ?? 0
+  }
+
+  const attrName = ATTR_NAME_BY_KEY[attack.attributeKey as Exclude<AttackAttributeKey, 'manual'>]
+  const attr = character.attributes.find((attribute) => attribute.name === attrName)
+
+  return (attr ? calcModifier(attr.value) : 0) + (attack.useProficiency ? profBonus : 0)
+}
+
+function formatBonus(value: number): string {
+  return value >= 0 ? `+${value}` : `${value}`
+}
 
 function createAttack(): Attack {
   return {
     name: '',
-    attackBonus: 0,
-    attributeKey: '',
+    attributeKey: 'str',
     useProficiency: false,
+    attackBonus: 0,
     damage: '',
     damageType: '',
     range: '',
     notes: '',
   }
-}
-
-function formatBonus(value?: number): string {
-  if (value === undefined || value === null) return '—'
-  return value >= 0 ? `+${value}` : `${value}`
-}
-
-function getCalculatedAttackBonus(attack: Attack, character: Character): number | undefined {
-  if (!attack.attributeKey) {
-    return attack.attackBonus
-  }
-
-  const attribute = character.attributes.find((item) => item.name === attack.attributeKey)
-  const attributeModifier = attribute ? calcModifier(attribute.value) : 0
-  const matchedWeaponProficiency = findMatchingWeaponProficiency(
-    attack.name ?? '',
-    character.weaponProficiencies,
-  )
-  const proficiencyBonus =
-    attack.useProficiency && matchedWeaponProficiency
-      ? calcProficiencyBonus(character.classes)
-      : 0
-
-  return attributeModifier + proficiencyBonus
-}
-
-function getAttributeKey(
-  rawValue: string,
-  character: Character,
-): Attack['attributeKey'] {
-  const matchedAttribute = character.attributes.find((attribute) => attribute.name === rawValue)
-
-  return matchedAttribute?.name ?? ''
 }
 
 interface AttacksPanelProps {
@@ -67,9 +76,9 @@ export function AttacksPanel({
   onChangeAttacks,
 }: AttacksPanelProps) {
   function setAttack(index: number, partial: Partial<Attack>) {
-    onChangeAttacks(
-      attacks.map((a, i) => (i === index ? { ...a, ...partial } : a))
-    )
+    onChangeAttacks(attacks.map((attack, currentIndex) => (
+      currentIndex === index ? { ...attack, ...partial } : attack
+    )))
   }
 
   function addAttack() {
@@ -77,7 +86,7 @@ export function AttacksPanel({
   }
 
   function removeAttack(index: number) {
-    onChangeAttacks(attacks.filter((_, i) => i !== index))
+    onChangeAttacks(attacks.filter((_, currentIndex) => currentIndex !== index))
   }
 
   if (attacks.length === 0 && !isEditMode) return null
@@ -86,148 +95,149 @@ export function AttacksPanel({
     <section className={panelStyles.panel}>
       <div className={panelStyles.panelHeader}>
         <h2 className={panelStyles.panelTitle}>Ataques</h2>
-        <p className={styles.subtitle}>Bônus manual ou calculado por atributo e proficiência.</p>
       </div>
 
       {attacks.length === 0 ? (
         <p className={panelStyles.emptyState}>Nenhum ataque cadastrado.</p>
       ) : (
-        <div className={panelStyles.tableWrap}>
-          <table>
+        <div className={`${panelStyles.tableWrap} ${styles.tableWrapper}`}>
+          <table className={styles.attackTable}>
             <thead>
               <tr>
-                <th>Nome</th>
-                <th>Bônus</th>
-                <th>Dano</th>
-                <th>Tipo</th>
-                <th>Alcance</th>
-                {isEditMode && <th>Notas</th>}
-                {isEditMode && <th></th>}
+                <th className={styles.nameTd}>Nome</th>
+                <th className={styles.attrTd}>Atributo</th>
+                <th className={styles.profTd}>Prof.</th>
+                <th className={styles.bonusTd}>Bônus</th>
+                <th className={styles.damageTd}>Dano</th>
+                <th className={styles.typeTd}>Tipo</th>
+                <th className={styles.rangeTd}>Alcance</th>
+                {isEditMode && <th className={styles.notesTd}>Notas</th>}
+                {isEditMode && <th className={styles.actionTd}></th>}
               </tr>
             </thead>
             <tbody>
               {attacks.map((attack, i) => {
-                const matchedWeaponProficiency = findMatchingWeaponProficiency(
-                  attack.name ?? '',
-                  character.weaponProficiencies,
-                )
-                const calculatedAttackBonus = getCalculatedAttackBonus(attack, character)
+                const bonus = calcAttackBonus(attack, character)
 
-                return isEditMode ? (
+                return (
                   <tr key={i}>
-                    <td>
-                      <input
-                        type="text"
-                        value={attack.name ?? ''}
-                        placeholder="Nome"
-                        onChange={(e) => setAttack(i, { name: e.target.value })}
-                      />
+                    <td className={styles.nameTd} data-label="Nome">
+                      {isEditMode ? (
+                        <input
+                          type="text"
+                          value={attack.name ?? ''}
+                          placeholder="Nome"
+                          onChange={(event) => setAttack(i, { name: event.target.value })}
+                        />
+                      ) : (
+                        attack.name || '—'
+                      )}
                     </td>
-                    <td>
-                      <div className={styles.bonusEditor}>
+                    <td className={styles.attrTd} data-label="Atributo">
+                      {isEditMode ? (
                         <select
-                          value={attack.attributeKey ?? ''}
-                          onChange={(e) =>
+                          value={attack.attributeKey ?? 'manual'}
+                          onChange={(event) =>
                             setAttack(i, {
-                              attributeKey: getAttributeKey(e.target.value, character),
+                              attributeKey: event.target.value as AttackAttributeKey,
                             })
                           }
                         >
-                          <option value="">Manual</option>
-                          {character.attributes.map((attribute) => (
-                            <option key={attribute.name} value={attribute.name}>
-                              {attribute.name}
+                          {ATTACK_ATTRIBUTE_KEYS.map((attributeKey) => (
+                            <option key={attributeKey} value={attributeKey}>
+                              {ATTR_KEY_LABEL[attributeKey]}
                             </option>
                           ))}
                         </select>
-
-                        {attack.attributeKey ? (
-                          <>
-                            <div className={styles.autoRow}>
-                              <label className={panelStyles.checkboxLabel}>
-                                <input
-                                  type="checkbox"
-                                  checked={attack.useProficiency ?? false}
-                                  onChange={(e) =>
-                                    setAttack(i, { useProficiency: e.target.checked })
-                                  }
-                                />
-                                Prof.
-                              </label>
-                              <strong className={styles.computedBonus}>{formatBonus(calculatedAttackBonus)}</strong>
-                            </div>
-                            {attack.useProficiency && !matchedWeaponProficiency && (
-                              <small className={styles.proficiencyNote}>
-                                Sem proficiência correspondente na ficha.
-                              </small>
-                            )}
-                            {matchedWeaponProficiency && (
-                              <small className={styles.proficiencyNote}>Proficiência: {matchedWeaponProficiency}</small>
-                            )}
-                          </>
-                        ) : (
-                          <input
-                            className={panelStyles.compactInput}
-                            type="number"
-                            value={attack.attackBonus ?? 0}
-                            onChange={(e) =>
-                              setAttack(i, { attackBonus: Number(e.target.value) })
-                            }
-                          />
-                        )}
-                      </div>
+                      ) : (
+                        ATTR_KEY_LABEL[attack.attributeKey ?? 'manual']
+                      )}
                     </td>
-                    <td>
+                    <td className={styles.profTd} data-label="Prof.">
                       <input
-                        className={styles.damageInput}
-                        type="text"
-                        value={attack.damage ?? ''}
-                        placeholder="1d8+3"
-                        onChange={(e) => setAttack(i, { damage: e.target.value })}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className={styles.damageTypeInput}
-                        type="text"
-                        value={attack.damageType ?? ''}
-                        placeholder="Cortante"
-                        onChange={(e) =>
-                          setAttack(i, { damageType: e.target.value })
+                        className={styles.profCheckbox}
+                        type="checkbox"
+                        checked={attack.useProficiency ?? false}
+                        disabled={!isEditMode}
+                        onChange={(event) =>
+                          setAttack(i, { useProficiency: event.target.checked })
                         }
                       />
                     </td>
-                    <td>
-                      <input
-                        className={styles.rangeInput}
-                        type="text"
-                        value={attack.range ?? ''}
-                        placeholder="1,5m"
-                        onChange={(e) => setAttack(i, { range: e.target.value })}
-                      />
+                    <td className={styles.bonusTd} data-label="Bônus">
+                      {attack.attributeKey === 'manual' && isEditMode ? (
+                        <input
+                          className={styles.manualBonusInput}
+                          type="number"
+                          value={attack.attackBonus ?? 0}
+                          onChange={(event) =>
+                            setAttack(i, { attackBonus: Number(event.target.value) })
+                          }
+                        />
+                      ) : (
+                        <span className={styles.bonusDisplay}>{formatBonus(bonus)}</span>
+                      )}
                     </td>
-                    <td>
-                      <input
-                        className={styles.notesInput}
-                        type="text"
-                        value={attack.notes ?? ''}
-                        placeholder="Observações"
-                        onChange={(e) => setAttack(i, { notes: e.target.value })}
-                      />
+                    <td className={styles.damageTd} data-label="Dano">
+                      {isEditMode ? (
+                        <input
+                          type="text"
+                          value={attack.damage ?? ''}
+                          placeholder="1d8+3"
+                          onChange={(event) => setAttack(i, { damage: event.target.value })}
+                        />
+                      ) : (
+                        attack.damage || '—'
+                      )}
                     </td>
-                    <td className={styles.controlsCell}>
-                      <button className={panelStyles.removeButton} onClick={() => removeAttack(i)}>
-                        Remover
-                      </button>
+                    <td className={styles.typeTd} data-label="Tipo">
+                      {isEditMode ? (
+                        <input
+                          type="text"
+                          value={attack.damageType ?? ''}
+                          placeholder="Cortante"
+                          onChange={(event) =>
+                            setAttack(i, { damageType: event.target.value })
+                          }
+                        />
+                      ) : (
+                        attack.damageType || '—'
+                      )}
                     </td>
-                  </tr>
-                ) : (
-                  <tr key={i}>
-                    <td>{attack.name || '—'}</td>
-                    <td>{formatBonus(calculatedAttackBonus)}</td>
-                    <td>{attack.damage || '—'}</td>
-                    <td>{attack.damageType || '—'}</td>
-                    <td>{attack.range || '—'}</td>
+                    <td className={styles.rangeTd} data-label="Alcance">
+                      {isEditMode ? (
+                        <input
+                          type="text"
+                          value={attack.range ?? ''}
+                          placeholder="1,5m"
+                          onChange={(event) => setAttack(i, { range: event.target.value })}
+                        />
+                      ) : (
+                        attack.range || '—'
+                      )}
+                    </td>
+                    {isEditMode && (
+                      <td className={styles.notesTd} data-label="Notas">
+                        <input
+                          type="text"
+                          value={attack.notes ?? ''}
+                          placeholder="Observações"
+                          onChange={(event) => setAttack(i, { notes: event.target.value })}
+                        />
+                      </td>
+                    )}
+                    {isEditMode && (
+                      <td className={styles.actionTd} data-label="Ações">
+                        <button
+                          type="button"
+                          className={panelStyles.removeButton}
+                          aria-label={`Remover ataque ${attack.name || i + 1}`}
+                          onClick={() => removeAttack(i)}
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 )
               })}
@@ -237,7 +247,9 @@ export function AttacksPanel({
       )}
 
       {isEditMode && (
-        <button className={panelStyles.addButton} onClick={addAttack}>+ Ataque</button>
+        <button type="button" className={panelStyles.addButton} onClick={addAttack}>
+          + Ataque
+        </button>
       )}
     </section>
   )

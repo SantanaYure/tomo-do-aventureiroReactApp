@@ -1,13 +1,20 @@
 // Arquivo: Attack.ts
 // Descrição: ataques do personagem
-// Tipo: interface
+// Tipo: interface/type
 
-import type { AttributeName } from './Attribute'
+export type AttackAttributeKey =
+  | 'str'
+  | 'dex'
+  | 'con'
+  | 'int'
+  | 'wis'
+  | 'cha'
+  | 'manual'
 
 export interface Attack {
   name?: string
   attackBonus?: number
-  attributeKey?: AttributeName | ''
+  attributeKey?: AttackAttributeKey
   useProficiency?: boolean
   damage?: string
   damageType?: string

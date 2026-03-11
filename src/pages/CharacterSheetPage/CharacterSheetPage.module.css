@@ -1,6 +1,7 @@
 /* ── Layout base (mobile-first, 320px+) ── */
 .page {
-  max-width: 780px;
+  width: 100%;
+  max-width: var(--page-max);
   margin: 0 auto;
   padding: var(--space-3) var(--space-3) var(--space-12);
 }

@@ -1,4 +1,5 @@
 import type {
+  Attack,
   AttunementItem,
   Character,
   CharacterSheet,
@@ -55,6 +56,64 @@ function createDefaultAttunementItem(name = ''): AttunementItem {
     rarity: '',
     requiresAttunement: true,
     description: '',
+  }
+}
+
+function createDefaultAttack(): Attack {
+  return {
+    name: '',
+    attackBonus: 0,
+    attributeKey: 'manual',
+    useProficiency: false,
+    damage: '',
+    damageType: '',
+    range: '',
+    notes: '',
+  }
+}
+
+function normalizeAttackAttributeKey(value: unknown): Attack['attributeKey'] {
+  if (value === 'str' || value === 'dex' || value === 'con' || value === 'int' || value === 'wis' || value === 'cha' || value === 'manual') {
+    return value
+  }
+
+  if (value === 'Força') return 'str'
+  if (value === 'Destreza') return 'dex'
+  if (value === 'Constituição') return 'con'
+  if (value === 'Inteligência') return 'int'
+  if (value === 'Sabedoria') return 'wis'
+  if (value === 'Carisma') return 'cha'
+
+  return 'manual'
+}
+
+function normalizeAttack(attack: unknown): Attack {
+  const defaultAttack = createDefaultAttack()
+  const nextAttack =
+    attack && typeof attack === 'object'
+      ? (attack as Partial<Attack>)
+      : defaultAttack
+
+  return {
+    ...defaultAttack,
+    ...nextAttack,
+    name: typeof nextAttack.name === 'string' ? nextAttack.name : defaultAttack.name,
+    attackBonus:
+      typeof nextAttack.attackBonus === 'number' && Number.isFinite(nextAttack.attackBonus)
+        ? Math.trunc(nextAttack.attackBonus)
+        : defaultAttack.attackBonus,
+    attributeKey: normalizeAttackAttributeKey(nextAttack.attributeKey),
+    useProficiency:
+      typeof nextAttack.useProficiency === 'boolean'
+        ? nextAttack.useProficiency
+        : defaultAttack.useProficiency,
+    damage: typeof nextAttack.damage === 'string' ? nextAttack.damage : defaultAttack.damage,
+    damageType:
+      typeof nextAttack.damageType === 'string'
+        ? nextAttack.damageType
+        : defaultAttack.damageType,
+    range: typeof nextAttack.range === 'string' ? nextAttack.range : defaultAttack.range,
+    notes: typeof nextAttack.notes === 'string' ? nextAttack.notes : defaultAttack.notes,
   }
 }
 
@@ -264,7 +323,9 @@ function normalizeCharacterSheet<T extends CharacterSheet>(value: T): T {
       : defaultSheet.resources,
     inventory: Array.isArray(nextValue.inventory) ? nextValue.inventory : defaultSheet.inventory,
     spells: Array.isArray(nextValue.spells) ? nextValue.spells : defaultSheet.spells,
-    attacks: Array.isArray(nextValue.attacks) ? nextValue.attacks : defaultSheet.attacks,
+    attacks: Array.isArray(nextValue.attacks)
+      ? nextValue.attacks.map((attack) => normalizeAttack(attack))
+      : defaultSheet.attacks,
     combatNotes:
       typeof nextValue.combatNotes === 'string'
         ? nextValue.combatNotes
