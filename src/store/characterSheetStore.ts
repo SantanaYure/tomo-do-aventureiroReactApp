@@ -214,7 +214,8 @@ function normalizeResource(resource: Resource | undefined): Resource {
     resetOn:
       nextResource.resetOn === 'short-rest' ||
       nextResource.resetOn === 'long-rest' ||
-      nextResource.resetOn === 'manual'
+      nextResource.resetOn === 'manual' ||
+      nextResource.resetOn === 'na'
         ? nextResource.resetOn
         : defaultResource.resetOn,
     origin,

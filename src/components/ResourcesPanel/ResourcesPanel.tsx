@@ -6,6 +6,7 @@ const RESET_LABEL: Record<ResourceReset, string> = {
   'short-rest': 'Desc. curto',
   'long-rest': 'Desc. longo',
   manual: 'Manual',
+  na: 'N/A',
 }
 
 const ORIGIN_OPTIONS: ResourceOrigin[] = [
