@@ -1,6 +1,3 @@
-// src/pages/NewCharacterPage/NewCharacterPage.tsx
-// Cria uma nova CharacterSheet vazia e redireciona para a ficha
-
 import { useNavigate, Link } from 'react-router-dom'
 import { createCharacterSheet } from '../../store/characterSheetStore'
 import styles from './NewCharacterPage.module.css'
@@ -15,20 +12,19 @@ export function NewCharacterPage() {
 
   return (
     <main className={styles.page}>
-      <Link className={styles.backLink} to="/">← Voltar</Link>
+      <h1 className={styles.title}>Nova Ficha</h1>
+      <p className={styles.subtitle}>Crie um novo aventureiro</p>
 
-      <section className={styles.card}>
-        <h1 className={styles.title}>Nova Ficha</h1>
-        <p className={styles.text}>
-          Abra uma nova folha no tomo para começar a preencher classe, atributos, recursos, itens e magias.
+      <div className={styles.card}>
+        <p style={{ color: 'var(--ink-muted)', marginBottom: 'var(--space-6)', fontSize: 'var(--text-base)' }}>
+          Uma ficha em branco será criada. Você poderá preencher todos os dados dentro da ficha.
         </p>
+        <button className={styles.submitBtn} onClick={handleCreate}>
+          Criar Personagem
+        </button>
+      </div>
 
-        <div className={styles.actions}>
-          <button className={styles.createButton} onClick={handleCreate}>
-            Criar Personagem
-          </button>
-        </div>
-      </section>
+      <Link to="/" className={styles.backLink}>← Voltar</Link>
     </main>
   )
 }
