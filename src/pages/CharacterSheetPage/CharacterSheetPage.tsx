@@ -12,6 +12,7 @@ import { CharacterHeader } from '../../components/CharacterHeader/CharacterHeade
 import { AttributesPanel } from '../../components/AttributesPanel/AttributesPanel'
 import { SkillsPanel } from '../../components/SkillsPanel/SkillsPanel'
 import { CombatPanel } from '../../components/CombatPanel/CombatPanel'
+import { ResourcesPanel } from '../../components/ResourcesPanel/ResourcesPanel'
 
 export function CharacterSheetPage() {
   const { id } = useParams<{ id: string }>()
@@ -86,7 +87,15 @@ export function CharacterSheetPage() {
         }
       />
 
-      {/* TODO: Resources, Inventory, Spells, Attacks */}
+      <ResourcesPanel
+        resources={sheet.resources}
+        isEditMode={sheet.isEditMode}
+        onChangeResources={(updated) =>
+          handleUpdate({ ...sheet, resources: updated })
+        }
+      />
+
+      {/* TODO: Inventory, Spells, Attacks */}
     </main>
   )
 }
