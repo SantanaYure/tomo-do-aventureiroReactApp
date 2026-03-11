@@ -2,15 +2,7 @@
   gap: var(--space-4);
 }
 
-.toolbar {
-  display: flex;
-  justify-content: flex-end;
-}
 
-.toggleButton {
-  padding-inline: var(--space-4);
-  font-weight: 700;
-}
 
 .editLayout {
   display: grid;

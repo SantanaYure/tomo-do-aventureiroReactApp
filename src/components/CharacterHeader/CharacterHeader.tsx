@@ -12,7 +12,6 @@ interface CharacterHeaderProps {
   character: Character
   isEditMode: boolean
   onChangeCharacter: (updated: Character) => void
-  onToggleEditMode: () => void
 }
 
 function formatClasses(classes: Class[]): string {
@@ -29,7 +28,6 @@ export function CharacterHeader({
   character,
   isEditMode,
   onChangeCharacter,
-  onToggleEditMode,
 }: CharacterHeaderProps) {
   function set<K extends keyof Character>(key: K, value: Character[K]) {
     onChangeCharacter({ ...character, [key]: value })
@@ -64,12 +62,6 @@ export function CharacterHeader({
 
   return (
     <header className={`${panelStyles.panel} ${styles.header}`}>
-      <div className={styles.toolbar}>
-        <button className={styles.toggleButton} onClick={onToggleEditMode}>
-          {isEditMode ? '✓ Concluir edição' : '✎ Editar ficha'}
-        </button>
-      </div>
-
       {isEditMode ? (
         <div className={styles.editLayout}>
           <div className={styles.identityGrid}>

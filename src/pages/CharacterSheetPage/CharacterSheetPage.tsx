@@ -1,7 +1,7 @@
 // src/pages/CharacterSheetPage/CharacterSheetPage.tsx
 // Carrega e persiste a ficha de um personagem pelo id da rota
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import type { CharacterSheet } from '../../types/system/dnd'
 import {
@@ -28,6 +28,21 @@ export function CharacterSheetPage() {
   const navigate = useNavigate()
   const [sheet, setSheet] = useState<SheetWithSlots | null>(null)
   const [notFound, setNotFound] = useState(false)
+  const [isAtBottom, setIsAtBottom] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const hasSheet = sheet !== null
+
+  useEffect(() => {
+    if (!hasSheet) return
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsAtBottom(entry.isIntersecting),
+      { threshold: 0 }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasSheet])
 
   useEffect(() => {
     if (!id) return
@@ -43,6 +58,11 @@ export function CharacterSheetPage() {
     if (!id) return
     setSheet(updated)
     saveCharacterSheet(id, updated)
+  }
+
+  function handleToggleEditMode() {
+    if (!sheet) return
+    handleUpdate({ ...sheet, isEditMode: !sheet.isEditMode })
   }
 
   if (notFound) {
@@ -78,9 +98,6 @@ export function CharacterSheetPage() {
           isEditMode={sheet.isEditMode}
           onChangeCharacter={(updated) =>
             handleUpdate({ ...sheet, character: updated })
-          }
-          onToggleEditMode={() =>
-            handleUpdate({ ...sheet, isEditMode: !sheet.isEditMode })
           }
         />
 
@@ -158,6 +175,19 @@ export function CharacterSheetPage() {
           }
         />
       </div>
+      <div className={styles.editToggleSlot}>
+        <div
+          className={isAtBottom ? styles.editToggleAnchored : styles.editToggle}
+        >
+          <button
+            className={styles.editToggleButton}
+            onClick={handleToggleEditMode}
+          >
+            {sheet.isEditMode ? '✓ Concluir edição' : '✎ Editar ficha'}
+          </button>
+        </div>
+      </div>
+      <div className={styles.editToggleSentinel} ref={sentinelRef} />
     </main>
   )
 }
