@@ -1,13 +1,9 @@
 // src/components/InventoryPanel/InventoryPanel.tsx
-// Itens do inventário com quantidade, peso, equipado e moedas
-
 import type { Character, Currency, InventoryItem } from '../../types/system/dnd'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './InventoryPanel.module.css'
 
-const CURRENCY_LABEL: Record<keyof Currency, string> = {
-  cp: 'PC', sp: 'PP', ep: 'PE', gp: 'PO', pp: 'PP (platina)',
-}
+const CURRENCY_LABEL: Record<keyof Currency, string> = { cp: 'PC', sp: 'PP', ep: 'PE', gp: 'PO', pp: 'PP (Platina)' }
 
 const CURRENCY_ORDER: (keyof Currency)[] = ['cp', 'sp', 'ep', 'gp', 'pp']
 
@@ -64,142 +60,75 @@ export function InventoryPanel({
     })
   }
 
-  const weight = totalWeight(inventory)
-
   return (
     <section className={panelStyles.panel}>
-      <div className={panelStyles.panelHeader}>
-        <h2 className={panelStyles.panelTitle}>Inventário</h2>
-        <p className={styles.weightSummary}>Peso total: {weight.toFixed(1)} kg</p>
-      </div>
+      <h2 className={panelStyles.panelTitle}>Inventário</h2>
+      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--ink-faint)', marginBottom: 'var(--space-4)', textAlign: 'right', marginTop: '-var(--space-3)' }}>
+        Peso total: {totalWeight(inventory).toFixed(1)} kg
+      </p>
 
-      <div className={panelStyles.section}>
-        <h3 className={panelStyles.sectionTitle}>Moedas</h3>
-        <div className={styles.currencyGrid}>
-        {CURRENCY_ORDER.map((key) => (
-          <div className={styles.currencyCard} key={key}>
-            <span className={styles.currencyLabel}>{CURRENCY_LABEL[key]}</span>
-            {isEditMode ? (
-              <input
-                className={panelStyles.narrowInput}
-                type="number"
-                min={0}
-                value={character.currency[key]}
-                onChange={(e) => setCurrency(key, Number(e.target.value))}
-              />
-            ) : (
-              <strong className={styles.currencyValue}>{character.currency[key]}</strong>
-            )}
-          </div>
-        ))}
+      {/* Moedas */}
+      <div className={styles.coinsSection}>
+        <div className={styles.coinsTitle}>Moedas</div>
+        <div className={styles.coinsGrid}>
+          {CURRENCY_ORDER.map((key) => (
+            <div key={key} className={styles.coinBlock}>
+              <span className={styles.coinLabel}>{CURRENCY_LABEL[key]}</span>
+              {isEditMode
+                ? <input className={styles.coinInput} type="number" min={0} value={character.currency[key]} onChange={(e) => setCurrency(key, Number(e.target.value))} />
+                : <span className={styles.coinValue}>{character.currency[key]}</span>}
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className={panelStyles.section}>
-        {inventory.length === 0 && !isEditMode ? (
-          <p className={panelStyles.emptyState}>Nenhum item.</p>
-        ) : (
-          <div className={panelStyles.tableWrap}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Equip.</th>
-                  <th>Nome</th>
-                  <th>Qtd</th>
-                  <th>Peso (kg)</th>
-                  {isEditMode && <th>Descrição</th>}
-                  {isEditMode && <th></th>}
+      {/* Itens */}
+      {inventory.length === 0 && !isEditMode ? (
+        <p className={panelStyles.emptyState}>Nenhum item.</p>
+      ) : (
+        <div className={styles.tableWrapper}>
+          <table className={styles.inventoryTable}>
+            <thead>
+              <tr>
+                <th className={styles.equippedTd}>Equip.</th>
+                <th className={styles.nameTd}>Nome</th>
+                <th className={styles.qtyTd}>Qtd</th>
+                <th className={styles.weightTd}>Peso (kg)</th>
+                {isEditMode && <th>Descrição</th>}
+                {isEditMode && <th></th>}
+              </tr>
+            </thead>
+            <tbody>
+              {inventory.map((item, i) => (
+                <tr key={String(item.id ?? i)}>
+                  <td className={styles.equippedTd}>
+                    <input type="checkbox" checked={item.equipped ?? false} onChange={(e) => setItem(i, { equipped: e.target.checked })} />
+                  </td>
+                  <td className={styles.nameTd}>
+                    {isEditMode
+                      ? <input type="text" value={item.name ?? ''} placeholder="Nome do item" onChange={(e) => setItem(i, { name: e.target.value })} />
+                      : <span>{item.name || '—'}</span>}
+                  </td>
+                  <td className={styles.qtyTd}>
+                    {isEditMode
+                      ? <input type="number" min={0} value={item.quantity ?? 1} onChange={(e) => setItem(i, { quantity: Number(e.target.value) })} />
+                      : <span>{item.quantity ?? 1}</span>}
+                  </td>
+                  <td className={styles.weightTd}>
+                    {isEditMode
+                      ? <input type="number" min={0} step={0.1} value={item.weight ?? 0} onChange={(e) => setItem(i, { weight: Number(e.target.value) })} />
+                      : <span>{item.weight ?? 0}</span>}
+                  </td>
+                  {isEditMode && <td><input type="text" value={String(item.description ?? '')} placeholder="Descrição" onChange={(e) => setItem(i, { description: e.target.value })} /></td>}
+                  {isEditMode && <td><button className={panelStyles.removeButton} onClick={() => removeItem(i)}>✕</button></td>}
                 </tr>
-              </thead>
-              <tbody>
-                {inventory.map((item, i) => (
-                  <tr key={String(item.id ?? i)}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={item.equipped ?? false}
-                        onChange={(e) => setItem(i, { equipped: e.target.checked })}
-                      />
-                    </td>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-                    <td>
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          value={item.name ?? ''}
-                          placeholder="Nome do item"
-                          onChange={(e) => setItem(i, { name: e.target.value })}
-                        />
-                      ) : (
-                        <span>{item.name || '—'}</span>
-                      )}
-                    </td>
-
-                    <td>
-                      {isEditMode ? (
-                        <input
-                          className={styles.quantityInput}
-                          type="number"
-                          min={0}
-                          value={item.quantity ?? 1}
-                          onChange={(e) =>
-                            setItem(i, { quantity: Number(e.target.value) })
-                          }
-                        />
-                      ) : (
-                        <span>{item.quantity ?? 1}</span>
-                      )}
-                    </td>
-
-                    <td>
-                      {isEditMode ? (
-                        <input
-                          className={styles.weightInput}
-                          type="number"
-                          min={0}
-                          step={0.1}
-                          value={item.weight ?? 0}
-                          onChange={(e) =>
-                            setItem(i, { weight: Number(e.target.value) })
-                          }
-                        />
-                      ) : (
-                        <span>{item.weight ?? 0}</span>
-                      )}
-                    </td>
-
-                    {isEditMode && (
-                      <td>
-                        <input
-                          className={styles.descriptionInput}
-                          type="text"
-                          value={String(item.description ?? '')}
-                          placeholder="Descrição"
-                          onChange={(e) =>
-                            setItem(i, { description: e.target.value })
-                          }
-                        />
-                      </td>
-                    )}
-
-                    {isEditMode && (
-                      <td>
-                        <button className={panelStyles.removeButton} onClick={() => removeItem(i)}>
-                          Remover
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {isEditMode && (
-          <button className={panelStyles.addButton} onClick={addItem}>+ Item</button>
-        )}
-      </div>
+      {isEditMode && <button className={panelStyles.addButton} onClick={addItem}>+ Item</button>}
     </section>
   )
 }
