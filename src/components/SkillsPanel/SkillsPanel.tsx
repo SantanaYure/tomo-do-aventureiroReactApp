@@ -215,9 +215,10 @@ export function SkillsPanel({
 										{PROFICIENCY_LABEL[proficiency]}
 									</span>
 
-									<span className={styles.skillName}>{SKILL_LABEL[skill]}</span>
-
-									<span className={styles.skillAttr}>({attributeAbbreviation})</span>
+									<div className={styles.skillLabelGroup}>
+										<span className={styles.skillName}>{SKILL_LABEL[skill]}</span>
+										<span className={styles.skillAttr}>({attributeAbbreviation})</span>
+									</div>
 
 									<div className={styles.skillValueGroup}>
 										{isEditMode ? (

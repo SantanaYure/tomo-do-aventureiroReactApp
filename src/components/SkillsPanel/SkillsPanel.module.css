@@ -1,0 +1,160 @@
+.skillGrid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.skillList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.skillRow {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-1);
+  border-bottom: 1px solid var(--parchment-dark);
+  transition: background var(--transition);
+}
+
+.skillRow:last-child {
+  border-bottom: none;
+}
+
+.skillRow:hover {
+  background: rgba(212, 196, 154, 0.2);
+}
+
+.profIcon {
+  font-size: 0.9rem;
+  text-align: center;
+  color: var(--accent);
+  cursor: default;
+}
+
+.profIconClickable {
+  cursor: pointer;
+  transition: transform var(--transition);
+}
+
+.profIconClickable:hover {
+  transform: scale(1.3);
+}
+
+.profIconClickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+.skillLabelGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.skillName {
+  font-size: var(--text-sm);
+  color: var(--ink);
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.skillAttr {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
+.skillValueGroup {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.skillBonus {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.miscInput {
+  width: 3.5rem !important;
+  text-align: center;
+  font-size: var(--text-sm) !important;
+}
+
+.passiveRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-3);
+  background: var(--parchment-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  margin-top: var(--space-4);
+}
+
+.passiveLabel {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  letter-spacing: 0.03em;
+  color: var(--ink-muted);
+}
+
+.passiveValues {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.passiveValue {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.passiveBonusInput {
+  width: 4rem !important;
+  text-align: center;
+}
+
+@media (min-width: 960px) {
+  .skillGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+@media (max-width: 640px) {
+  .skillRow {
+    grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+  }
+
+  .skillAttr {
+    display: none;
+  }
+
+  .passiveRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .passiveValues {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
