@@ -1,15 +1,15 @@
-// src/pages/NewCharacterPage.tsx
-// Formulário para criar uma nova CharacterSheet do zero
+// src/pages/NewCharacterPage/NewCharacterPage.tsx
+// Cria uma nova CharacterSheet vazia e redireciona para a ficha
 
 import { useNavigate, Link } from 'react-router-dom'
+import { createCharacterSheet } from '../../store/characterSheetStore'
 
 export function NewCharacterPage() {
   const navigate = useNavigate()
 
   function handleCreate() {
-    // TODO: gerar id único, salvar CharacterSheet vazia, redirecionar
-    const newId = crypto.randomUUID()
-    navigate(`/ficha/${newId}`)
+    const stored = createCharacterSheet()
+    navigate(`/ficha/${stored.id}`)
   }
 
   return (
