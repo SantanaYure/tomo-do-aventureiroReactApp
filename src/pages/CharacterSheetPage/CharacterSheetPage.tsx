@@ -1,7 +1,7 @@
 // src/pages/CharacterSheetPage/CharacterSheetPage.tsx
 // Carrega e persiste a ficha de um personagem pelo id da rota
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import type { CharacterSheet } from '../../types/system/dnd'
 import {
@@ -29,8 +29,72 @@ export function CharacterSheetPage() {
   const [sheet, setSheet] = useState<SheetWithSlots | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [isAtBottom, setIsAtBottom] = useState(false)
+  const sheetStackRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const pendingScrollAnchorRef = useRef<{
+    panelId: string
+    top: number
+  } | null>(null)
   const hasSheet = sheet !== null
+
+  function captureScrollAnchor() {
+    const stack = sheetStackRef.current
+    if (!stack) return
+
+    const panelSlots = Array.from(
+      stack.querySelectorAll<HTMLElement>('[data-panel-id]'),
+    )
+
+    if (panelSlots.length === 0) return
+
+    const anchorY = Math.max(
+      96,
+      Math.min(window.innerHeight * 0.35, window.innerHeight - 160),
+    )
+    const anchorX = window.innerWidth / 2
+    const elementAtPoint = document.elementFromPoint(anchorX, anchorY)
+
+    const anchoredPanel =
+      panelSlots.find((panel) => elementAtPoint && panel.contains(elementAtPoint)) ??
+      panelSlots.reduce((closestPanel, currentPanel) => {
+        const closestDistance = Math.abs(
+          closestPanel.getBoundingClientRect().top - anchorY,
+        )
+        const currentDistance = Math.abs(
+          currentPanel.getBoundingClientRect().top - anchorY,
+        )
+
+        return currentDistance < closestDistance ? currentPanel : closestPanel
+      })
+
+    const panelId = anchoredPanel.dataset.panelId
+    if (!panelId) return
+
+    pendingScrollAnchorRef.current = {
+      panelId,
+      top: anchoredPanel.getBoundingClientRect().top,
+    }
+  }
+
+  useLayoutEffect(() => {
+    const anchor = pendingScrollAnchorRef.current
+    if (!anchor) return
+
+    const stack = sheetStackRef.current
+    const anchoredPanel = stack?.querySelector<HTMLElement>(
+      `[data-panel-id="${anchor.panelId}"]`,
+    )
+
+    pendingScrollAnchorRef.current = null
+
+    if (!anchoredPanel) return
+
+    const delta = anchoredPanel.getBoundingClientRect().top - anchor.top
+
+    if (Math.abs(delta) > 1) {
+      window.scrollBy({ top: delta, left: 0, behavior: 'auto' })
+    }
+  }, [sheet?.isEditMode])
 
   useEffect(() => {
     if (!hasSheet) return
@@ -62,6 +126,7 @@ export function CharacterSheetPage() {
 
   function handleToggleEditMode() {
     if (!sheet) return
+    captureScrollAnchor()
     handleUpdate({ ...sheet, isEditMode: !sheet.isEditMode })
   }
 
@@ -92,88 +157,106 @@ export function CharacterSheetPage() {
     <main className={styles.page}>
       <Link className={styles.backLink} to="/">← Voltar</Link>
 
-      <div className={styles.sheetStack}>
-        <CharacterHeader
-          character={sheet.character}
-          isEditMode={sheet.isEditMode}
-          onChangeCharacter={(updated) =>
-            handleUpdate({ ...sheet, character: updated })
-          }
-        />
+      <div className={styles.sheetStack} ref={sheetStackRef}>
+        <div data-panel-id="character-header">
+          <CharacterHeader
+            character={sheet.character}
+            isEditMode={sheet.isEditMode}
+            onChangeCharacter={(updated) =>
+              handleUpdate({ ...sheet, character: updated })
+            }
+          />
+        </div>
 
-        <AttributesPanel
-          character={sheet.character}
-          isEditMode={sheet.isEditMode}
-          onChangeCharacter={(updated) =>
-            handleUpdate({ ...sheet, character: updated })
-          }
-        />
+        <div data-panel-id="attributes">
+          <AttributesPanel
+            character={sheet.character}
+            isEditMode={sheet.isEditMode}
+            onChangeCharacter={(updated) =>
+              handleUpdate({ ...sheet, character: updated })
+            }
+          />
+        </div>
 
-        <SkillsPanel
-          character={sheet.character}
-          isEditMode={sheet.isEditMode}
-          onChangeCharacter={(updated) =>
-            handleUpdate({ ...sheet, character: updated })
-          }
-        />
+        <div data-panel-id="skills">
+          <SkillsPanel
+            character={sheet.character}
+            isEditMode={sheet.isEditMode}
+            onChangeCharacter={(updated) =>
+              handleUpdate({ ...sheet, character: updated })
+            }
+          />
+        </div>
 
-        <CombatPanel
-          character={sheet.character}
-          isEditMode={sheet.isEditMode}
-          onChangeCharacter={(updated) =>
-            handleUpdate({ ...sheet, character: updated })
-          }
-        />
+        <div data-panel-id="combat">
+          <CombatPanel
+            character={sheet.character}
+            isEditMode={sheet.isEditMode}
+            onChangeCharacter={(updated) =>
+              handleUpdate({ ...sheet, character: updated })
+            }
+          />
+        </div>
 
-        <ResourcesPanel
-          resources={sheet.resources}
-          isEditMode={sheet.isEditMode}
-          onChangeResources={(updated) =>
-            handleUpdate({ ...sheet, resources: updated })
-          }
-        />
+        <div data-panel-id="resources">
+          <ResourcesPanel
+            resources={sheet.resources}
+            isEditMode={sheet.isEditMode}
+            onChangeResources={(updated) =>
+              handleUpdate({ ...sheet, resources: updated })
+            }
+          />
+        </div>
 
-        <AttacksPanel
-          attacks={sheet.attacks}
-          character={sheet.character}
-          isEditMode={sheet.isEditMode}
-          onChangeAttacks={(updated) =>
-            handleUpdate({ ...sheet, attacks: updated })
-          }
-        />
+        <div data-panel-id="attacks">
+          <AttacksPanel
+            attacks={sheet.attacks}
+            character={sheet.character}
+            isEditMode={sheet.isEditMode}
+            onChangeAttacks={(updated) =>
+              handleUpdate({ ...sheet, attacks: updated })
+            }
+          />
+        </div>
 
-        <SpellsPanel
-          spells={sheet.spells}
-          character={sheet.character}
-          isEditMode={sheet.isEditMode}
-          onChangeSpells={(updated) =>
-            handleUpdate({ ...sheet, spells: updated })
-          }
-          slotsData={spellSlots}
-          onChangeSlotsData={(updated) =>
-            handleUpdate({ ...sheet, spellSlots: updated })
-          }
-        />
+        <div data-panel-id="spells">
+          <SpellsPanel
+            spells={sheet.spells}
+            character={sheet.character}
+            isEditMode={sheet.isEditMode}
+            onChangeSpells={(updated) =>
+              handleUpdate({ ...sheet, spells: updated })
+            }
+            slotsData={spellSlots}
+            onChangeSlotsData={(updated) =>
+              handleUpdate({ ...sheet, spellSlots: updated })
+            }
+          />
+        </div>
 
-        <InventoryPanel
-          inventory={sheet.inventory}
-          character={sheet.character}
-          isEditMode={sheet.isEditMode}
-          onChangeInventory={(updated) =>
-            handleUpdate({ ...sheet, inventory: updated })
-          }
-          onChangeCharacter={(updated) =>
-            handleUpdate({ ...sheet, character: updated })
-          }
-        />
+        <div data-panel-id="inventory">
+          <InventoryPanel
+            inventory={sheet.inventory}
+            character={sheet.character}
+            isEditMode={sheet.isEditMode}
+            onChangeInventory={(updated) =>
+              handleUpdate({ ...sheet, inventory: updated })
+            }
+            onChangeCharacter={(updated) =>
+              handleUpdate({ ...sheet, character: updated })
+            }
+          />
+        </div>
 
-        <CharacterDetailsPanel
-          character={sheet.character}
-          isEditMode={sheet.isEditMode}
-          onChangeCharacter={(updated) =>
-            handleUpdate({ ...sheet, character: updated })
-          }
-        />
+        <div data-panel-id="details">
+          <CharacterDetailsPanel
+            character={sheet.character}
+            isEditMode={sheet.isEditMode}
+            onChangeCharacter={(updated) =>
+              handleUpdate({ ...sheet, character: updated })
+            }
+          />
+        </div>
       </div>
       <div className={styles.editToggleSlot}>
         <div
