@@ -11,6 +11,7 @@ import {
 import { CharacterHeader } from '../../components/CharacterHeader/CharacterHeader'
 import { AttributesPanel } from '../../components/AttributesPanel/AttributesPanel'
 import { SkillsPanel } from '../../components/SkillsPanel/SkillsPanel'
+import { CombatPanel } from '../../components/CombatPanel/CombatPanel'
 
 export function CharacterSheetPage() {
   const { id } = useParams<{ id: string }>()
@@ -70,6 +71,14 @@ export function CharacterSheetPage() {
       />
 
       <SkillsPanel
+        character={sheet.character}
+        isEditMode={sheet.isEditMode}
+        onChangeCharacter={(updated) =>
+          handleUpdate({ ...sheet, character: updated })
+        }
+      />
+
+      <CombatPanel
         character={sheet.character}
         isEditMode={sheet.isEditMode}
         onChangeCharacter={(updated) =>
