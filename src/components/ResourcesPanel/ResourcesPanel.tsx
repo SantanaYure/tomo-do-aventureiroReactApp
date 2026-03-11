@@ -41,6 +41,16 @@ export function ResourcesPanel({
     setResource(index, { current: Math.min(max, Math.max(0, value)) })
   }
 
+  function setMax(index: number, value: number) {
+    const nextMax = Math.max(0, value)
+    const current = resources[index].current ?? 0
+
+    setResource(index, {
+      max: nextMax,
+      current: Math.min(nextMax, Math.max(0, current)),
+    })
+  }
+
   function addResource() {
     onChangeResources([...resources, createResource()])
   }
@@ -68,100 +78,122 @@ export function ResourcesPanel({
 
   return (
     <section className={panelStyles.panel}>
-      <div className={panelStyles.panelHeader}>
-        <h2 className={panelStyles.panelTitle}>Recursos</h2>
-        <p className={styles.headerNote}>Controle rápido de usos, cargas e recargas.</p>
-      </div>
+      <h2 className={panelStyles.panelTitle}>Recursos</h2>
 
-      <div className={styles.resetActions}>
-        <button className={panelStyles.ghostButton} onClick={() => resetAll('short-rest')}>
+      <div className={styles.restRow}>
+        <button
+          type="button"
+          className={styles.restBtn}
+          onClick={() => resetAll('short-rest')}
+        >
           Descanso curto
         </button>
-        <button className={panelStyles.ghostButton} onClick={() => resetAll('long-rest')}>
+
+        <button
+          type="button"
+          className={styles.restBtn}
+          onClick={() => resetAll('long-rest')}
+        >
           Descanso longo
         </button>
       </div>
 
-      <ul className={styles.list}>
+      <div className={styles.resourceList}>
         {resources.map((resource, index) => (
-          <li className={styles.item} key={index}>
-            {isEditMode ? (
-              <div className={styles.editFields}>
-                <input
-                  type="text"
-                  value={resource.name ?? ''}
-                  placeholder="Nome do recurso"
-                  onChange={(event) =>
-                    setResource(index, { name: event.target.value })
-                  }
-                />
-
-                <label>
-                  Máx
+          <div key={index} className={styles.resourceCard}>
+            <div>
+              {isEditMode ? (
+                <>
                   <input
-                    type="number"
-                    min={0}
-                    value={resource.max ?? 0}
-                    onChange={(event) =>
-                      setResource(index, { max: Number(event.target.value) })
-                    }
-                    className={panelStyles.compactInput}
+                    className={styles.resourceNameInput}
+                    type="text"
+                    value={resource.name ?? ''}
+                    placeholder="Nome do recurso"
+                    onChange={(event) => setResource(index, { name: event.target.value })}
                   />
-                </label>
 
-                <label>
-                  Reset
-                  <select
-                    value={resource.resetOn ?? 'long-rest'}
-                    onChange={(event) =>
-                      setResource(index, {
-                        resetOn: event.target.value as ResourceReset,
-                      })
-                    }
-                  >
-                    {(Object.keys(RESET_LABEL) as ResourceReset[]).map((key) => (
-                      <option key={key} value={key}>
-                        {RESET_LABEL[key]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                  <div className={styles.editRow}>
+                    <label>
+                      Máx
+                      <input
+                        type="number"
+                        min={0}
+                        value={resource.max ?? 0}
+                        onChange={(event) => setMax(index, Number(event.target.value))}
+                      />
+                    </label>
 
-                <button className={panelStyles.removeButton} onClick={() => removeResource(index)}>
-                  Remover
-                </button>
-              </div>
-            ) : (
-              <div className={styles.viewFields}>
-                <strong className={styles.resourceName}>{resource.name || '(sem nome)'}</strong>
-                <span className={styles.resourceReset}>{RESET_LABEL[resource.resetOn ?? 'long-rest']}</span>
-              </div>
-            )}
+                    <select
+                      value={resource.resetOn ?? 'long-rest'}
+                      onChange={(event) =>
+                        setResource(index, {
+                          resetOn: event.target.value as ResourceReset,
+                        })
+                      }
+                    >
+                      {(Object.keys(RESET_LABEL) as ResourceReset[]).map((key) => (
+                        <option key={key} value={key}>
+                          {RESET_LABEL[key]}
+                        </option>
+                      ))}
+                    </select>
 
-            <div className={styles.counterRow}>
-              <div className={styles.counter}>
-                <button onClick={() => setCurrent(index, (resource.current ?? 0) - 1)}>
+                    <button
+                      type="button"
+                      className={panelStyles.removeButton}
+                      onClick={() => removeResource(index)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className={styles.resourceName}>{resource.name || '(sem nome)'}</div>
+                  <div className={styles.resourceReset}>{RESET_LABEL[resource.resetOn ?? 'long-rest']}</div>
+                </>
+              )}
+            </div>
+
+            <div className={styles.counter}>
+              <button
+                type="button"
+                className={styles.counterBtn}
+                onClick={() => setCurrent(index, (resource.current ?? 0) - 1)}
+              >
                   −
                 </button>
-                <span className={styles.counterValue}>
-                  {resource.current ?? 0} / {resource.max ?? 0}
-                </span>
-                <button onClick={() => setCurrent(index, (resource.current ?? 0) + 1)}>
+
+              <span className={styles.counterVal}>
+                {resource.current ?? 0}
+                <span className={styles.counterMax}> / {resource.max ?? 0}</span>
+              </span>
+
+              <button
+                type="button"
+                className={styles.counterBtn}
+                onClick={() => setCurrent(index, (resource.current ?? 0) + 1)}
+              >
                   +
                 </button>
-              </div>
-
-              <div className={styles.itemActions}>
-                <button className={panelStyles.ghostButton} onClick={() => resetResource(index)} title="Restaurar">
-                  ↺ Restaurar
-                </button>
-              </div>
             </div>
-          </li>
-        ))}
-      </ul>
 
-      {isEditMode && <button className={panelStyles.addButton} onClick={addResource}>+ Recurso</button>}
+            <button
+              type="button"
+              className={styles.resetBtn}
+              onClick={() => resetResource(index)}
+            >
+              ↺ Restaurar
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {isEditMode && (
+        <button type="button" className={panelStyles.addButton} onClick={addResource}>
+          + Recurso
+        </button>
+      )}
     </section>
   )
 }
