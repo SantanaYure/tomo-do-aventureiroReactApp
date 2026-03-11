@@ -416,7 +416,7 @@ export function CombatPanel({
               <p className={panelStyles.emptyState}>Nenhum ajuste extra cadastrado.</p>
             ) : (
               character.hpBonusEntries.map((entry, index) => (
-                <div className={styles.bonusEntry} key={`${entry.source}-${index}`}>
+                <div className={styles.bonusEntry} key={index}>
                   {isEditMode ? (
                     <>
                       <input
