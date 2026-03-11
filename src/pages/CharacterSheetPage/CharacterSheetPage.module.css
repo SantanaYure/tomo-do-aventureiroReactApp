@@ -3,7 +3,7 @@
   width: 100%;
   max-width: var(--page-max);
   margin: 0 auto;
-  padding: var(--space-3) var(--space-3) var(--space-12);
+  padding: var(--space-2) 0 var(--space-12);
 }
 
 .backLink {
@@ -35,7 +35,7 @@
 .sheetGrid {
   display: flex !important;
   flex-direction: column !important;
-  gap: var(--space-5);
+  gap: var(--space-4);
   grid-template-columns: unset;
 }
 
@@ -59,10 +59,20 @@
   padding: var(--space-12);
 }
 
-/* ── Tablet (600px+) ── */
+@media (min-width: 480px) {
+  .page {
+    padding: var(--space-3) 0 var(--space-12);
+  }
+
+  .sheetStack,
+  .sheetGrid {
+    gap: var(--space-5);
+  }
+}
+
 @media (min-width: 600px) {
   .page {
-    padding: var(--space-5) var(--space-6) var(--space-12);
+    padding: var(--space-5) 0 var(--space-12);
   }
 
   .sheetStack,
@@ -71,10 +81,9 @@
   }
 }
 
-/* ── Desktop (780px+) ── */
 @media (min-width: 780px) {
   .page {
-    padding: var(--space-6) var(--space-8) var(--space-12);
+    padding: var(--space-6) 0 var(--space-12);
   }
 
   .sheetStack,

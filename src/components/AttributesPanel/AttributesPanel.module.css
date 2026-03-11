@@ -8,6 +8,18 @@
 @media (max-width: 480px) {
   .grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2);
+  }
+
+  .attrBox {
+    padding: var(--space-3) var(--space-2);
+  }
+}
+
+@media (max-width: 320px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-1);
   }
 }
 
