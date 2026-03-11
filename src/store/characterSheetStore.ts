@@ -1,4 +1,10 @@
-import type { AttunementItem, Character, CharacterSheet } from '../types/system/dnd'
+import type {
+  AttunementItem,
+  Character,
+  CharacterSheet,
+  Resource,
+  ResourceOrigin,
+} from '../types/system/dnd'
 import {
   addUniqueTextEntry,
   getCustomWeaponProficiencies,
@@ -49,6 +55,82 @@ function createDefaultAttunementItem(name = ''): AttunementItem {
     rarity: '',
     requiresAttunement: true,
     description: '',
+  }
+}
+
+function createDefaultResource(): Resource {
+  return {
+    name: '',
+    description: '',
+    range: '',
+    action: '',
+    current: 0,
+    max: 0,
+    resetOn: 'long-rest',
+    customOrigin: '',
+    allowCustomOrigin: false,
+  }
+}
+
+function isResourceOrigin(value: unknown): value is ResourceOrigin {
+  return (
+    value === 'class' ||
+    value === 'lineage' ||
+    value === 'magic-item' ||
+    value === 'divine'
+  )
+}
+
+function normalizeResource(resource: Resource | undefined): Resource {
+  const defaultResource = createDefaultResource()
+  const nextResource = resource ?? defaultResource
+  const max =
+    typeof nextResource.max === 'number' && Number.isFinite(nextResource.max)
+      ? Math.max(0, Math.trunc(nextResource.max))
+      : defaultResource.max ?? 0
+  const current =
+    typeof nextResource.current === 'number' && Number.isFinite(nextResource.current)
+      ? Math.max(0, Math.trunc(nextResource.current))
+      : defaultResource.current ?? 0
+  const rawOrigin = nextResource.origin as unknown
+  const rawOriginText = typeof rawOrigin === 'string' ? rawOrigin : ''
+  const customOrigin =
+    typeof nextResource.customOrigin === 'string' ? nextResource.customOrigin : ''
+  let allowCustomOrigin =
+    typeof nextResource.allowCustomOrigin === 'boolean'
+      ? nextResource.allowCustomOrigin
+      : false
+  let origin: ResourceOrigin | undefined
+
+  if (isResourceOrigin(rawOrigin)) {
+    origin = rawOrigin
+  } else if (rawOriginText.trim().length > 0) {
+    allowCustomOrigin = true
+  }
+
+  if (!allowCustomOrigin && customOrigin.trim().length > 0 && !origin) {
+    allowCustomOrigin = true
+  }
+
+  return {
+    ...defaultResource,
+    ...nextResource,
+    name: typeof nextResource.name === 'string' ? nextResource.name : '',
+    description:
+      typeof nextResource.description === 'string' ? nextResource.description : '',
+    range: typeof nextResource.range === 'string' ? nextResource.range : '',
+    action: typeof nextResource.action === 'string' ? nextResource.action : '',
+    current: Math.min(max, current),
+    max,
+    resetOn:
+      nextResource.resetOn === 'short-rest' ||
+      nextResource.resetOn === 'long-rest' ||
+      nextResource.resetOn === 'manual'
+        ? nextResource.resetOn
+        : defaultResource.resetOn,
+    origin,
+    customOrigin: rawOriginText.trim().length > 0 && !isResourceOrigin(rawOrigin) ? rawOriginText : customOrigin,
+    allowCustomOrigin,
   }
 }
 
@@ -177,7 +259,9 @@ function normalizeCharacterSheet<T extends CharacterSheet>(value: T): T {
     ...defaultSheet,
     ...nextValue,
     character: normalizeCharacter(nextValue.character),
-    resources: Array.isArray(nextValue.resources) ? nextValue.resources : defaultSheet.resources,
+    resources: Array.isArray(nextValue.resources)
+      ? nextValue.resources.map((resource) => normalizeResource(resource))
+      : defaultSheet.resources,
     inventory: Array.isArray(nextValue.inventory) ? nextValue.inventory : defaultSheet.inventory,
     spells: Array.isArray(nextValue.spells) ? nextValue.spells : defaultSheet.spells,
     attacks: Array.isArray(nextValue.attacks) ? nextValue.attacks : defaultSheet.attacks,
