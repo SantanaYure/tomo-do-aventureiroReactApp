@@ -1,79 +1,44 @@
 .page {
   display: grid;
-  gap: var(--space-5);
-  padding: var(--space-5) 0 var(--space-6);
-}
-
-.hero {
-  display: grid;
+  justify-items: center;
   gap: var(--space-3);
-  padding: var(--space-5);
-  border: 3px double var(--border-dark);
-  border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgba(255, 248, 229, 0.95), rgba(239, 225, 188, 0.88)),
-    radial-gradient(circle at top right, rgba(122, 30, 30, 0.12), transparent 35%);
-  box-shadow: var(--shadow-soft);
-}
-
-.kicker {
-  font-size: var(--text-xs);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
+  padding: var(--space-6) 0 var(--space-7);
+  text-align: center;
 }
 
 .title {
-  font-size: clamp(2.2rem, 5vw, var(--text-3xl));
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  line-height: 1;
 }
 
-.lead {
-  max-width: 44rem;
+.subtitle {
   color: var(--ink-muted);
   font-size: var(--text-lg);
 }
 
-.heroActions {
-  display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  align-items: center;
+.ornament {
+  color: var(--accent);
+  letter-spacing: 0.45em;
+  font-size: var(--text-lg);
 }
 
-.createLink {
+.newButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-5);
+  margin-top: var(--space-2);
   border: 2px double var(--border-dark);
   border-radius: 999px;
-  background: rgba(255, 248, 229, 0.88);
+  background:
+    linear-gradient(180deg, rgba(255, 248, 229, 0.96), rgba(239, 225, 188, 0.92)),
+    radial-gradient(circle at top, rgba(122, 30, 30, 0.14), transparent 48%);
   box-shadow: var(--shadow-card);
   font-weight: 700;
 }
 
-.section {
-  display: grid;
-  gap: var(--space-3);
-}
-
-.sectionHeader {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
-.sectionTitle {
-  font-size: var(--text-xl);
-}
-
-.sectionNote {
-  color: var(--ink-muted);
-}
-
-.emptyState {
+.empty {
+  width: min(100%, 42rem);
   padding: var(--space-4);
   border: 2px dashed var(--border);
   border-radius: var(--radius-md);
@@ -81,46 +46,36 @@
   color: var(--ink-muted);
 }
 
-.list {
+.sheetList {
   display: grid;
   gap: var(--space-3);
+  width: min(100%, 46rem);
+  padding: 0;
+  margin: var(--space-2) 0 0;
   list-style: none;
 }
 
-.item {
+.sheetItem {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  flex-wrap: wrap;
   padding: var(--space-3) var(--space-4);
   border: 2px double var(--border);
   border-radius: var(--radius-md);
-  background: rgba(255, 249, 235, 0.78);
+  background:
+    linear-gradient(180deg, rgba(255, 249, 235, 0.92), rgba(247, 236, 205, 0.8));
   box-shadow: var(--shadow-card);
+  text-align: left;
 }
 
-.itemMeta {
-  display: grid;
-  gap: 0.2rem;
-}
-
-.itemLink {
+.sheetLink {
   font-size: var(--text-lg);
   font-weight: 700;
 }
 
-.itemCaption {
-  color: var(--ink-muted);
-}
-
-.itemActions {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
 .deleteButton {
+  flex-shrink: 0;
   background: rgba(122, 30, 30, 0.08);
   border-color: rgba(122, 30, 30, 0.35);
   color: var(--accent);
@@ -131,7 +86,13 @@
     padding-top: var(--space-4);
   }
 
-  .hero {
-    padding: var(--space-4);
+  .sheetItem {
+    align-items: stretch;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .deleteButton {
+    width: 100%;
   }
 }
