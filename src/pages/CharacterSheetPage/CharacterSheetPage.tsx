@@ -48,13 +48,11 @@ export function CharacterSheetPage() {
   if (notFound) {
     return (
       <main className={styles.page}>
-        <section className={styles.statusCard}>
+        <section className={styles.notFound}>
           <Link className={styles.backLink} to="/">← Voltar</Link>
-          <h1 className={styles.statusTitle}>Ficha não encontrada</h1>
-          <p className={styles.statusText}>O registro pedido não foi localizado no armazenamento local.</p>
-          <div className={styles.statusActions}>
-            <button onClick={() => navigate('/')}>Ir para o início</button>
-          </div>
+          <h1>Ficha não encontrada</h1>
+          <p>O registro pedido não foi localizado no armazenamento local.</p>
+          <button onClick={() => navigate('/')}>Ir para o início</button>
         </section>
       </main>
     )
@@ -63,10 +61,7 @@ export function CharacterSheetPage() {
   if (!sheet) {
     return (
       <main className={styles.page}>
-        <section className={styles.statusCard}>
-          <h1 className={styles.statusTitle}>Carregando ficha</h1>
-          <p className={styles.statusText}>Abrindo o tomo e restaurando os dados do personagem…</p>
-        </section>
+        <section className={styles.loading}>Abrindo o tomo e restaurando os dados do personagem...</section>
       </main>
     )
   }
@@ -77,7 +72,7 @@ export function CharacterSheetPage() {
     <main className={styles.page}>
       <Link className={styles.backLink} to="/">← Voltar</Link>
 
-      <div className={styles.stack}>
+      <div className={styles.sheetStack}>
         <CharacterHeader
           character={sheet.character}
           isEditMode={sheet.isEditMode}
