@@ -3,6 +3,8 @@
 
 import { useState } from 'react'
 import type { Character, Spell } from '../../types/system/dnd'
+import panelStyles from '../../styles/panel.module.css'
+import styles from './SpellsPanel.module.css'
 
 // ─── spell slots ─────────────────────────────────────────────────────────────
 
@@ -110,9 +112,11 @@ export function SpellsPanel({
   if (usedLevels.length === 0) return null
 
   return (
-    <section>
-      <h2>Magias</h2>
-      <p>Habilidade de conjuração: {character.spellcastingAbility || '—'}</p>
+    <section className={panelStyles.panel}>
+      <div className={panelStyles.panelHeader}>
+        <h2 className={panelStyles.panelTitle}>Magias</h2>
+        <p className={styles.summary}>Habilidade de conjuração: {character.spellcastingAbility || '—'}</p>
+      </div>
 
       {usedLevels.map((level) => {
         const slots = slotsData[level] ?? { current: 0, max: 0 }
@@ -120,30 +124,27 @@ export function SpellsPanel({
         const expanded = expandedLevels.has(level)
 
         return (
-          <div key={level}>
-            {/* cabeçalho do nível */}
-            <div>
-              <button onClick={() => toggleLevel(level)}>
+          <div className={styles.levelBlock} key={level}>
+            <div className={styles.levelHeader}>
+              <button className={styles.levelToggle} onClick={() => toggleLevel(level)}>
                 {expanded ? '▾' : '▸'} {LEVEL_LABEL[level]}
               </button>
 
               {level > 0 && (
-                <span>
+                <span className={styles.slotControls}>
                   {isEditMode ? (
-                    <>
-                      <label>
+                    <label className={styles.slotField}>
                         Slots máx
                         <input
+                          className={panelStyles.compactInput}
                           type="number"
                           min={0}
                           value={slots.max}
                           onChange={(e) =>
                             setSlot(level, 'max', Number(e.target.value))
                           }
-                          style={{ width: '3rem' }}
                         />
                       </label>
-                    </>
                   ) : slots.max > 0 ? (
                     <>
                       <button
@@ -151,7 +152,7 @@ export function SpellsPanel({
                       >
                         −
                       </button>
-                      <span>{slots.current} / {slots.max}</span>
+                      <span className={styles.slotCount}>{slots.current} / {slots.max}</span>
                       <button
                         onClick={() => setSlot(level, 'current', slots.current + 1)}
                       >
@@ -163,16 +164,16 @@ export function SpellsPanel({
               )}
             </div>
 
-            {/* lista de magias do nível */}
             {expanded && (
-              <ul>
+              <ul className={styles.spellsList}>
                 {levelSpells.map((spell, i) => {
                   const globalIndex = spells.indexOf(spell)
                   return (
-                    <li key={globalIndex}>
+                    <li className={styles.spellItem} key={globalIndex}>
                       {isEditMode ? (
-                        <>
+                        <div className={styles.spellEditForm}>
                           <input
+                            className={styles.spellName}
                             type="text"
                             value={spell.name ?? ''}
                             placeholder="Nome da magia"
@@ -200,7 +201,6 @@ export function SpellsPanel({
                             onChange={(e) =>
                               setSpell(globalIndex, { castingTime: e.target.value })
                             }
-                            style={{ width: '8rem' }}
                           />
                           <input
                             type="text"
@@ -209,7 +209,6 @@ export function SpellsPanel({
                             onChange={(e) =>
                               setSpell(globalIndex, { range: e.target.value })
                             }
-                            style={{ width: '5rem' }}
                           />
                           <input
                             type="text"
@@ -218,10 +217,8 @@ export function SpellsPanel({
                             onChange={(e) =>
                               setSpell(globalIndex, { duration: e.target.value })
                             }
-                            style={{ width: '7rem' }}
                           />
-                          <label>
-                            Conc.
+                          <label className={panelStyles.checkboxLabel}>
                             <input
                               type="checkbox"
                               checked={spell.concentration ?? false}
@@ -229,9 +226,9 @@ export function SpellsPanel({
                                 setSpell(globalIndex, { concentration: e.target.checked })
                               }
                             />
+                            Conc.
                           </label>
-                          <label>
-                            Prep.
+                          <label className={panelStyles.checkboxLabel}>
                             <input
                               type="checkbox"
                               checked={spell.prepared ?? false}
@@ -239,8 +236,10 @@ export function SpellsPanel({
                                 setSpell(globalIndex, { prepared: e.target.checked })
                               }
                             />
+                            Prep.
                           </label>
                           <textarea
+                            className={styles.spellDescription}
                             value={spell.description ?? ''}
                             placeholder="Descrição"
                             rows={2}
@@ -248,22 +247,22 @@ export function SpellsPanel({
                               setSpell(globalIndex, { description: e.target.value })
                             }
                           />
-                          <button onClick={() => removeSpell(globalIndex)}>
+                          <button className={panelStyles.removeButton} onClick={() => removeSpell(globalIndex)}>
                             Remover
                           </button>
-                        </>
+                        </div>
                       ) : (
-                        <>
-                          <span>{spell.prepared ? '★' : '☆'}</span>
+                        <div className={styles.spellReadRow}>
+                          <span className={styles.spellMarker}>{spell.prepared ? '★' : '☆'}</span>
                           <strong>
                             {spell.name || '—'}
                             {spell.school ? ` (${spell.school})` : ''}
                           </strong>
-                          {spell.concentration && <span> [C]</span>}
-                          <span> · {spell.castingTime || '—'}</span>
-                          <span> · {spell.range || '—'}</span>
-                          <span> · {spell.duration || '—'}</span>
-                        </>
+                          {spell.concentration && <span className={styles.spellMeta}>[C]</span>}
+                          <span className={styles.spellMeta}>· {spell.castingTime || '—'}</span>
+                          <span className={styles.spellMeta}>· {spell.range || '—'}</span>
+                          <span className={styles.spellMeta}>· {spell.duration || '—'}</span>
+                        </div>
                       )}
                     </li>
                   )
@@ -271,14 +270,14 @@ export function SpellsPanel({
 
                 {isEditMode && (
                   <li>
-                    <button onClick={() => addSpell(level)}>
+                    <button className={panelStyles.addButton} onClick={() => addSpell(level)}>
                       + Magia
                     </button>
                   </li>
                 )}
 
                 {levelSpells.length === 0 && !isEditMode && (
-                  <li>Nenhuma magia.</li>
+                  <li className={panelStyles.emptyState}>Nenhuma magia.</li>
                 )}
               </ul>
             )}

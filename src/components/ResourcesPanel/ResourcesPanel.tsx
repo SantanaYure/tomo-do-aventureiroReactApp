@@ -1,4 +1,6 @@
 import type { Resource, ResourceReset } from '../../types/system/dnd'
+import panelStyles from '../../styles/panel.module.css'
+import styles from './ResourcesPanel.module.css'
 
 const RESET_LABEL: Record<ResourceReset, string> = {
   'short-rest': 'Desc. curto',
@@ -65,19 +67,26 @@ export function ResourcesPanel({
   if (resources.length === 0 && !isEditMode) return null
 
   return (
-    <section>
-      <h2>Recursos</h2>
-
-      <div>
-        <button onClick={() => resetAll('short-rest')}>Descanso curto</button>
-        <button onClick={() => resetAll('long-rest')}>Descanso longo</button>
+    <section className={panelStyles.panel}>
+      <div className={panelStyles.panelHeader}>
+        <h2 className={panelStyles.panelTitle}>Recursos</h2>
+        <p className={styles.headerNote}>Controle rápido de usos, cargas e recargas.</p>
       </div>
 
-      <ul>
+      <div className={styles.resetActions}>
+        <button className={panelStyles.ghostButton} onClick={() => resetAll('short-rest')}>
+          Descanso curto
+        </button>
+        <button className={panelStyles.ghostButton} onClick={() => resetAll('long-rest')}>
+          Descanso longo
+        </button>
+      </div>
+
+      <ul className={styles.list}>
         {resources.map((resource, index) => (
-          <li key={index}>
+          <li className={styles.item} key={index}>
             {isEditMode ? (
-              <>
+              <div className={styles.editFields}>
                 <input
                   type="text"
                   value={resource.name ?? ''}
@@ -96,7 +105,7 @@ export function ResourcesPanel({
                     onChange={(event) =>
                       setResource(index, { max: Number(event.target.value) })
                     }
-                    style={{ width: '3.5rem' }}
+                    className={panelStyles.compactInput}
                   />
                 </label>
 
@@ -118,32 +127,41 @@ export function ResourcesPanel({
                   </select>
                 </label>
 
-                <button onClick={() => removeResource(index)}>Remover</button>
-              </>
+                <button className={panelStyles.removeButton} onClick={() => removeResource(index)}>
+                  Remover
+                </button>
+              </div>
             ) : (
-              <>
-                <strong>{resource.name || '(sem nome)'}</strong>
-                <span>{RESET_LABEL[resource.resetOn ?? 'long-rest']}</span>
-              </>
+              <div className={styles.viewFields}>
+                <strong className={styles.resourceName}>{resource.name || '(sem nome)'}</strong>
+                <span className={styles.resourceReset}>{RESET_LABEL[resource.resetOn ?? 'long-rest']}</span>
+              </div>
             )}
 
-            <button onClick={() => setCurrent(index, (resource.current ?? 0) - 1)}>
-              −
-            </button>
-            <span>
-              {resource.current ?? 0} / {resource.max ?? 0}
-            </span>
-            <button onClick={() => setCurrent(index, (resource.current ?? 0) + 1)}>
-              +
-            </button>
-            <button onClick={() => resetResource(index)} title="Restaurar">
-              ↺
-            </button>
+            <div className={styles.counterRow}>
+              <div className={styles.counter}>
+                <button onClick={() => setCurrent(index, (resource.current ?? 0) - 1)}>
+                  −
+                </button>
+                <span className={styles.counterValue}>
+                  {resource.current ?? 0} / {resource.max ?? 0}
+                </span>
+                <button onClick={() => setCurrent(index, (resource.current ?? 0) + 1)}>
+                  +
+                </button>
+              </div>
+
+              <div className={styles.itemActions}>
+                <button className={panelStyles.ghostButton} onClick={() => resetResource(index)} title="Restaurar">
+                  ↺ Restaurar
+                </button>
+              </div>
+            </div>
           </li>
         ))}
       </ul>
 
-      {isEditMode && <button onClick={addResource}>+ Recurso</button>}
+      {isEditMode && <button className={panelStyles.addButton} onClick={addResource}>+ Recurso</button>}
     </section>
   )
 }

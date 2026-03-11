@@ -3,6 +3,8 @@
 // Edição via isEditMode — toggle global
 
 import type { Character, Class } from '../../types/system/dnd'
+import panelStyles from '../../styles/panel.module.css'
+import styles from './CharacterHeader.module.css'
 
 const HIT_DICE_OPTIONS = ['1d6', '1d8', '1d10', '1d12']
 
@@ -61,126 +63,131 @@ export function CharacterHeader({
   }
 
   return (
-    <header>
-      <div>
-        <button onClick={onToggleEditMode}>
+    <header className={`${panelStyles.panel} ${styles.header}`}>
+      <div className={styles.toolbar}>
+        <button className={styles.toggleButton} onClick={onToggleEditMode}>
           {isEditMode ? '✓ Concluir edição' : '✎ Editar ficha'}
         </button>
       </div>
 
       {isEditMode ? (
-        <div>
-          {/* Nome */}
-          <label>
-            Nome
-            <input
-              type="text"
-              value={character.name}
-              onChange={(e) => set('name', e.target.value)}
-              placeholder="Nome do personagem"
-            />
-          </label>
+        <div className={styles.editLayout}>
+          <div className={styles.identityGrid}>
+            <label className={styles.field}>
+              Nome
+              <input
+                type="text"
+                value={character.name}
+                onChange={(e) => set('name', e.target.value)}
+                placeholder="Nome do personagem"
+              />
+            </label>
 
-          {/* Raça */}
-          <label>
-            Raça
-            <input
-              type="text"
-              value={character.race}
-              onChange={(e) => set('race', e.target.value)}
-              placeholder="Raça"
-            />
-          </label>
+            <label className={styles.field}>
+              Raça
+              <input
+                type="text"
+                value={character.race}
+                onChange={(e) => set('race', e.target.value)}
+                placeholder="Raça"
+              />
+            </label>
 
-          {/* Alinhamento */}
-          <label>
-            Alinhamento
-            <input
-              type="text"
-              value={character.alignment}
-              onChange={(e) => set('alignment', e.target.value)}
-              placeholder="Alinhamento"
-            />
-          </label>
+            <label className={styles.field}>
+              Alinhamento
+              <input
+                type="text"
+                value={character.alignment}
+                onChange={(e) => set('alignment', e.target.value)}
+                placeholder="Alinhamento"
+              />
+            </label>
 
-          {/* Background */}
-          <label>
-            Antecedente
-            <input
-              type="text"
-              value={character.background}
-              onChange={(e) => set('background', e.target.value)}
-              placeholder="Antecedente"
-            />
-          </label>
+            <label className={styles.field}>
+              Antecedente
+              <input
+                type="text"
+                value={character.background}
+                onChange={(e) => set('background', e.target.value)}
+                placeholder="Antecedente"
+              />
+            </label>
 
-          {/* XP */}
-          <label>
-            XP
-            <input
-              type="number"
-              min={0}
-              value={character.xp}
-              onChange={(e) => set('xp', Number(e.target.value))}
-            />
-          </label>
+            <label className={styles.field}>
+              XP
+              <input
+                type="number"
+                min={0}
+                value={character.xp}
+                onChange={(e) => set('xp', Number(e.target.value))}
+              />
+            </label>
+          </div>
 
-          {/* Classes */}
-          <fieldset>
+          <fieldset className={styles.classFieldset}>
             <legend>Classes</legend>
-            {character.classes.map((c, i) => (
-              <div key={c.id}>
-                <input
-                  type="text"
-                  value={c.className}
-                  onChange={(e) => setClass(i, 'className', e.target.value)}
-                  placeholder="Classe"
-                />
-                <select
-                  value={c.hitDice}
-                  onChange={(e) => setClass(i, 'hitDice', e.target.value)}
-                >
-                  <option value="">Dado de vida</option>
-                  {HIT_DICE_OPTIONS.map((hitDice) => (
-                    <option key={hitDice} value={hitDice}>
-                      {hitDice}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={c.level}
-                  onChange={(e) => setClass(i, 'level', Number(e.target.value))}
-                />
-                <input
-                  type="text"
-                  value={c.subclass}
-                  onChange={(e) => setClass(i, 'subclass', e.target.value)}
-                  placeholder="Subclasse"
-                />
-                <button
-                  onClick={() => removeClass(i)}
-                  disabled={character.classes.length <= 1}
-                >
-                  −
-                </button>
-              </div>
-            ))}
-            <button onClick={addClass}>+ Classe</button>
+            <div className={styles.classRows}>
+              {character.classes.map((c, i) => (
+                <div className={styles.classRow} key={c.id}>
+                  <input
+                    className={styles.classInput}
+                    type="text"
+                    value={c.className}
+                    onChange={(e) => setClass(i, 'className', e.target.value)}
+                    placeholder="Classe"
+                  />
+                  <select
+                    className={styles.classInput}
+                    value={c.hitDice}
+                    onChange={(e) => setClass(i, 'hitDice', e.target.value)}
+                  >
+                    <option value="">Dado de vida</option>
+                    {HIT_DICE_OPTIONS.map((hitDice) => (
+                      <option key={hitDice} value={hitDice}>
+                        {hitDice}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className={styles.classInput}
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={c.level}
+                    onChange={(e) => setClass(i, 'level', Number(e.target.value))}
+                  />
+                  <input
+                    className={styles.classInput}
+                    type="text"
+                    value={c.subclass}
+                    onChange={(e) => setClass(i, 'subclass', e.target.value)}
+                    placeholder="Subclasse"
+                  />
+                  <div className={styles.classActions}>
+                    <button
+                      className={panelStyles.removeButton}
+                      onClick={() => removeClass(i)}
+                      disabled={character.classes.length <= 1}
+                    >
+                      −
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button className={panelStyles.addButton} onClick={addClass}>+ Classe</button>
           </fieldset>
         </div>
       ) : (
-        <div>
-          <h1>{character.name || '(sem nome)'}</h1>
-          <p>
+        <div className={styles.view}>
+          <h1 className={styles.viewName}>{character.name || '(sem nome)'}</h1>
+          <p className={styles.viewMeta}>
             {character.race || '—'} · {character.background || '—'} · {character.alignment || '—'}
           </p>
-          <p>
+          <p className={styles.viewDetails}>
             {formatClasses(character.classes)} · Nível {totalLevel(character.classes)}
           </p>
-          <p>XP: {character.xp}</p>
+          <p className={styles.viewXp}>XP: {character.xp}</p>
         </div>
       )}
     </header>

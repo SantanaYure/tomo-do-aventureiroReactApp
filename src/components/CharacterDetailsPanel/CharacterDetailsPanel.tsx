@@ -3,6 +3,8 @@
 
 import { useId, useState } from 'react'
 import type { AttunementItem, Character } from '../../types/system/dnd'
+import panelStyles from '../../styles/panel.module.css'
+import styles from './CharacterDetailsPanel.module.css'
 import {
   addUniqueTextEntry,
   getCustomWeaponProficiencies,
@@ -51,12 +53,13 @@ function StringListEditor({
   onChange: (updated: string[]) => void
 }) {
   return (
-    <div>
-      <strong>{label}</strong>
-      <ul>
+    <div className={styles.listEditor}>
+      <strong className={styles.blockTitle}>{label}</strong>
+      <ul className={styles.inlineList}>
         {values.map((v, i) => (
-          <li key={i}>
+          <li className={styles.inlineListItem} key={i}>
             <input
+              className={styles.listInput}
               type="text"
               value={v}
               placeholder={placeholder}
@@ -67,6 +70,7 @@ function StringListEditor({
               }}
             />
             <button
+              className={panelStyles.removeButton}
               onClick={() => onChange(values.filter((_, j) => j !== i))}
             >
               −
@@ -74,7 +78,7 @@ function StringListEditor({
           </li>
         ))}
       </ul>
-      <button onClick={() => onChange([...values, ''])}>+ {label}</button>
+      <button className={panelStyles.addButton} onClick={() => onChange([...values, ''])}>+ {label}</button>
     </div>
   )
 }
@@ -154,28 +158,30 @@ export function CharacterDetailsPanel({
   ]
 
   return (
-    <section>
-      <h2>Detalhes do Personagem</h2>
+    <section className={panelStyles.panel}>
+      <div className={panelStyles.panelHeader}>
+        <h2 className={panelStyles.panelTitle}>Detalhes do Personagem</h2>
+      </div>
 
-      {/* ── Campos de texto longo ── */}
-      {textareaFields.map(({ key, label, placeholder }) => (
-        <div key={key}>
-          <h3>{label}</h3>
+      <div className={styles.textSections}>
+        {textareaFields.map(({ key, label, placeholder }) => (
+        <div className={styles.textBlock} key={key}>
+          <h3 className={styles.blockTitle}>{label}</h3>
           {isEditMode ? (
             <textarea
+              className={panelStyles.fullWidth}
               value={String(character[key] ?? '')}
               placeholder={placeholder}
               rows={4}
               onChange={(e) => set(key, e.target.value as any)}
-              style={{ width: '100%' }}
             />
           ) : (
-            <p>{String(character[key] || '—')}</p>
+            <p className={styles.textContent}>{String(character[key] || '—')}</p>
           )}
         </div>
       ))}
+      </div>
 
-      {/* ── Listas ── */}
       {isEditMode ? (
         <>
           <StringListEditor
@@ -192,59 +198,62 @@ export function CharacterDetailsPanel({
           />
         </>
       ) : (
-        <>
+        <div className={styles.summaryList}>
           {character.languages.length > 0 && (
-            <div>
+            <div className={styles.summaryRow}>
               <strong>Idiomas: </strong>
               <span>{character.languages.join(', ')}</span>
             </div>
           )}
           {character.toolProficiencies.length > 0 && (
-            <div>
+            <div className={styles.summaryRow}>
               <strong>Ferramentas: </strong>
               <span>{character.toolProficiencies.join(', ')}</span>
             </div>
           )}
-        </>
+        </div>
       )}
 
-      {/* ── Treinamento com armaduras ── */}
-      <div>
-        <h3>Armaduras</h3>
-        {(['light', 'medium', 'heavy', 'shields'] as const).map((type) => {
-          const label = { light: 'Leve', medium: 'Média', heavy: 'Pesada', shields: 'Escudos' }[type]
-          return (
-            <label key={type}>
+      <div className={styles.sectionBlock}>
+        <h3 className={panelStyles.sectionTitle}>Armaduras</h3>
+        <div className={styles.checkboxGrid}>
+          {(['light', 'medium', 'heavy', 'shields'] as const).map((type) => {
+            const label = { light: 'Leve', medium: 'Média', heavy: 'Pesada', shields: 'Escudos' }[type]
+            return (
+              <label className={panelStyles.checkboxLabel} key={type}>
+                <input
+                  type="checkbox"
+                  checked={character.armorTraining[type]}
+                  disabled={!isEditMode}
+                  onChange={(e) =>
+                    set('armorTraining', {
+                      ...character.armorTraining,
+                      [type]: e.target.checked,
+                    })
+                  }
+                />
+                {label}
+              </label>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className={styles.sectionBlock}>
+        <h3 className={panelStyles.sectionTitle}>Armas</h3>
+        <div className={styles.checkboxGrid}>
+          {WEAPON_PROFICIENCY_OPTIONS.map(({ label }) => (
+            <label className={panelStyles.checkboxLabel} key={label}>
               <input
                 type="checkbox"
-                checked={character.armorTraining[type]}
+                checked={selectedWeaponCategories.includes(label)}
                 disabled={!isEditMode}
-                onChange={(e) =>
-                  set('armorTraining', {
-                    ...character.armorTraining,
-                    [type]: e.target.checked,
-                  })
-                }
+                onChange={(e) => setWeaponCategory(label, e.target.checked)}
               />
               {label}
             </label>
-          )
-        })}
-      </div>
-
-      <div>
-        <h3>Armas</h3>
-        {WEAPON_PROFICIENCY_OPTIONS.map(({ label }) => (
-          <label key={label}>
-            <input
-              type="checkbox"
-              checked={selectedWeaponCategories.includes(label)}
-              disabled={!isEditMode}
-              onChange={(e) => setWeaponCategory(label, e.target.checked)}
-            />
-            {label}
-          </label>
-        ))}
+          ))}
+        </div>
 
         {isEditMode ? (
           <>
@@ -255,79 +264,82 @@ export function CharacterDetailsPanel({
               onChange={setCustomWeaponProficiencies}
             />
 
-            <div>
-              <strong>Maestrias</strong>
+            <div className={styles.sectionBlock}>
+              <strong className={styles.blockTitle}>Maestrias</strong>
 
               {character.weaponMasteries.length === 0 ? (
-                <p>Nenhuma maestria cadastrada.</p>
+                <p className={panelStyles.emptyState}>Nenhuma maestria cadastrada.</p>
               ) : (
-                <ul>
+                <ul className={styles.masteryList}>
                   {character.weaponMasteries.map((mastery, index) => (
-                    <li key={`${mastery}-${index}`}>
+                    <li className={styles.masteryItem} key={`${mastery}-${index}`}>
                       <span>{mastery}</span>
-                      <button onClick={() => removeWeaponMastery(index)}>−</button>
+                      <button className={panelStyles.removeButton} onClick={() => removeWeaponMastery(index)}>−</button>
                     </li>
                   ))}
                 </ul>
               )}
 
-              <input
-                type="text"
-                list={weaponMasteryOptionsId}
-                value={weaponMasteryInput}
-                placeholder="Selecione ou digite uma arma"
-                onChange={(e) => setWeaponMasteryInput(e.target.value)}
-              />
+              <div className={styles.masteryInputRow}>
+                <input
+                  className={panelStyles.wideInput}
+                  type="text"
+                  list={weaponMasteryOptionsId}
+                  value={weaponMasteryInput}
+                  placeholder="Selecione ou digite uma arma"
+                  onChange={(e) => setWeaponMasteryInput(e.target.value)}
+                />
+                <button className={panelStyles.addButton} onClick={addWeaponMastery}>+ Maestria</button>
+              </div>
               <datalist id={weaponMasteryOptionsId}>
                 {weaponMasterySuggestions.map((weaponName) => (
                   <option key={weaponName} value={weaponName} />
                 ))}
               </datalist>
-              <button onClick={addWeaponMastery}>+ Maestria</button>
 
               {weaponMasterySuggestions.length > 0 && (
-                <p>As sugestões mudam conforme os tipos de arma marcados.</p>
+                <p className={styles.inlineInfo}>As sugestões mudam conforme os tipos de arma marcados.</p>
               )}
             </div>
           </>
         ) : (
-          <>
+          <div className={styles.summaryList}>
             {selectedWeaponCategories.length > 0 && (
-              <div>
+              <div className={styles.summaryRow}>
                 <strong>Proficiências: </strong>
                 <span>{selectedWeaponCategories.join(', ')}</span>
               </div>
             )}
             {customWeaponProficiencies.length > 0 && (
-              <div>
+              <div className={styles.summaryRow}>
                 <strong>Armas específicas: </strong>
                 <span>{customWeaponProficiencies.join(', ')}</span>
               </div>
             )}
             {character.weaponMasteries.length > 0 && (
-              <div>
+              <div className={styles.summaryRow}>
                 <strong>Maestrias: </strong>
                 <span>{character.weaponMasteries.join(', ')}</span>
               </div>
             )}
             {selectedWeaponCategories.length === 0 &&
               customWeaponProficiencies.length === 0 &&
-              character.weaponMasteries.length === 0 && <p>Nenhuma arma cadastrada.</p>}
-          </>
+              character.weaponMasteries.length === 0 && <p className={panelStyles.emptyState}>Nenhuma arma cadastrada.</p>}
+          </div>
         )}
       </div>
 
-      {/* ── Itens sintonizados ── */}
-      <div>
-        <h3>Itens sintonizados</h3>
+      <div className={styles.sectionBlock}>
+        <h3 className={panelStyles.sectionTitle}>Itens sintonizados</h3>
 
         {character.attunementItems.length === 0 ? (
-          <p>Nenhum item cadastrado.</p>
+          <p className={panelStyles.emptyState}>Nenhum item cadastrado.</p>
         ) : (
-          character.attunementItems.map((item, index) =>
+          <div className={styles.attunementGrid}>
+          {character.attunementItems.map((item, index) =>
             isEditMode ? (
-              <article key={`${item.name}-${index}`}>
-                <div>
+              <article className={styles.attunementCard} key={`${item.name}-${index}`}>
+                <div className={styles.attunementMeta}>
                   <label>
                     Nome do item
                     <input
@@ -358,7 +370,7 @@ export function CharacterDetailsPanel({
                   </label>
                 </div>
 
-                <label>
+                <label className={panelStyles.checkboxLabel}>
                   <input
                     type="checkbox"
                     checked={item.requiresAttunement}
@@ -374,33 +386,34 @@ export function CharacterDetailsPanel({
                 <label>
                   Descrição
                   <textarea
+                    className={panelStyles.fullWidth}
                     value={item.description}
                     rows={3}
                     placeholder="Descrição do item"
                     onChange={(e) =>
                       setAttunementItem(index, { description: e.target.value })
                     }
-                    style={{ width: '100%' }}
                   />
                 </label>
 
-                <button onClick={() => removeAttunementItem(index)}>Remover</button>
+                <button className={panelStyles.removeButton} onClick={() => removeAttunementItem(index)}>Remover</button>
               </article>
             ) : (
-              <article key={`${item.name}-${index}`}>
+              <article className={styles.attunementCard} key={`${item.name}-${index}`}>
                 <strong>{item.name || 'Item sem nome'}</strong>
-                <p>
+                <p className={styles.inlineInfo}>
                   {item.rarity || 'Raridade não informada'} ·{' '}
                   {item.requiresAttunement ? 'Requer sintonia' : 'Sem sintonia'}
                 </p>
-                <p>{item.description || 'Sem descrição.'}</p>
+                <p className={styles.attunementDescription}>{item.description || 'Sem descrição.'}</p>
               </article>
             ),
-          )
+          )}
+          </div>
         )}
 
         {isEditMode && (
-          <button onClick={addAttunementItem}>+ Item sintonizado</button>
+          <button className={panelStyles.addButton} onClick={addAttunementItem}>+ Item sintonizado</button>
         )}
       </div>
     </section>

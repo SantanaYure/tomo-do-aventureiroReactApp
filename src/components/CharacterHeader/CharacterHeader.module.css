@@ -1,0 +1,87 @@
+.header {
+  gap: var(--space-4);
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.toggleButton {
+  padding-inline: var(--space-4);
+  font-weight: 700;
+}
+
+.editLayout {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.identityGrid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.field {
+  gap: var(--space-2);
+}
+
+.classFieldset {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.classRows {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.classRow {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: minmax(9rem, 1.4fr) minmax(8rem, 1fr) 4.5rem minmax(10rem, 1.2fr) auto;
+  align-items: end;
+}
+
+.classInput {
+  width: 100%;
+}
+
+.classActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.view {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.viewName {
+  font-size: clamp(2.1rem, 5vw, 3.2rem);
+}
+
+.viewMeta {
+  color: var(--ink-muted);
+  font-size: var(--text-lg);
+}
+
+.viewDetails {
+  font-size: var(--text-base);
+}
+
+.viewXp {
+  color: var(--ink-soft);
+}
+
+@media (max-width: 820px) {
+  .classRow {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .classActions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}

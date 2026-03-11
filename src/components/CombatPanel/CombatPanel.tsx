@@ -3,6 +3,8 @@
 
 import { useEffect } from 'react'
 import type { Character, HpBonusEntry } from '../../types/system/dnd'
+import panelStyles from '../../styles/panel.module.css'
+import styles from './CombatPanel.module.css'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -175,243 +177,265 @@ export function CombatPanel({
   const isDowned = displayedCurrentHp === 0
 
   return (
-    <section>
-      <h2>Combate</h2>
+    <section className={panelStyles.panel}>
+      <div className={panelStyles.panelHeader}>
+        <h2 className={panelStyles.panelTitle}>Combate</h2>
+        <p className={styles.summary}>CA, iniciativa, pontos de vida e recuperação.</p>
+      </div>
 
-      {/* ── linha superior: CA / Iniciativa / Velocidade ── */}
-      <div>
-        <div>
-          <span>CA</span>
-          <strong>{ac}</strong>
+      <div className={styles.metricsGrid}>
+        <div className={styles.metricCard}>
+          <span className={styles.metricLabel}>CA</span>
+          <strong className={styles.metricValue}>{ac}</strong>
           {isEditMode && (
-            <label>
+            <label className={styles.metricField}>
               Valor
               <input
+                className={panelStyles.compactInput}
                 type="number"
                 value={character.armorClassBase}
                 onChange={(e) => set('armorClassBase', Number(e.target.value))}
-                style={{ width: '3.5rem' }}
               />
             </label>
           )}
         </div>
 
-        <div>
-          <span>Iniciativa</span>
-          <strong>{formatModifier(initiative)}</strong>
+        <div className={styles.metricCard}>
+          <span className={styles.metricLabel}>Iniciativa</span>
+          <strong className={styles.metricValue}>{formatModifier(initiative)}</strong>
           {isEditMode && (
-            <label>
+            <label className={styles.metricField}>
               Bônus extra
               <input
+                className={panelStyles.compactInput}
                 type="number"
                 value={character.initiativeBonusExtra}
                 onChange={(e) =>
                   set('initiativeBonusExtra', Number(e.target.value))
                 }
-                style={{ width: '3.5rem' }}
               />
             </label>
           )}
         </div>
 
-        <div>
-          <span>Velocidade</span>
+        <div className={styles.metricCard}>
+          <span className={styles.metricLabel}>Velocidade</span>
           {isEditMode ? (
             <input
+              className={panelStyles.narrowInput}
               type="text"
               value={character.speed}
               onChange={(e) => set('speed', e.target.value)}
-              style={{ width: '5rem' }}
             />
           ) : (
-            <strong>{character.speed}</strong>
+            <strong className={styles.metricValue}>{character.speed}</strong>
           )}
         </div>
 
-        <div>
-          <span>Proficiência</span>
-          <strong>{formatModifier(profBonus)}</strong>
+        <div className={styles.metricCard}>
+          <span className={styles.metricLabel}>Proficiência</span>
+          <strong className={styles.metricValue}>{formatModifier(profBonus)}</strong>
         </div>
       </div>
 
-      {/* ── HP ── */}
-      <div>
-        <div>
-          <span>HP Máximo</span>
+      <div className={styles.metricsGrid}>
+        <div className={styles.metricCard}>
+          <span className={styles.metricLabel}>HP Máximo</span>
           {isEditMode && !character.hpAutoCalc ? (
             <input
+              className={panelStyles.compactInput}
               type="number"
               min={0}
               value={character.hpMax}
               onChange={(e) => set('hpMax', Number(e.target.value))}
-              style={{ width: '4rem' }}
             />
           ) : (
-            <strong>{effectiveHpMax}</strong>
+            <strong className={styles.metricValue}>{effectiveHpMax}</strong>
           )}
           {character.hpAutoCalc && (
-            <div>
+            <div className={styles.metricMeta}>
               <small>Base: {naturalHpMax}</small>
               <small> · Extra: {formatModifier(extraHpTotal)}</small>
             </div>
           )}
           {isEditMode && (
-            <label>
-              HP automático
+            <label className={panelStyles.checkboxLabel}>
               <input
                 type="checkbox"
                 checked={character.hpAutoCalc}
                 onChange={(e) => set('hpAutoCalc', e.target.checked)}
               />
+              HP automático
             </label>
           )}
           {isEditMode && !character.hpAutoCalc && (
-            <div>
+            <div className={styles.metricMeta}>
               <small>HP sugerido pelas regras: {Math.max(0, naturalHpMax + extraHpTotal)}</small>
             </div>
           )}
         </div>
 
-        <div>
-          <span>HP Atual</span>
-          <button onClick={() => setHpCurrent(displayedCurrentHp - 1)}>−</button>
-          <strong>{displayedCurrentHp}</strong>
-          <button onClick={() => setHpCurrent(displayedCurrentHp + 1)}>+</button>
+        <div className={styles.metricCard}>
+          <span className={styles.metricLabel}>HP Atual</span>
+          <div className={styles.counterRow}>
+            <button onClick={() => setHpCurrent(displayedCurrentHp - 1)}>−</button>
+            <strong className={styles.counterValue}>{displayedCurrentHp}</strong>
+            <button onClick={() => setHpCurrent(displayedCurrentHp + 1)}>+</button>
+          </div>
         </div>
 
-        <div>
-          <span>HP Temporário</span>
-          <button
-            onClick={() =>
-              set('hpTemp', Math.max(0, character.hpTemp - 1))
-            }
-          >
-            −
-          </button>
-          <strong>{character.hpTemp}</strong>
-          <button onClick={() => set('hpTemp', character.hpTemp + 1)}>+</button>
+        <div className={styles.metricCard}>
+          <span className={styles.metricLabel}>HP Temporário</span>
+          <div className={styles.counterRow}>
+            <button
+              onClick={() =>
+                set('hpTemp', Math.max(0, character.hpTemp - 1))
+              }
+            >
+              −
+            </button>
+            <strong className={styles.counterValue}>{character.hpTemp}</strong>
+            <button onClick={() => set('hpTemp', character.hpTemp + 1)}>+</button>
+          </div>
         </div>
       </div>
 
       {(isEditMode || character.hpBonusEntries.length > 0) && (
-        <div>
-          <h3>Ajustes extras de HP</h3>
+        <div className={panelStyles.section}>
+          <h3 className={panelStyles.sectionTitle}>Ajustes extras de HP</h3>
 
           {character.hpBonusEntries.length === 0 ? (
-            <p>Nenhum ajuste extra cadastrado.</p>
+            <p className={panelStyles.emptyState}>Nenhum ajuste extra cadastrado.</p>
           ) : (
-            character.hpBonusEntries.map((entry, index) => (
-              <div key={`${entry.source}-${index}`}>
+            <div className={styles.bonusList}>
+              {character.hpBonusEntries.map((entry, index) => (
+                <div className={styles.bonusRow} key={`${entry.source}-${index}`}>
                 {isEditMode ? (
                   <>
                     <input
+                      className={panelStyles.narrowInput}
                       type="number"
                       value={entry.value}
                       onChange={(e) =>
                         setHpBonusEntry(index, { value: Number(e.target.value) })
                       }
                       placeholder="Valor"
-                      style={{ width: '4.5rem' }}
                     />
                     <input
+                      className={panelStyles.wideInput}
                       type="text"
                       value={entry.source}
                       onChange={(e) =>
                         setHpBonusEntry(index, { source: e.target.value })
                       }
                       placeholder="Origem do bônus"
-                      style={{ width: '16rem' }}
                     />
-                    <button onClick={() => removeHpBonusEntry(index)}>Remover</button>
+                    <button className={panelStyles.removeButton} onClick={() => removeHpBonusEntry(index)}>
+                      Remover
+                    </button>
                   </>
                 ) : (
-                  <span>
+                  <span className={styles.bonusRead}>
                     <strong>{formatModifier(entry.value)}</strong> · {entry.source || 'Sem origem informada'}
                   </span>
                 )}
-              </div>
-            ))
+                </div>
+              ))}
+            </div>
           )}
 
           {isEditMode && (
-            <button onClick={addHpBonusEntry}>+ Ajuste de HP</button>
+            <button className={panelStyles.addButton} onClick={addHpBonusEntry}>+ Ajuste de HP</button>
           )}
         </div>
       )}
 
-      {/* ── Dados de vida ── */}
-      <div>
-        <span>Dados de vida: {totalHitDice(character)}</span>
-        <span>Gastos: </span>
-        <button
-          onClick={() =>
-            set('hitDiceSpent', Math.max(0, character.hitDiceSpent - 1))
-          }
-        >
-          −
-        </button>
-        <strong>{character.hitDiceSpent}</strong>
-        <button
-          onClick={() => {
-            const total = character.classes.reduce((s, c) => s + c.level, 0)
-            set('hitDiceSpent', Math.min(total, character.hitDiceSpent + 1))
-          }}
-        >
-          +
-        </button>
+      <div className={styles.trackRow}>
+        <div className={styles.trackInfo}>
+          <span className={styles.trackLabel}>Dados de vida</span>
+          <span className={styles.trackDetail}>{totalHitDice(character)}</span>
+        </div>
+        <div className={styles.counterRow}>
+          <span className={styles.trackDetail}>Gastos:</span>
+          <button
+            onClick={() =>
+              set('hitDiceSpent', Math.max(0, character.hitDiceSpent - 1))
+            }
+          >
+            −
+          </button>
+          <strong className={styles.counterValue}>{character.hitDiceSpent}</strong>
+          <button
+            onClick={() => {
+              const total = character.classes.reduce((s, c) => s + c.level, 0)
+              set('hitDiceSpent', Math.min(total, character.hitDiceSpent + 1))
+            }}
+          >
+            +
+          </button>
+        </div>
       </div>
 
-      {/* ── Death saves — só aparece quando desmaiado ── */}
       {(isDowned || isEditMode) && (
-        <div>
-          <h3>Testes de morte</h3>
+        <div className={panelStyles.section}>
+          <h3 className={panelStyles.sectionTitle}>Testes de morte</h3>
 
-          <div>
-            <span>Sucessos</span>
-            {[0, 1, 2].map((i) => (
-              <input
-                key={i}
-                type="checkbox"
-                checked={character.deathSaves.success > i}
-                onChange={(e) =>
-                  setDeathSave('success', e.target.checked ? i + 1 : i)
-                }
-              />
-            ))}
-          </div>
+          <div className={styles.deathGrid}>
+            <div className={styles.deathRow}>
+              <span className={styles.trackLabel}>Sucessos</span>
+              <div className={styles.deathChecks}>
+                {[0, 1, 2].map((i) => (
+                  <input
+                    key={i}
+                    type="checkbox"
+                    checked={character.deathSaves.success > i}
+                    onChange={(e) =>
+                      setDeathSave('success', e.target.checked ? i + 1 : i)
+                    }
+                  />
+                ))}
+              </div>
+            </div>
 
-          <div>
-            <span>Falhas</span>
-            {[0, 1, 2].map((i) => (
-              <input
-                key={i}
-                type="checkbox"
-                checked={character.deathSaves.failure > i}
-                onChange={(e) =>
-                  setDeathSave('failure', e.target.checked ? i + 1 : i)
-                }
-              />
-            ))}
+            <div className={styles.deathRow}>
+              <span className={styles.trackLabel}>Falhas</span>
+              <div className={styles.deathChecks}>
+                {[0, 1, 2].map((i) => (
+                  <input
+                    key={i}
+                    type="checkbox"
+                    checked={character.deathSaves.failure > i}
+                    onChange={(e) =>
+                      setDeathSave('failure', e.target.checked ? i + 1 : i)
+                    }
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* ── Inspiração heroica ── */}
-      <div>
-        <span>Inspiração heroica</span>
-        <button
-          onClick={() =>
-            set('heroicInspiration', Math.max(0, character.heroicInspiration - 1))
-          }
-        >
-          −
-        </button>
-        <strong>{character.heroicInspiration}</strong>
-        <button
-          onClick={() => set('heroicInspiration', character.heroicInspiration + 1)}
-        >
-          +
-        </button>
+      <div className={styles.trackRow}>
+        <div className={styles.trackInfo}>
+          <span className={styles.trackLabel}>Inspiração heroica</span>
+          <span className={styles.trackDetail}>Controle manual do total disponível.</span>
+        </div>
+        <div className={styles.counterRow}>
+          <button
+            onClick={() =>
+              set('heroicInspiration', Math.max(0, character.heroicInspiration - 1))
+            }
+          >
+            −
+          </button>
+          <strong className={styles.counterValue}>{character.heroicInspiration}</strong>
+          <button
+            onClick={() => set('heroicInspiration', character.heroicInspiration + 1)}
+          >
+            +
+          </button>
+        </div>
       </div>
     </section>
   )

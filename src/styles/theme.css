@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Crimson+Text:wght@400;600;700&display=swap');
+
+:root {
+  --font-display: 'Cinzel', 'Times New Roman', serif;
+  --font-body: 'Crimson Text', Georgia, serif;
+
+  --parchment-bg: #efe1bc;
+  --parchment-light: rgba(252, 245, 225, 0.94);
+  --parchment-dark: #dbc28e;
+  --parchment-shadow: rgba(111, 76, 45, 0.18);
+
+  --ink: #3f271c;
+  --ink-muted: #765744;
+  --ink-soft: #927560;
+
+  --accent: #7a1e1e;
+  --accent-light: #a44733;
+  --accent-soft: rgba(122, 30, 30, 0.12);
+
+  --border: rgba(104, 70, 41, 0.55);
+  --border-light: rgba(104, 70, 41, 0.22);
+  --border-dark: #6f482f;
+
+  --input-bg: rgba(255, 249, 236, 0.92);
+  --input-border: rgba(111, 76, 45, 0.4);
+
+  --shadow-soft: 0 14px 34px rgba(94, 63, 39, 0.16);
+  --shadow-card: 0 8px 18px rgba(94, 63, 39, 0.1);
+
+  --space-1: 0.35rem;
+  --space-2: 0.65rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2rem;
+  --space-6: 2.75rem;
+
+  --radius-sm: 10px;
+  --radius-md: 18px;
+  --radius-lg: 28px;
+
+  --text-xs: 0.82rem;
+  --text-sm: 1rem;
+  --text-base: 1.125rem;
+  --text-lg: 1.3rem;
+  --text-xl: 1.8rem;
+  --text-2xl: 2.6rem;
+  --text-3xl: 3.4rem;
+
+  --page-max: 1180px;
+  --transition: 180ms ease;
+}
+
+::selection {
+  background: rgba(164, 71, 51, 0.22);
+  color: var(--ink);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+main {
+  width: min(var(--page-max), calc(100% - 2rem));
+  margin: 0 auto;
+}
+
+fieldset {
+  border: 2px double var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: rgba(255, 249, 235, 0.42);
+}
+
+legend {
+  padding: 0 var(--space-2);
+  font-family: var(--font-display);
+  color: var(--ink-muted);
+}
+
+small {
+  color: var(--ink-muted);
+}
+
+textarea {
+  min-height: 7rem;
+  resize: vertical;
+}

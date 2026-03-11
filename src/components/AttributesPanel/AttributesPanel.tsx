@@ -5,7 +5,8 @@ import type {
   SavingThrowProficiency,
   SavingThrows,
 } from '../../types/system/dnd'
-import './AttributesPanel.css'
+import panelStyles from '../../styles/panel.module.css'
+import styles from './AttributesPanel.module.css'
 
 export function calcModifier(value: number): number {
   return Math.floor((value - 10) / 2)
@@ -81,15 +82,15 @@ export function AttributesPanel({
   }
 
   return (
-    <section className="attributes-panel">
-      <div className="attributes-panel__header">
-        <h2>Atributos</h2>
-        <p className="attributes-panel__summary">
+    <section className={panelStyles.panel}>
+      <div className={panelStyles.panelHeader}>
+        <h2 className={panelStyles.panelTitle}>Atributos</h2>
+        <p className={styles.summary}>
           Bônus de proficiência: {formatModifier(profBonus)}
         </p>
       </div>
 
-      <div className="attributes-panel__grid">
+      <div className={styles.grid}>
         {character.attributes.map((attribute, index) => {
           const modifier = calcModifier(attribute.value)
           const saveKey = ATTR_TO_SAVE[attribute.name]
@@ -98,17 +99,17 @@ export function AttributesPanel({
           const inputId = `attribute-${attribute.name}-${index}`
 
           return (
-            <article className="attributes-panel__card" key={attribute.name}>
-              <div className="attributes-panel__titleRow">
-                <strong className="attributes-panel__name">{attribute.name}</strong>
-                <span className="attributes-panel__modifier">
+            <article className={styles.card} key={attribute.name}>
+              <div className={styles.titleRow}>
+                <strong className={styles.name}>{attribute.name}</strong>
+                <span className={styles.modifier}>
                   Mod {formatModifier(modifier)}
                 </span>
               </div>
 
-              <div className="attributes-panel__valueBlock">
+              <div className={styles.valueBlock}>
                 {isEditMode ? (
-                  <label className="attributes-panel__field" htmlFor={inputId}>
+                  <label className={styles.field} htmlFor={inputId}>
                     Valor
                     <input
                       id={inputId}
@@ -122,23 +123,23 @@ export function AttributesPanel({
                     />
                   </label>
                 ) : (
-                  <span className="attributes-panel__value">{attribute.value}</span>
+                  <span className={styles.value}>{attribute.value}</span>
                 )}
               </div>
 
-              <div className="attributes-panel__saveBlock">
-                <span className="attributes-panel__saveLabel">Teste de resistência</span>
-                <div className="attributes-panel__saveRow">
+              <div className={styles.saveBlock}>
+                <span className={styles.saveLabel}>Teste de resistência</span>
+                <div className={styles.saveRow}>
                   <button
                     type="button"
-                    className="attributes-panel__profButton"
+                    className={styles.profButton}
                     title={isEditMode ? 'Clique para alternar proficiência' : undefined}
                     disabled={!isEditMode}
                     onClick={() => cycleSavingThrowProf(saveKey)}
                   >
                     {PROF_LABEL[profLevel]}
                   </button>
-                  <strong className="attributes-panel__saveTotal">
+                  <strong className={styles.saveTotal}>
                     {formatModifier(saveTotal)}
                   </strong>
                 </div>

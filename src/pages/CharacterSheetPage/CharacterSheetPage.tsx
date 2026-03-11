@@ -17,6 +17,7 @@ import { AttacksPanel } from '../../components/AttacksPanel/AttacksPanel'
 import { SpellsPanel } from '../../components/SpellsPanel/SpellsPanel'
 import { InventoryPanel } from '../../components/InventoryPanel/InventoryPanel'
 import { CharacterDetailsPanel } from '../../components/CharacterDetailsPanel/CharacterDetailsPanel'
+import styles from './CharacterSheetPage.module.css'
 
 type SheetWithSlots = CharacterSheet & {
   spellSlots?: Record<number, { current: number; max: number }>
@@ -46,106 +47,122 @@ export function CharacterSheetPage() {
 
   if (notFound) {
     return (
-      <main>
-        <Link to="/">← Voltar</Link>
-        <p>Ficha não encontrada.</p>
-        <button onClick={() => navigate('/')}>Ir para o início</button>
+      <main className={styles.page}>
+        <section className={styles.statusCard}>
+          <Link className={styles.backLink} to="/">← Voltar</Link>
+          <h1 className={styles.statusTitle}>Ficha não encontrada</h1>
+          <p className={styles.statusText}>O registro pedido não foi localizado no armazenamento local.</p>
+          <div className={styles.statusActions}>
+            <button onClick={() => navigate('/')}>Ir para o início</button>
+          </div>
+        </section>
       </main>
     )
   }
 
-  if (!sheet) return <p>Carregando…</p>
+  if (!sheet) {
+    return (
+      <main className={styles.page}>
+        <section className={styles.statusCard}>
+          <h1 className={styles.statusTitle}>Carregando ficha</h1>
+          <p className={styles.statusText}>Abrindo o tomo e restaurando os dados do personagem…</p>
+        </section>
+      </main>
+    )
+  }
 
   const spellSlots = sheet.spellSlots ?? {}
 
   return (
-    <main>
-      <Link to="/">← Voltar</Link>
+    <main className={styles.page}>
+      <Link className={styles.backLink} to="/">← Voltar</Link>
 
-      <CharacterHeader
-        character={sheet.character}
-        isEditMode={sheet.isEditMode}
-        onChangeCharacter={(updated) =>
-          handleUpdate({ ...sheet, character: updated })
-        }
-        onToggleEditMode={() =>
-          handleUpdate({ ...sheet, isEditMode: !sheet.isEditMode })
-        }
-      />
+      <div className={styles.stack}>
+        <CharacterHeader
+          character={sheet.character}
+          isEditMode={sheet.isEditMode}
+          onChangeCharacter={(updated) =>
+            handleUpdate({ ...sheet, character: updated })
+          }
+          onToggleEditMode={() =>
+            handleUpdate({ ...sheet, isEditMode: !sheet.isEditMode })
+          }
+        />
 
-      <AttributesPanel
-        character={sheet.character}
-        isEditMode={sheet.isEditMode}
-        onChangeCharacter={(updated) =>
-          handleUpdate({ ...sheet, character: updated })
-        }
-      />
+        <AttributesPanel
+          character={sheet.character}
+          isEditMode={sheet.isEditMode}
+          onChangeCharacter={(updated) =>
+            handleUpdate({ ...sheet, character: updated })
+          }
+        />
 
-      <SkillsPanel
-        character={sheet.character}
-        isEditMode={sheet.isEditMode}
-        onChangeCharacter={(updated) =>
-          handleUpdate({ ...sheet, character: updated })
-        }
-      />
+        <SkillsPanel
+          character={sheet.character}
+          isEditMode={sheet.isEditMode}
+          onChangeCharacter={(updated) =>
+            handleUpdate({ ...sheet, character: updated })
+          }
+        />
 
-      <CombatPanel
-        character={sheet.character}
-        isEditMode={sheet.isEditMode}
-        onChangeCharacter={(updated) =>
-          handleUpdate({ ...sheet, character: updated })
-        }
-      />
+        <CombatPanel
+          character={sheet.character}
+          isEditMode={sheet.isEditMode}
+          onChangeCharacter={(updated) =>
+            handleUpdate({ ...sheet, character: updated })
+          }
+        />
 
-      <ResourcesPanel
-        resources={sheet.resources}
-        isEditMode={sheet.isEditMode}
-        onChangeResources={(updated) =>
-          handleUpdate({ ...sheet, resources: updated })
-        }
-      />
+        <ResourcesPanel
+          resources={sheet.resources}
+          isEditMode={sheet.isEditMode}
+          onChangeResources={(updated) =>
+            handleUpdate({ ...sheet, resources: updated })
+          }
+        />
 
-      <AttacksPanel
-        attacks={sheet.attacks}
-        character={sheet.character}
-        isEditMode={sheet.isEditMode}
-        onChangeAttacks={(updated) =>
-          handleUpdate({ ...sheet, attacks: updated })
-        }
-      />
+        <AttacksPanel
+          attacks={sheet.attacks}
+          character={sheet.character}
+          isEditMode={sheet.isEditMode}
+          onChangeAttacks={(updated) =>
+            handleUpdate({ ...sheet, attacks: updated })
+          }
+        />
 
-      <SpellsPanel
-        spells={sheet.spells}
-        character={sheet.character}
-        isEditMode={sheet.isEditMode}
-        onChangeSpells={(updated) =>
-          handleUpdate({ ...sheet, spells: updated })
-        }
-        slotsData={spellSlots}
-        onChangeSlotsData={(updated) =>
-          handleUpdate({ ...sheet, spellSlots: updated })
-        }
-      />
+        <SpellsPanel
+          spells={sheet.spells}
+          character={sheet.character}
+          isEditMode={sheet.isEditMode}
+          onChangeSpells={(updated) =>
+            handleUpdate({ ...sheet, spells: updated })
+          }
+          slotsData={spellSlots}
+          onChangeSlotsData={(updated) =>
+            handleUpdate({ ...sheet, spellSlots: updated })
+          }
+        />
 
-      <InventoryPanel
-        inventory={sheet.inventory}
-        character={sheet.character}
-        isEditMode={sheet.isEditMode}
-        onChangeInventory={(updated) =>
-          handleUpdate({ ...sheet, inventory: updated })
-        }
-        onChangeCharacter={(updated) =>
-          handleUpdate({ ...sheet, character: updated })
-        }
-      />
+        <InventoryPanel
+          inventory={sheet.inventory}
+          character={sheet.character}
+          isEditMode={sheet.isEditMode}
+          onChangeInventory={(updated) =>
+            handleUpdate({ ...sheet, inventory: updated })
+          }
+          onChangeCharacter={(updated) =>
+            handleUpdate({ ...sheet, character: updated })
+          }
+        />
 
-      <CharacterDetailsPanel
-        character={sheet.character}
-        isEditMode={sheet.isEditMode}
-        onChangeCharacter={(updated) =>
-          handleUpdate({ ...sheet, character: updated })
-        }
-      />
+        <CharacterDetailsPanel
+          character={sheet.character}
+          isEditMode={sheet.isEditMode}
+          onChangeCharacter={(updated) =>
+            handleUpdate({ ...sheet, character: updated })
+          }
+        />
+      </div>
     </main>
   )
 }

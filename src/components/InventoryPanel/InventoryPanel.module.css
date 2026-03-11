@@ -1,0 +1,42 @@
+.currencyGrid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.currencyCard {
+  display: grid;
+  gap: 0.35rem;
+  padding: var(--space-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 250, 241, 0.72);
+}
+
+.currencyLabel {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+.currencyValue {
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+
+.weightSummary {
+  color: var(--ink-muted);
+}
+
+.quantityInput {
+  width: 4rem;
+}
+
+.weightInput {
+  width: 5rem;
+}
+
+.descriptionInput {
+  min-width: 10rem;
+}

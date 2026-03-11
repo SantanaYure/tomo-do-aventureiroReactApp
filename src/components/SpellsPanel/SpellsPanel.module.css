@@ -1,0 +1,92 @@
+.summary {
+  color: var(--ink-muted);
+}
+
+.levelBlock {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 250, 241, 0.7);
+}
+
+.levelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.levelToggle {
+  font-weight: 700;
+}
+
+.slotControls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.slotField {
+  max-width: 7rem;
+}
+
+.slotCount {
+  font-weight: 700;
+}
+
+.spellsList {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.spellItem {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 252, 245, 0.72);
+}
+
+.spellEditForm {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  align-items: end;
+}
+
+.spellName {
+  grid-column: span 2;
+}
+
+.spellDescription {
+  grid-column: 1 / -1;
+}
+
+.spellReadRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.spellMarker {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.spellMeta {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 720px) {
+  .spellName {
+    grid-column: span 1;
+  }
+}

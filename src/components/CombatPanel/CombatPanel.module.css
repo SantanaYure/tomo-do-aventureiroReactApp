@@ -1,0 +1,115 @@
+.summary {
+  color: var(--ink-muted);
+}
+
+.metricsGrid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.metricCard {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 250, 241, 0.72);
+}
+
+.metricLabel {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+.metricValue {
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+
+.metricField {
+  max-width: 10rem;
+}
+
+.metricMeta {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  color: var(--ink-muted);
+}
+
+.counterRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.counterValue {
+  min-width: 2.8rem;
+  text-align: center;
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.bonusList {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.bonusRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 250, 241, 0.6);
+}
+
+.bonusRead {
+  color: var(--ink-muted);
+}
+
+.trackRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 250, 241, 0.66);
+}
+
+.trackInfo {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.trackLabel {
+  font-weight: 700;
+}
+
+.trackDetail {
+  color: var(--ink-muted);
+}
+
+.deathGrid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.deathRow {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.deathChecks {
+  display: flex;
+  gap: var(--space-2);
+}

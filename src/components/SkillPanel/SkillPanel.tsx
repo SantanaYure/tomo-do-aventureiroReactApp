@@ -2,6 +2,8 @@
 // Lista as 18 perícias com valor calculado (mod do atributo + proficiência + misc)
 
 import type { AttributeName, Character, SkillName } from '../../types/system/dnd'
+import panelStyles from '../../styles/panel.module.css'
+import styles from './SkillPanel.module.css'
 import {
   calcModifier,
   calcProficiencyBonus,
@@ -123,44 +125,49 @@ export function SkillsPanel({
     10 + calcSkillTotal('perception') + character.passivePerceptionBonus
 
   return (
-    <section>
-      <h2>Perícias</h2>
-      <p>Percepção passiva: {passivePerception}</p>
+    <section className={panelStyles.panel}>
+      <div className={styles.summaryRow}>
+        <h2 className={panelStyles.panelTitle}>Perícias</h2>
+        <p className={styles.summary}>Percepção passiva: {passivePerception}</p>
+      </div>
 
-      <ul>
+      <ul className={styles.list}>
         {SKILL_ORDER.map((skill) => {
           const total = calcSkillTotal(skill)
           const { proficiency, misc } = character.skills[skill]
           const attrAbbr = SKILL_ATTR[skill].slice(0, 3).toUpperCase()
 
           return (
-            <li key={skill}>
-              <span>{formatModifier(total)}</span>
-              <span>{SKILL_LABEL[skill]}</span>
-              <span>({attrAbbr})</span>
+            <li className={styles.skillRow} key={skill}>
+              <span className={styles.total}>{formatModifier(total)}</span>
+              <div className={styles.skillInfo}>
+                <span className={styles.skillName}>{SKILL_LABEL[skill]}</span>
+                <span className={styles.skillAttribute}>({attrAbbr})</span>
+              </div>
 
               {isEditMode ? (
-                <>
-                  {/* Cicla entre 0 → 1 → 2 → 0 */}
+                <div className={styles.skillControls}>
                   <button
+                    className={styles.profButton}
                     title="Proficiência: clique para alternar"
                     onClick={() => setProficiency(skill, (proficiency + 1) % 3)}
                   >
                     {PROFICIENCY_LABEL[proficiency]}
                   </button>
 
-                  <label>
+                  <label className={styles.miscField}>
                     Misc
                     <input
                       type="number"
                       value={misc}
                       onChange={(e) => setMisc(skill, Number(e.target.value))}
-                      style={{ width: '3rem' }}
                     />
                   </label>
-                </>
+                </div>
               ) : (
-                <span title="Proficiência">{PROFICIENCY_LABEL[proficiency]}</span>
+                <div className={styles.skillControls}>
+                  <span className={panelStyles.badge} title="Proficiência">{PROFICIENCY_LABEL[proficiency]}</span>
+                </div>
               )}
             </li>
           )
@@ -168,7 +175,7 @@ export function SkillsPanel({
       </ul>
 
       {isEditMode && (
-        <label>
+        <label className={styles.passiveField}>
           Bônus extra à percepção passiva
           <input
             type="number"

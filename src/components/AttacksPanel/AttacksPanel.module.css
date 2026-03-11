@@ -1,0 +1,45 @@
+.subtitle {
+  color: var(--ink-muted);
+}
+
+.bonusEditor {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 10rem;
+}
+
+.autoRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.computedBonus {
+  font-size: var(--text-lg);
+}
+
+.proficiencyNote {
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+}
+
+.damageInput {
+  width: 7rem;
+}
+
+.damageTypeInput {
+  width: 8.5rem;
+}
+
+.rangeInput {
+  width: 6rem;
+}
+
+.notesInput {
+  min-width: 10rem;
+}
+
+.controlsCell {
+  white-space: nowrap;
+}
