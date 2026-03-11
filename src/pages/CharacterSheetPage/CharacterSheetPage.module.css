@@ -17,7 +17,7 @@
   margin-bottom: var(--space-4);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
   background: var(--parchment-light);
   transition: all var(--transition);
   text-decoration: none;
