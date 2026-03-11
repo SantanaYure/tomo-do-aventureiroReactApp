@@ -85,3 +85,13 @@
     justify-content: flex-start;
   }
 }
+
+@media (max-width: 480px) {
+  .identityGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .classRow {
+    grid-template-columns: 1fr;
+  }
+}

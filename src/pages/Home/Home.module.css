@@ -51,6 +51,7 @@
   gap: var(--space-3);
   width: 100%;
   max-width: 46rem;
+  min-width: 0;
   padding: 0;
   margin: var(--space-2) 0 0;
   list-style: none;
