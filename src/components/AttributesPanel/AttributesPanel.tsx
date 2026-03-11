@@ -58,6 +58,15 @@ const ATTRIBUTE_DISPLAY_ORDER: Attribute['name'][] = [
   'Carisma',
 ]
 
+const ATTRIBUTE_ABBREVIATION: Record<Attribute['name'], string> = {
+  Força: 'FOR',
+  Destreza: 'DES',
+  Constituição: 'CON',
+  Inteligência: 'INT',
+  Sabedoria: 'SAB',
+  Carisma: 'CAR',
+}
+
 interface AttributesPanelProps {
   character: Character
   isEditMode: boolean
@@ -123,22 +132,22 @@ export function AttributesPanel({
 
           return (
             <article className={styles.card} key={attribute.name}>
-              <div className={styles.titleRow}>
-                <strong className={styles.name}>{attribute.name}</strong>
-                <span className={styles.modifier}>
-                  Mod {formatModifier(modifier)}
-                </span>
-              </div>
+              <span className={styles.modifier}>Mod {formatModifier(modifier)}</span>
+
+              <strong className={styles.name} title={attribute.name}>
+                {ATTRIBUTE_ABBREVIATION[attribute.name]}
+              </strong>
 
               <div className={styles.valueBlock}>
                 {isEditMode ? (
                   <label className={styles.field} htmlFor={inputId}>
-                    Valor
                     <input
                       id={inputId}
                       type="number"
                       min={1}
                       max={30}
+                      aria-label={`Valor de ${attribute.name}`}
+                      className={styles.valueInput}
                       value={attribute.value}
                       onChange={(event) =>
                         setAttrValue(currentIndex, parseNumberInput(event.target.value, 1))
@@ -151,7 +160,7 @@ export function AttributesPanel({
               </div>
 
               <div className={styles.saveBlock}>
-                <span className={styles.saveLabel}>Teste de resistência</span>
+                <span className={styles.saveLabel}>TR</span>
                 <div className={styles.saveRow}>
                   <button
                     type="button"
