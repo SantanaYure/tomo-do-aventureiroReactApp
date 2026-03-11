@@ -169,7 +169,7 @@ export function ResourcesPanel({
 
                   <div className={styles.editGrid}>
                     <label className={styles.metaField}>
-                      Máx
+                      Usos
                       <input
                         type="number"
                         min={0}
