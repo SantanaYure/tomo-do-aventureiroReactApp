@@ -17,11 +17,12 @@
 .coinsGrid {
   display: grid;
   gap: var(--space-2);
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
 }
 
 .coinBlock {
   display: grid;
+  min-width: 0;
   gap: 0.35rem;
   padding: var(--space-3);
   border: 1px solid var(--border-light);
@@ -37,8 +38,11 @@
   color: var(--ink-soft);
 }
 
-.coinInput {
+.coinInput[type='number'] {
+  display: block;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   text-align: center;
 }
 
