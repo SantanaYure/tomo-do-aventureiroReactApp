@@ -1,11 +1,29 @@
 // src/components/CombatPanel/CombatPanel.tsx
 // CA, iniciativa, HP (máx/atual/temp), velocidade, dados de vida e death saves
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { Character, HpBonusEntry } from '../../types/system/dnd'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './CombatPanel.module.css'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
+
+const DAMAGE_TYPES = [
+  'Ácido',
+  'Concussão',
+  'Cortante',
+  'Fogo',
+  'Frio',
+  'Força',
+  'Fulgurante',
+  'Necrótico',
+  'Perfurante',
+  'Psíquico',
+  'Radiante',
+  'Trovão',
+  'Veneno',
+] as const
+
+type HpActionType = 'damage' | 'heal' | 'temp'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -96,6 +114,10 @@ function createHpBonusEntry(): HpBonusEntry {
   }
 }
 
+function normalizeNonNegativeInt(value: number): number {
+  return Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0
+}
+
 // ─── props ───────────────────────────────────────────────────────────────────
 
 interface CombatPanelProps {
@@ -111,6 +133,8 @@ export function CombatPanel({
   isEditMode,
   onChangeCharacter,
 }: CombatPanelProps) {
+  const [actionValue, setActionValue] = useState('')
+  const [damageType, setDamageType] = useState<(typeof DAMAGE_TYPES)[number]>('Concussão')
   const ac = calcAC(character)
   const initiative = calcInitiative(character)
   const profBonus = calcProficiencyBonus(character.classes)
@@ -131,9 +155,16 @@ export function CombatPanel({
     return Math.min(max, Math.max(min, value))
   }
 
-  // HP atual nunca ultrapassa hpMax + hpTemp
   function setHpCurrent(value: number) {
-    set('hpCurrent', clamp(value, 0, effectiveHpMax + character.hpTemp))
+    set('hpCurrent', clamp(value, 0, effectiveHpMax))
+  }
+
+  function setQuickHpCurrent(value: number) {
+    set('hpCurrent', clamp(value, 0, effectiveHpMax))
+  }
+
+  function setQuickHpTemp(value: number) {
+    set('hpTemp', normalizeNonNegativeInt(value))
   }
 
   function setDeathSave(field: 'success' | 'failure', value: number) {
@@ -166,19 +197,52 @@ export function CombatPanel({
     )
   }
 
+  function applyAction(type: HpActionType) {
+    const value = Math.trunc(Number(actionValue))
+
+    if (!Number.isFinite(value) || value <= 0) {
+      return
+    }
+
+    const currentHp = clamp(character.hpCurrent, 0, effectiveHpMax)
+    const currentTempHp = normalizeNonNegativeInt(character.hpTemp)
+    let nextCurrentHp = currentHp
+    let nextTempHp = currentTempHp
+
+    if (type === 'damage') {
+      const absorbed = Math.min(nextTempHp, value)
+      nextTempHp -= absorbed
+      nextCurrentHp = Math.max(0, nextCurrentHp - (value - absorbed))
+    }
+
+    if (type === 'heal') {
+      nextCurrentHp = Math.min(effectiveHpMax, nextCurrentHp + value)
+    }
+
+    if (type === 'temp') {
+      nextTempHp = value > currentTempHp ? value : currentTempHp
+    }
+
+    onChangeCharacter({
+      ...character,
+      hpCurrent: nextCurrentHp,
+      hpTemp: nextTempHp,
+    })
+
+    setActionValue('')
+  }
+
   useEffect(() => {
-    const clampedCurrentHp = clamp(
-      character.hpCurrent,
-      0,
-      effectiveHpMax + character.hpTemp,
-    )
+    const clampedCurrentHp = clamp(character.hpCurrent, 0, effectiveHpMax)
 
     if (clampedCurrentHp !== character.hpCurrent) {
       onChangeCharacter({ ...character, hpCurrent: clampedCurrentHp })
     }
   }, [character, effectiveHpMax, onChangeCharacter])
 
-  const displayedCurrentHp = clamp(character.hpCurrent, 0, effectiveHpMax + character.hpTemp)
+  const displayedCurrentHp = clamp(character.hpCurrent, 0, effectiveHpMax)
+  const quickCurrentHp = clamp(character.hpCurrent, 0, effectiveHpMax)
+  const quickTempHp = normalizeNonNegativeInt(character.hpTemp)
   const isDowned = displayedCurrentHp === 0
   const remainingHitDice = Math.max(0, totalHitDiceAvailable - character.hitDiceSpent)
 
@@ -299,114 +363,185 @@ export function CombatPanel({
           )}
         </div>
 
-        <div className={styles.hpRow}>
-          <div className={styles.hpBlock}>
-            <span className={styles.hpBlockLabel}>Máximo</span>
+        {isEditMode ? (
+          <div className={styles.hpRow}>
+            <div className={styles.hpBlock}>
+              <span className={styles.hpBlockLabel}>Máximo</span>
 
-            {isEditMode && !character.hpAutoCalc ? (
-              <input
-                className={`${panelStyles.compactInput} ${styles.hpInput}`}
-                type="number"
-                min={0}
-                value={character.hpMax}
-                onChange={(e) => set('hpMax', Number(e.target.value))}
-              />
-            ) : (
-              <strong className={styles.hpValue}>{effectiveHpMax}</strong>
-            )}
-
-            {character.hpAutoCalc ? (
-              <span className={styles.hpMaxAuto}>
-                Base: {naturalHpMax} · Extra: {formatModifier(extraHpTotal)}
-              </span>
-            ) : (
-              isEditMode && (
-                <span className={styles.hpMaxAuto}>Sugestão pelas regras: {suggestedHpMax}</span>
-              )
-            )}
-          </div>
-
-          <div className={styles.hpBlock}>
-            <span className={styles.hpBlockLabel}>Atual</span>
-
-            <div className={styles.stepper}>
-              <button
-                type="button"
-                className={styles.stepperButton}
-                aria-label="Reduzir HP atual"
-                onClick={() => setHpCurrent(displayedCurrentHp - 1)}
-              >
-                −
-              </button>
-
-              {isEditMode ? (
+              {isEditMode && !character.hpAutoCalc ? (
                 <input
                   className={`${panelStyles.compactInput} ${styles.hpInput}`}
                   type="number"
                   min={0}
-                  max={effectiveHpMax + character.hpTemp}
+                  value={character.hpMax}
+                  onChange={(e) => set('hpMax', Number(e.target.value))}
+                />
+              ) : (
+                <strong className={styles.hpValue}>{effectiveHpMax}</strong>
+              )}
+
+              {character.hpAutoCalc ? (
+                <span className={styles.hpMaxAuto}>
+                  Base: {naturalHpMax} · Extra: {formatModifier(extraHpTotal)}
+                </span>
+              ) : (
+                isEditMode && (
+                  <span className={styles.hpMaxAuto}>Sugestão pelas regras: {suggestedHpMax}</span>
+                )
+              )}
+            </div>
+
+            <div className={styles.hpBlock}>
+              <span className={styles.hpBlockLabel}>Atual</span>
+
+              <div className={styles.stepper}>
+                <button
+                  type="button"
+                  className={styles.stepperButton}
+                  aria-label="Reduzir HP atual"
+                  onClick={() => setHpCurrent(displayedCurrentHp - 1)}
+                >
+                  −
+                </button>
+
+                <input
+                  className={`${panelStyles.compactInput} ${styles.hpInput}`}
+                  type="number"
+                  min={0}
+                  max={effectiveHpMax}
                   value={displayedCurrentHp}
                   onChange={(e) => setHpCurrent(Number(e.target.value))}
                 />
-              ) : (
-                <strong className={`${styles.hpValue} ${styles.stepperValue}`}>
-                  {displayedCurrentHp}
-                </strong>
-              )}
 
-              <button
-                type="button"
-                className={styles.stepperButton}
-                aria-label="Aumentar HP atual"
-                onClick={() => setHpCurrent(displayedCurrentHp + 1)}
-              >
-                +
-              </button>
+                <button
+                  type="button"
+                  className={styles.stepperButton}
+                  aria-label="Aumentar HP atual"
+                  onClick={() => setHpCurrent(displayedCurrentHp + 1)}
+                >
+                  +
+                </button>
+              </div>
+
+              <span className={styles.hpMaxAuto}>Limite: {effectiveHpMax}</span>
             </div>
 
-            <span className={styles.hpMaxAuto}>Limite: {effectiveHpMax + character.hpTemp}</span>
-          </div>
+            <div className={styles.hpBlock}>
+              <span className={styles.hpBlockLabel}>Temporário</span>
 
-          <div className={styles.hpBlock}>
-            <span className={styles.hpBlockLabel}>Temporário</span>
+              <div className={styles.stepper}>
+                <button
+                  type="button"
+                  className={styles.stepperButton}
+                  aria-label="Reduzir HP temporário"
+                  onClick={() => set('hpTemp', Math.max(0, quickTempHp - 1))}
+                >
+                  −
+                </button>
 
-            <div className={styles.stepper}>
-              <button
-                type="button"
-                className={styles.stepperButton}
-                aria-label="Reduzir HP temporário"
-                onClick={() => set('hpTemp', Math.max(0, character.hpTemp - 1))}
-              >
-                −
-              </button>
-
-              {isEditMode ? (
                 <input
                   className={`${panelStyles.compactInput} ${styles.hpInput}`}
                   type="number"
                   min={0}
-                  value={character.hpTemp}
-                  onChange={(e) => set('hpTemp', Math.max(0, Number(e.target.value)))}
+                  value={quickTempHp}
+                  onChange={(e) => set('hpTemp', normalizeNonNegativeInt(Number(e.target.value)))}
                 />
-              ) : (
-                <strong className={`${styles.hpValue} ${styles.stepperValue}`}>
-                  {character.hpTemp}
-                </strong>
-              )}
 
-              <button
-                type="button"
-                className={styles.stepperButton}
-                aria-label="Aumentar HP temporário"
-                onClick={() => set('hpTemp', character.hpTemp + 1)}
-              >
-                +
-              </button>
+                <button
+                  type="button"
+                  className={styles.stepperButton}
+                  aria-label="Aumentar HP temporário"
+                  onClick={() => set('hpTemp', quickTempHp + 1)}
+                >
+                  +
+                </button>
+              </div>
+
+              <span className={styles.hpMaxAuto}>Absorve dano antes do HP atual</span>
+            </div>
+          </div>
+        ) : (
+          <div className={styles.hpManager}>
+            <div className={styles.hpDisplay}>
+              <span className={styles.hpBlockLabel}>HP Atual:</span>
+              <input
+                className={styles.hpCurrent}
+                type="number"
+                min={0}
+                max={effectiveHpMax}
+                value={quickCurrentHp}
+                onChange={(event) => setQuickHpCurrent(Number(event.target.value))}
+              />
+              <span className={styles.hpSeparator}>/</span>
+              <span className={styles.hpMax}>{effectiveHpMax}</span>
             </div>
 
-            <span className={styles.hpMaxAuto}>Absorve dano antes do HP atual</span>
+            <div className={styles.hpTemp}>
+              <span>Vida Temporária:</span>
+              <input
+                className={styles.hpTempInput}
+                type="number"
+                min={0}
+                value={quickTempHp}
+                onChange={(event) => setQuickHpTemp(Number(event.target.value))}
+              />
+            </div>
+
+            <div className={styles.actionForm}>
+              <div className={styles.actionInputRow}>
+                <input
+                  className={styles.actionValueInput}
+                  type="number"
+                  min={1}
+                  inputMode="numeric"
+                  placeholder="Valor"
+                  value={actionValue}
+                  onChange={(event) =>
+                    setActionValue(event.target.value.replace(/[^\d]/g, ''))
+                  }
+                />
+
+                <select
+                  className={styles.damageTypeSelect}
+                  value={damageType}
+                  onChange={(event) =>
+                    setDamageType(event.target.value as (typeof DAMAGE_TYPES)[number])
+                  }
+                >
+                  {DAMAGE_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.actionButtonRow}>
+                <button
+                  type="button"
+                  className={styles.btnDano}
+                  onClick={() => applyAction('damage')}
+                >
+                  Dano
+                </button>
+                <button
+                  type="button"
+                  className={styles.btnCura}
+                  onClick={() => applyAction('heal')}
+                >
+                  Cura
+                </button>
+                <button
+                  type="button"
+                  className={styles.btnTemp}
+                  onClick={() => applyAction('temp')}
+                >
+                  Temp
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
         {(isEditMode || character.hpBonusEntries.length > 0) && (
           <div className={styles.bonusSection}>

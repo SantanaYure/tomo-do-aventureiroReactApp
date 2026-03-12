@@ -163,6 +163,162 @@
   text-align: center;
 }
 
+.hpManager {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.hpDisplay {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.hpCurrent {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--ink);
+  width: 4ch;
+  text-align: center;
+  background: none;
+  border: none;
+  border-bottom: 2px solid var(--border-dark);
+  padding: 0 var(--space-1);
+  -moz-appearance: textfield;
+}
+
+.hpCurrent::-webkit-outer-spin-button,
+.hpCurrent::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+.hpSeparator {
+  font-size: var(--text-xl);
+  color: var(--ink-muted);
+}
+
+.hpMax {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  color: var(--ink-muted);
+}
+
+.hpTemp {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.hpTempInput {
+  width: 4ch;
+  text-align: center;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  -moz-appearance: textfield;
+}
+
+.hpTempInput::-webkit-outer-spin-button,
+.hpTempInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+.actionForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.actionInputRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.actionValueInput {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  background: rgba(255, 251, 241, 0.7);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  -moz-appearance: textfield;
+}
+
+.actionValueInput::-webkit-outer-spin-button,
+.actionValueInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+.damageTypeSelect {
+  flex: 1.5;
+  min-width: 0;
+  background: rgba(255, 251, 241, 0.7);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.actionButtonRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.btnDano {
+  flex: 1;
+  background: rgba(122, 30, 30, 0.12);
+  border-color: rgba(122, 30, 30, 0.4);
+  color: rgba(122, 30, 30, 0.9);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.btnCura {
+  flex: 1;
+  background: rgba(30, 90, 30, 0.1);
+  border-color: rgba(30, 90, 30, 0.35);
+  color: rgba(25, 80, 25, 0.9);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.btnTemp {
+  flex: 1;
+  background: rgba(30, 60, 122, 0.1);
+  border-color: rgba(30, 60, 122, 0.35);
+  color: rgba(25, 50, 110, 0.9);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
 .stepper {
   display: inline-flex;
   align-items: center;
@@ -379,6 +535,11 @@
 @media (max-width: 520px) {
   .statBox {
     min-width: 100%;
+  }
+
+  .actionInputRow,
+  .actionButtonRow {
+    flex-direction: column;
   }
 
   .stepper,
