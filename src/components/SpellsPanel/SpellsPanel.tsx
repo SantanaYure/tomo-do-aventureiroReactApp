@@ -1,6 +1,6 @@
 // src/components/SpellsPanel/SpellsPanel.tsx
 import { useState } from 'react'
-import type { AttributeName, Character, Spell, SpellcastingAbility } from '../../types/system/dnd'
+import type { Character, Spell, SpellcastingAbility } from '../../types/system/dnd'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './SpellsPanel.module.css'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
@@ -81,13 +81,35 @@ export function SpellsPanel({
   }
 
   function toggleLevel(level: number) {
-    setExpandedLevels((prev) => { const next = new Set(prev); next.has(level) ? next.delete(level) : next.add(level); return next })
+    setExpandedLevels((previous) => {
+      const next = new Set(previous)
+
+      if (next.has(level)) {
+        next.delete(level)
+      } else {
+        next.add(level)
+      }
+
+      return next
+    })
   }
+
   function setSpell(index: number, partial: Partial<Spell>) {
-    onChangeSpells(spells.map((s, i) => (i === index ? { ...s, ...partial } : s)))
+    onChangeSpells(
+      spells.map((spell, spellIndex) =>
+        spellIndex === index ? { ...spell, ...partial } : spell,
+      ),
+    )
   }
-  function addSpell(level: number) { onChangeSpells([...spells, { ...createSpell(), level }]) }
-  function removeSpell(index: number) { onChangeSpells(spells.filter((_, i) => i !== index)) }
+
+  function addSpell(level: number) {
+    onChangeSpells([...spells, { ...createSpell(), level }])
+  }
+
+  function removeSpell(index: number) {
+    onChangeSpells(spells.filter((_, spellIndex) => spellIndex !== index))
+  }
+
   function setSlot(level: number, field: 'current' | 'max', value: number) {
     const prev = slotsData[level] ?? { current: 0, max: 0 }
     const next = { ...prev, [field]: Math.max(0, value) }
@@ -166,7 +188,13 @@ export function SpellsPanel({
                 isEditMode ? (
                   <label onClick={(e) => e.stopPropagation()}>
                     Slots máx
-                    <input className={styles.slotInput} type="number" min={0} value={slots.max} onChange={(e) => setSlot(level, 'max', Number(e.target.value))} />
+                    <input
+                      className={styles.slotInput}
+                      type="number"
+                      min={0}
+                      value={slots.max}
+                      onChange={(e) => setSlot(level, 'max', Number(e.target.value))}
+                    />
                   </label>
                 ) : slots.max > 0 ? (
                   <div className={styles.slotCounter} onClick={(e) => e.stopPropagation()}>
@@ -191,13 +219,31 @@ export function SpellsPanel({
                       {isEditMode ? (
                         <>
                           <input className={styles.spellNameInput} type="text" value={spell.name ?? ''} placeholder="Nome da magia" onChange={(e) => setSpell(globalIndex, { name: e.target.value })} />
-                          <input type="text" value={spell.castingTime ?? ''} placeholder="Tempo" onChange={(e) => setSpell(globalIndex, { castingTime: e.target.value })} style={{ width: '7rem' }} />
+                          <input
+                            className={styles.castingTimeInput}
+                            type="text"
+                            value={spell.castingTime ?? ''}
+                            placeholder="Tempo"
+                            onChange={(e) => setSpell(globalIndex, { castingTime: e.target.value })}
+                          />
                           <select className={styles.spellSchoolSelect} value={spell.school ?? ''} onChange={(e) => setSpell(globalIndex, { school: e.target.value })}>
                             <option value="">— Escola —</option>
                             {SCHOOLS.map((s) => <option key={s} value={s}>{s}</option>)}
                           </select>
-                          <input type="text" value={spell.range ?? ''} placeholder="Alcance" onChange={(e) => setSpell(globalIndex, { range: e.target.value })} style={{ width: '5rem' }} />
-                          <input type="text" value={spell.duration ?? ''} placeholder="Duração" onChange={(e) => setSpell(globalIndex, { duration: e.target.value })} style={{ width: '6rem' }} />
+                          <input
+                            className={styles.rangeInput}
+                            type="text"
+                            value={spell.range ?? ''}
+                            placeholder="Alcance"
+                            onChange={(e) => setSpell(globalIndex, { range: e.target.value })}
+                          />
+                          <input
+                            className={styles.durationInput}
+                            type="text"
+                            value={spell.duration ?? ''}
+                            placeholder="Duração"
+                            onChange={(e) => setSpell(globalIndex, { duration: e.target.value })}
+                          />
                           <label>
                             Conc.
                             <input type="checkbox" checked={!!spell.concentration} onChange={(e) => setSpell(globalIndex, { concentration: e.target.checked })} />
@@ -209,9 +255,9 @@ export function SpellsPanel({
                         <>
                           <span className={styles.spellName}>{spell.name || '—'}</span>
                           {spell.school && <span className={styles.spellSchool}>{spell.school}</span>}
-                          <span style={{ color: 'var(--ink-faint)', fontSize: 'var(--text-xs)' }}>{spell.castingTime}</span>
-                          <span style={{ color: 'var(--ink-faint)', fontSize: 'var(--text-xs)' }}>{spell.range}</span>
-                          <span style={{ color: 'var(--ink-faint)', fontSize: 'var(--text-xs)' }}>{spell.duration}</span>
+                          <span className={styles.spellMetaText}>{spell.castingTime}</span>
+                          <span className={styles.spellMetaText}>{spell.range}</span>
+                          <span className={styles.spellMetaText}>{spell.duration}</span>
                           {spell.description && <p className={styles.spellDescriptionRead}>{spell.description}</p>}
                         </>
                       )}

@@ -3,6 +3,14 @@ import Cropper from 'react-easy-crop'
 import type { Area } from 'react-easy-crop'
 import styles from './AvatarCropper.module.css'
 
+const CROPPER_STYLE = {
+  containerStyle: { background: 'rgba(30, 20, 10, 0.9)' },
+  cropAreaStyle: {
+    border: '2px solid var(--accent)',
+    boxShadow: '0 0 0 9999px rgba(20, 12, 4, 0.72)',
+  },
+}
+
 interface AvatarCropperProps {
   currentImage?: string
   onSave: (base64: string) => void
@@ -132,7 +140,7 @@ export function AvatarCropper({
               ref={inputRef}
               type="file"
               accept="image/*"
-              style={{ display: 'none' }}
+              className={styles.hiddenInput}
               onChange={handleFileChange}
             />
           </div>
@@ -149,13 +157,7 @@ export function AvatarCropper({
                 onCropComplete={handleCropComplete}
                 cropShape="rect"
                 showGrid={false}
-                style={{
-                  containerStyle: { background: 'rgba(30, 20, 10, 0.9)' },
-                  cropAreaStyle: {
-                    border: '2px solid var(--accent)',
-                    boxShadow: '0 0 0 9999px rgba(20, 12, 4, 0.72)',
-                  },
-                }}
+                style={CROPPER_STYLE}
               />
             </div>
 

@@ -63,7 +63,7 @@ export function InventoryPanel({
   return (
     <section className={panelStyles.panel}>
       <h2 className={panelStyles.panelTitle}>Inventário</h2>
-      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--ink-faint)', marginBottom: 'var(--space-4)', textAlign: 'right', marginTop: '-var(--space-3)' }}>
+      <p className={styles.weightNote}>
         Peso total: {totalWeight(inventory).toFixed(1)} kg
       </p>
 

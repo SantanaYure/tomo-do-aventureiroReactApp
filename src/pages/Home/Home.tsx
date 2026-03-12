@@ -17,7 +17,7 @@ export function Home() {
 
   useEffect(() => { setSheets(listCharacterSheets()) }, [])
 
-  function handleDelete(id: string) {
+  function handleDeleteSheet(id: string) {
     if (!confirm('Excluir esta ficha permanentemente?')) return
     deleteCharacterSheet(id)
     setSheets((prev) => prev.filter((s) => s.id !== id))
@@ -35,7 +35,7 @@ export function Home() {
     return `tomo-personagem-${normalizedName || sheet.id}.json`
   }
 
-  function handleExport(sheet: StoredCharacterSheet) {
+  function handleExportSheet(sheet: StoredCharacterSheet) {
     const json = exportCharacterSheetAsJSON(sheet.id)
 
     if (!json) {
@@ -56,13 +56,13 @@ export function Home() {
     fileInputRef.current?.click()
   }
 
-  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
+  function handleImportFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
     if (!file) return
 
     const reader = new FileReader()
-    reader.onload = (event) => {
-      const json = event.target?.result as string
+    reader.onload = (loadEvent) => {
+      const json = loadEvent.target?.result as string
       const result = importCharacterSheetFromJSON(json)
       setImportFeedback(result)
       if (result.imported > 0) {
@@ -71,7 +71,7 @@ export function Home() {
     }
     reader.readAsText(file)
 
-    e.target.value = ''
+    event.target.value = ''
   }
 
   function feedbackMessage(result: ImportResult): string {
@@ -96,8 +96,8 @@ export function Home() {
           ref={fileInputRef}
           type="file"
           accept=".json,application/json"
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
+          className={styles.hiddenInput}
+          onChange={handleImportFileChange}
         />
       </div>
 
@@ -114,14 +114,14 @@ export function Home() {
                 <button
                   type="button"
                   className={styles.exportButton}
-                  onClick={() => handleExport(sheet)}
+                  onClick={() => handleExportSheet(sheet)}
                 >
                   ↓ Exportar JSON
                 </button>
                 <button
                   type="button"
                   className={styles.deleteButton}
-                  onClick={() => handleDelete(sheet.id)}
+                  onClick={() => handleDeleteSheet(sheet.id)}
                 >
                   Excluir
                 </button>

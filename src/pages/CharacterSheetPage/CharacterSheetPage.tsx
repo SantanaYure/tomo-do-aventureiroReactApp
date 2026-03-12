@@ -176,85 +176,109 @@ export function CharacterSheetPage() {
 
   const activePanelId = TAB_PANEL_IDS[activeTab]
 
-  const renderTabPanel = (tab: Tab) => {
+  function renderPrincipalTab() {
+    return (
+      <>
+        <AttributesPanel
+          character={sheet.character}
+          isEditMode={sheet.isEditMode}
+          onChangeCharacter={handleCharacterChange}
+        />
+        <SkillsPanel
+          character={sheet.character}
+          isEditMode={sheet.isEditMode}
+          onChangeCharacter={handleCharacterChange}
+        />
+      </>
+    )
+  }
+
+  function renderCombatTab() {
+    return (
+      <>
+        <CombatPanel
+          character={sheet.character}
+          isEditMode={sheet.isEditMode}
+          onChangeCharacter={handleCharacterChange}
+        />
+        <AttacksPanel
+          attacks={sheet.attacks}
+          character={sheet.character}
+          isEditMode={sheet.isEditMode}
+          onChangeAttacks={(updated) =>
+            handleUpdate({ ...sheet, attacks: updated })
+          }
+        />
+      </>
+    )
+  }
+
+  function renderSpellsTab() {
+    return (
+      <SpellsPanel
+        spells={sheet.spells}
+        character={sheet.character}
+        isEditMode={sheet.isEditMode}
+        onChangeCharacter={handleCharacterChange}
+        onChangeSpells={(updated) => handleUpdate({ ...sheet, spells: updated })}
+        slotsData={spellSlots}
+        onChangeSlotsData={(updated) =>
+          handleUpdate({ ...sheet, spellSlots: updated })
+        }
+      />
+    )
+  }
+
+  function renderResourcesTab() {
+    return (
+      <ResourcesPanel
+        resources={sheet.resources}
+        isEditMode={sheet.isEditMode}
+        onChangeResources={(updated) =>
+          handleUpdate({ ...sheet, resources: updated })
+        }
+      />
+    )
+  }
+
+  function renderInventoryTab() {
+    return (
+      <InventoryPanel
+        inventory={sheet.inventory}
+        character={sheet.character}
+        isEditMode={sheet.isEditMode}
+        onChangeInventory={(updated) =>
+          handleUpdate({ ...sheet, inventory: updated })
+        }
+        onChangeCharacter={handleCharacterChange}
+      />
+    )
+  }
+
+  function renderDetailsTab() {
+    return (
+      <CharacterDetailsPanel
+        character={sheet.character}
+        isEditMode={sheet.isEditMode}
+        onChangeCharacter={handleCharacterChange}
+      />
+    )
+  }
+
+  function renderActiveTab(tab: Tab) {
     switch (tab) {
       case 'Principal':
-        return (
-          <>
-            <AttributesPanel
-              character={sheet.character}
-              isEditMode={sheet.isEditMode}
-              onChangeCharacter={handleCharacterChange}
-            />
-            <SkillsPanel
-              character={sheet.character}
-              isEditMode={sheet.isEditMode}
-              onChangeCharacter={handleCharacterChange}
-            />
-          </>
-        )
+        return renderPrincipalTab()
       case 'Combate':
-        return (
-          <>
-            <CombatPanel
-              character={sheet.character}
-              isEditMode={sheet.isEditMode}
-              onChangeCharacter={handleCharacterChange}
-            />
-            <AttacksPanel
-              attacks={sheet.attacks}
-              character={sheet.character}
-              isEditMode={sheet.isEditMode}
-              onChangeAttacks={(updated) =>
-                handleUpdate({ ...sheet, attacks: updated })
-              }
-            />
-          </>
-        )
+        return renderCombatTab()
       case 'Magias':
-        return (
-          <SpellsPanel
-            spells={sheet.spells}
-            character={sheet.character}
-            isEditMode={sheet.isEditMode}
-            onChangeCharacter={handleCharacterChange}
-            onChangeSpells={(updated) => handleUpdate({ ...sheet, spells: updated })}
-            slotsData={spellSlots}
-            onChangeSlotsData={(updated) =>
-              handleUpdate({ ...sheet, spellSlots: updated })
-            }
-          />
-        )
+        return renderSpellsTab()
       case 'Habilidades':
-        return (
-          <ResourcesPanel
-            resources={sheet.resources}
-            isEditMode={sheet.isEditMode}
-            onChangeResources={(updated) =>
-              handleUpdate({ ...sheet, resources: updated })
-            }
-          />
-        )
+        return renderResourcesTab()
       case 'Inventário':
-        return (
-          <InventoryPanel
-            inventory={sheet.inventory}
-            character={sheet.character}
-            isEditMode={sheet.isEditMode}
-            onChangeInventory={(updated) =>
-              handleUpdate({ ...sheet, inventory: updated })
-            }
-            onChangeCharacter={handleCharacterChange}
-          />
-        )
+        return renderInventoryTab()
       case 'Detalhes':
-        return (
-          <CharacterDetailsPanel
-            character={sheet.character}
-            isEditMode={sheet.isEditMode}
-            onChangeCharacter={handleCharacterChange}
-          />
-        )
+        return renderDetailsTab()
       default:
         return null
     }
@@ -302,7 +326,7 @@ export function CharacterSheetPage() {
         aria-labelledby={TAB_BUTTON_IDS[activeTab]}
         className={styles.tabContent}
       >
-        {renderTabPanel(activeTab)}
+        {renderActiveTab(activeTab)}
       </div>
       <div className={styles.editToggleSlot}>
         <div

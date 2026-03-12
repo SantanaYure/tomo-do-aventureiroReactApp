@@ -1,4 +1,4 @@
-import { useNavigate, Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { createCharacterSheet } from '../../store/characterSheetStore'
 import styles from './NewCharacterPage.module.css'
 
@@ -16,7 +16,7 @@ export function NewCharacterPage() {
       <p className={styles.subtitle}>Crie um novo aventureiro</p>
 
       <div className={styles.card}>
-        <p style={{ color: 'var(--ink-muted)', marginBottom: 'var(--space-6)', fontSize: 'var(--text-base)' }}>
+        <p className={styles.description}>
           Uma ficha em branco será criada. Você poderá preencher todos os dados dentro da ficha.
         </p>
         <button className={styles.submitBtn} onClick={handleCreate}>

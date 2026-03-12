@@ -1,3 +1,11 @@
+.weightNote {
+  margin-top: calc(var(--space-3) * -1);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-xs);
+  text-align: right;
+  color: var(--ink-faint);
+}
+
 /* ── Coins ── */
 
 .coinsSection {

@@ -105,6 +105,10 @@
   flex-wrap: wrap;
 }
 
+.hiddenInput {
+  display: none;
+}
+
 .secondaryButton {
   padding: var(--space-2) var(--space-4);
   background: transparent;

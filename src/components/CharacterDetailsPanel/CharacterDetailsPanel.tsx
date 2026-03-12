@@ -5,36 +5,97 @@ import panelStyles from '../../styles/panel.module.css'
 import styles from './CharacterDetailsPanel.module.css'
 
 const RARITIES: (ItemRarity | '')[] = ['', 'Comum', 'Incomum', 'Raro', 'Muito Raro', 'Lendário', 'Artefato']
+const TEXTAREA_FIELDS = [
+  {
+    key: 'appearance',
+    label: 'Aparência',
+    placeholder: 'Descreva a aparência do personagem…',
+  },
+  {
+    key: 'backstory',
+    label: 'História do Personagem',
+    placeholder: 'Backstory e eventos marcantes da jornada…',
+  },
+  {
+    key: 'traits',
+    label: 'Traços',
+    placeholder: 'Maneirismos, traços de personalidade e comportamento…',
+  },
+  {
+    key: 'ideals',
+    label: 'Ideais',
+    placeholder: 'Princípios, crenças e convicções do personagem…',
+  },
+  {
+    key: 'bonds',
+    label: 'Vínculos',
+    placeholder: 'Pessoas, lugares, juramentos e laços importantes…',
+  },
+  {
+    key: 'flaws',
+    label: 'Fraquezas',
+    placeholder: 'Medos, defeitos e vulnerabilidades…',
+  },
+] as const
+
+type CharacterTextareaField = (typeof TEXTAREA_FIELDS)[number]['key']
+
+interface StringListEditorProps {
+  label: string
+  values: string[]
+  placeholder: string
+  onChange: (updated: string[]) => void
+}
 
 function createAttunementItem(): AttunementItem {
   return { name: '', rarity: '', requiresAttunement: true, description: '' }
 }
 
-function StringListEditor({ label, values, placeholder, onChange }: {
-  label: string; values: string[]; placeholder: string; onChange: (updated: string[]) => void
-}) {
+function StringListEditor({
+  label,
+  values,
+  placeholder,
+  onChange,
+}: StringListEditorProps) {
   return (
     <div className={styles.section}>
       <div className={styles.sectionTitle}>{label}</div>
       <div className={styles.tagList}>
-        {values.map((v, i) => (
-          <span key={i} className={styles.tag}>
-            {v}
-            <button className={styles.tagRemove} onClick={() => onChange(values.filter((_, j) => j !== i))}>✕</button>
+        {values.map((value, index) => (
+          <span key={index} className={styles.tag}>
+            {value}
+            <button
+              className={styles.tagRemove}
+              onClick={() => onChange(values.filter((_, currentIndex) => currentIndex !== index))}
+            >
+              ✕
+            </button>
           </span>
         ))}
       </div>
       <div className={styles.addRow}>
-        <input type="text" placeholder={placeholder} onKeyDown={(e) => {
-          if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-            onChange([...values, e.currentTarget.value.trim()])
-            e.currentTarget.value = ''
-          }
-        }} />
-        <button onClick={(e) => {
-          const input = (e.currentTarget.previousSibling as HTMLInputElement)
-          if (input.value.trim()) { onChange([...values, input.value.trim()]); input.value = '' }
-        }}>+</button>
+        <input
+          type="text"
+          placeholder={placeholder}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && event.currentTarget.value.trim()) {
+              onChange([...values, event.currentTarget.value.trim()])
+              event.currentTarget.value = ''
+            }
+          }}
+        />
+        <button
+          onClick={(event) => {
+            const input = event.currentTarget.previousSibling as HTMLInputElement
+
+            if (input.value.trim()) {
+              onChange([...values, input.value.trim()])
+              input.value = ''
+            }
+          }}
+        >
+          +
+        </button>
       </div>
     </div>
   )
@@ -67,6 +128,10 @@ export function CharacterDetailsPanel({ character, isEditMode, onChangeCharacter
     onChangeCharacter({ ...character, [key]: value })
   }
 
+  function setTextareaField(key: CharacterTextareaField, value: string) {
+    set(key, value)
+  }
+
   const attunementItems = character.attunementItems ?? []
 
   function setAttunementItem(index: number, partial: Partial<AttunementItem>) {
@@ -75,20 +140,11 @@ export function CharacterDetailsPanel({ character, isEditMode, onChangeCharacter
   function addAttunementItem() { set('attunementItems', [...attunementItems, createAttunementItem()]) }
   function removeAttunementItem(index: number) { set('attunementItems', attunementItems.filter((_, i) => i !== index)) }
 
-  const textareaFields: { key: keyof Character; label: string; placeholder: string }[] = [
-    { key: 'appearance',           label: 'Aparência',               placeholder: 'Descreva a aparência do personagem…' },
-    { key: 'backstory',            label: 'História do Personagem',  placeholder: 'Backstory e eventos marcantes da jornada…' },
-    { key: 'traits',               label: 'Traços',                  placeholder: 'Maneirismos, traços de personalidade e comportamento…' },
-    { key: 'ideals',               label: 'Ideais',                  placeholder: 'Princípios, crenças e convicções do personagem…' },
-    { key: 'bonds',                label: 'Vínculos',                placeholder: 'Pessoas, lugares, juramentos e laços importantes…' },
-    { key: 'flaws',                label: 'Fraquezas',               placeholder: 'Medos, defeitos e vulnerabilidades…' },
-  ]
-
   return (
     <section className={panelStyles.panel}>
       <h2 className={panelStyles.panelTitle}>Detalhes do Personagem</h2>
 
-      {textareaFields.map(({ key, label, placeholder }) => {
+      {TEXTAREA_FIELDS.map(({ key, label, placeholder }) => {
         const sectionId = String(key)
         const isCollapsed = !isEditMode && collapsedIds.has(sectionId)
 
@@ -111,7 +167,13 @@ export function CharacterDetailsPanel({ character, isEditMode, onChangeCharacter
             {!isCollapsed && (
               <div className={styles.featureBody}>
                 {isEditMode ? (
-                  <textarea value={String(character[key] ?? '')} placeholder={placeholder} rows={4} onChange={(e) => set(key, e.target.value as any)} style={{ width: '100%' }} />
+                  <textarea
+                    className={styles.textareaInput}
+                    value={String(character[key] ?? '')}
+                    placeholder={placeholder}
+                    rows={4}
+                    onChange={(event) => setTextareaField(key, event.target.value)}
+                  />
                 ) : (
                   <div className={`${styles.textareaView} ${!character[key] ? styles.emptyText : ''}`}>
                     {String(character[key] || '—')}
@@ -161,25 +223,54 @@ export function CharacterDetailsPanel({ character, isEditMode, onChangeCharacter
         )}
 
         <div className={styles.attunementList}>
-          {attunementItems.map((item, i) => (
-            <div key={i} className={styles.attunementCard}>
+          {attunementItems.map((item, index) => (
+            <div key={index} className={styles.attunementCard}>
               {isEditMode ? (
                 <>
                   <div className={styles.attunementCardHeader}>
-                    <input type="text" value={item.name} placeholder="Nome do item" onChange={(e) => setAttunementItem(i, { name: e.target.value })} style={{ flex: 1 }} />
-                    <button className={panelStyles.removeButton} onClick={() => removeAttunementItem(i)}>✕</button>
+                    <input
+                      className={styles.attunementNameInput}
+                      type="text"
+                      value={item.name}
+                      placeholder="Nome do item"
+                      onChange={(event) => setAttunementItem(index, { name: event.target.value })}
+                    />
+                    <button className={panelStyles.removeButton} onClick={() => removeAttunementItem(index)}>✕</button>
                   </div>
                   <div className={styles.attunementMeta}>
-                    <select className={styles.raritySelect} value={item.rarity} onChange={(e) => setAttunementItem(i, { rarity: e.target.value as ItemRarity | '' })}>
-                      {RARITIES.map((r) => <option key={r} value={r}>{r || '— Raridade —'}</option>)}
+                    <select
+                      className={styles.raritySelect}
+                      value={item.rarity}
+                      onChange={(event) =>
+                        setAttunementItem(index, { rarity: event.target.value as ItemRarity | '' })
+                      }
+                    >
+                      {RARITIES.map((rarity) => (
+                        <option key={rarity} value={rarity}>
+                          {rarity || '— Raridade —'}
+                        </option>
+                      ))}
                     </select>
                     <label className={styles.attunementCheck}>
-                      <input type="checkbox" checked={item.requiresAttunement} onChange={(e) => setAttunementItem(i, { requiresAttunement: e.target.checked })} />
+                      <input
+                        type="checkbox"
+                        checked={item.requiresAttunement}
+                        onChange={(event) =>
+                          setAttunementItem(index, { requiresAttunement: event.target.checked })
+                        }
+                      />
                       Requer sintonia
                     </label>
                   </div>
-                  <textarea value={item.description} placeholder="Descrição do item e seus efeitos…" rows={3}
-                    onChange={(e) => setAttunementItem(i, { description: e.target.value })} style={{ width: '100%' }} />
+                  <textarea
+                    className={styles.attunementDescriptionInput}
+                    value={item.description}
+                    placeholder="Descrição do item e seus efeitos…"
+                    rows={3}
+                    onChange={(event) =>
+                      setAttunementItem(index, { description: event.target.value })
+                    }
+                  />
                 </>
               ) : (
                 <>

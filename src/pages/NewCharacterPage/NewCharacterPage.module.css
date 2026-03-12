@@ -28,6 +28,12 @@
   box-shadow: var(--shadow-soft);
 }
 
+.description {
+  margin-bottom: var(--space-6);
+  font-size: var(--text-base);
+  color: var(--ink-muted);
+}
+
 .submitBtn {
   min-width: 14rem;
   padding-inline: var(--space-5);
