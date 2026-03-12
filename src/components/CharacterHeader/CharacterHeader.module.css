@@ -2,10 +2,15 @@
   gap: var(--space-4);
 }
 
-
-
 .editLayout {
   display: grid;
+  gap: var(--space-4);
+}
+
+.identityRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
   gap: var(--space-4);
 }
 
@@ -17,6 +22,44 @@
 
 .field {
   gap: var(--space-2);
+}
+
+.avatarButton {
+  padding: 0;
+  background: none;
+  border: 2px double var(--border-dark);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  overflow: hidden;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+}
+
+.avatar {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  display: block;
+  border: 2px double var(--border-dark);
+  border-radius: var(--radius-sm);
+}
+
+.avatarPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  font-family: var(--font-display);
+  background: rgba(255, 250, 241, 0.82);
+}
+
+.avatarButton .avatar {
+  border: none;
+  border-radius: 0;
 }
 
 .classFieldset {
@@ -45,6 +88,13 @@
   justify-content: flex-end;
 }
 
+.viewLayout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+}
+
 .view {
   display: grid;
   gap: var(--space-2);
@@ -68,6 +118,16 @@
 }
 
 @media (max-width: 820px) {
+  .identityRow,
+  .viewLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .avatarButton,
+  .avatar {
+    justify-self: start;
+  }
+
   .classRow {
     grid-template-columns: 1fr 1fr;
   }
@@ -81,6 +141,15 @@
 @media (max-width: 480px) {
   .identityGrid {
     grid-template-columns: 1fr;
+  }
+
+  .avatarButton,
+  .avatar {
+    justify-self: center;
+  }
+
+  .view {
+    text-align: center;
   }
 
   .classRow {

@@ -278,6 +278,10 @@ function normalizeCharacter(character: Character | LegacyCharacter | undefined):
   return {
     ...defaultCharacter,
     ...characterData,
+    avatar:
+      typeof characterData.avatar === 'string'
+        ? characterData.avatar
+        : defaultCharacter.avatar,
     backstory:
       typeof characterData.backstory === 'string'
         ? characterData.backstory

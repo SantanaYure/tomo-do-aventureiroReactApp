@@ -18,6 +18,7 @@ export interface HpBonusEntry {
 
 export interface Character {
   name: string
+  avatar?: string
   race: string
   background: string
   alignment: string

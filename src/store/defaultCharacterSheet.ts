@@ -27,6 +27,7 @@ export function createDefaultCharacterSheet(): CharacterSheet {
   return {
     character: {
       name: '',
+      avatar: '',
       race: '',
       background: '',
       alignment: '',
