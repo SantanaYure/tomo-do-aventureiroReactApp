@@ -61,9 +61,6 @@ export function CharacterDetailsPanel({ character, isEditMode, onChangeCharacter
   const textareaFields: { key: keyof Character; label: string; placeholder: string }[] = [
     { key: 'appearance',           label: 'Aparência',               placeholder: 'Descreva a aparência do personagem…' },
     { key: 'backstoryPersonality', label: 'História e Personalidade', placeholder: 'Backstory, traços, ideais, vínculos, defeitos…' },
-    { key: 'speciesTraits',        label: 'Traços de Espécie',        placeholder: 'Habilidades raciais e traços especiais…' },
-    { key: 'feats',                label: 'Talentos (Feats)',         placeholder: 'Liste os talentos e seus efeitos…' },
-    { key: 'classFeatures',        label: 'Habilidades de Classe',   placeholder: 'Habilidades de classe e subclasse…' },
   ]
 
   return (

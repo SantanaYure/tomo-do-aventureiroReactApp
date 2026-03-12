@@ -34,9 +34,6 @@ export function createDefaultCharacterSheet(): CharacterSheet {
       xp: 0,
       appearance: '',
       backstoryPersonality: '',
-      speciesTraits: '',
-      feats: '',
-      classFeatures: '',
       languages: [],
       armorTraining: {
         light: false,

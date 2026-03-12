@@ -146,7 +146,7 @@ export function ResourcesPanel({
 
   return (
     <section className={panelStyles.panel}>
-      <h2 className={panelStyles.panelTitle}>Recursos</h2>
+      <h2 className={panelStyles.panelTitle}>Habilidades e Traços</h2>
 
       <div className={styles.restRow}>
         <button

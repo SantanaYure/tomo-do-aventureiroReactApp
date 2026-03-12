@@ -30,6 +30,9 @@ type CharacterSheetStoreMap = Record<string, StoredCharacterSheet>
 
 type LegacyCharacter = Character & {
   attunements?: string[]
+  speciesTraits?: string
+  feats?: string
+  classFeatures?: string
 }
 
 let inMemoryStore: CharacterSheetStoreMap = {}
@@ -226,18 +229,23 @@ function normalizeResource(resource: Resource | undefined): Resource {
 
 function normalizeCharacter(character: Character | LegacyCharacter | undefined): Character {
   const defaultCharacter = createDefaultCharacterSheet().character
-  const nextCharacter = (character ?? defaultCharacter) as Character & {
-    attunements?: string[]
-  }
-  const legacyAttunements = Array.isArray(nextCharacter.attunements)
-    ? nextCharacter.attunements.filter(
+  const nextCharacter = (character ?? defaultCharacter) as LegacyCharacter
+  const {
+    attunements,
+    speciesTraits: _speciesTraits,
+    feats: _feats,
+    classFeatures: _classFeatures,
+    ...characterData
+  } = nextCharacter
+  const legacyAttunements = Array.isArray(attunements)
+    ? attunements.filter(
         (item: unknown): item is string =>
           typeof item === 'string' && item.trim().length > 0,
       )
     : []
 
-  const attunementItems = Array.isArray(nextCharacter.attunementItems)
-    ? nextCharacter.attunementItems.map((item) => ({
+  const attunementItems = Array.isArray(characterData.attunementItems)
+    ? characterData.attunementItems.map((item) => ({
         ...createDefaultAttunementItem(),
         ...item,
         name: typeof item.name === 'string' ? item.name : '',
@@ -246,8 +254,8 @@ function normalizeCharacter(character: Character | LegacyCharacter | undefined):
         description: typeof item.description === 'string' ? item.description : '',
       }))
     : legacyAttunements.map((itemName: string) => createDefaultAttunementItem(itemName))
-  const rawWeaponProficiencies = Array.isArray(nextCharacter.weaponProficiencies)
-    ? nextCharacter.weaponProficiencies.filter(
+  const rawWeaponProficiencies = Array.isArray(characterData.weaponProficiencies)
+    ? characterData.weaponProficiencies.filter(
         (item): item is string => typeof item === 'string',
       )
     : []
@@ -255,8 +263,8 @@ function normalizeCharacter(character: Character | LegacyCharacter | undefined):
     getSelectedWeaponCategories(rawWeaponProficiencies),
     getCustomWeaponProficiencies(rawWeaponProficiencies),
   )
-  const normalizedWeaponMasteries = Array.isArray(nextCharacter.weaponMasteries)
-    ? nextCharacter.weaponMasteries.reduce<string[]>((acc, item) => {
+  const normalizedWeaponMasteries = Array.isArray(characterData.weaponMasteries)
+    ? characterData.weaponMasteries.reduce<string[]>((acc, item) => {
         if (typeof item !== 'string') {
           return acc
         }
@@ -267,33 +275,33 @@ function normalizeCharacter(character: Character | LegacyCharacter | undefined):
 
   return {
     ...defaultCharacter,
-    ...nextCharacter,
+    ...characterData,
     armorTraining: {
       ...defaultCharacter.armorTraining,
-      ...(nextCharacter.armorTraining ?? {}),
+      ...(characterData.armorTraining ?? {}),
     },
     weaponProficiencies: normalizedWeaponProficiencies,
     weaponMasteries: normalizedWeaponMasteries,
-    toolProficiencies: Array.isArray(nextCharacter.toolProficiencies)
-      ? nextCharacter.toolProficiencies.filter(
+    toolProficiencies: Array.isArray(characterData.toolProficiencies)
+      ? characterData.toolProficiencies.filter(
           (item): item is string => typeof item === 'string',
         )
       : [],
-    languages: Array.isArray(nextCharacter.languages)
-      ? nextCharacter.languages.filter((item): item is string => typeof item === 'string')
+    languages: Array.isArray(characterData.languages)
+      ? characterData.languages.filter((item): item is string => typeof item === 'string')
       : [],
     attunementItems,
     currency: {
       ...defaultCharacter.currency,
-      ...(nextCharacter.currency ?? {}),
+      ...(characterData.currency ?? {}),
     },
     deathSaves: {
       ...defaultCharacter.deathSaves,
-      ...(nextCharacter.deathSaves ?? {}),
+      ...(characterData.deathSaves ?? {}),
     },
     classes:
-      Array.isArray(nextCharacter.classes) && nextCharacter.classes.length > 0
-        ? nextCharacter.classes.map((currentClass, index) => ({
+      Array.isArray(characterData.classes) && characterData.classes.length > 0
+        ? characterData.classes.map((currentClass, index) => ({
             ...defaultCharacter.classes[0],
             ...currentClass,
             id:
@@ -314,11 +322,11 @@ function normalizeCharacter(character: Character | LegacyCharacter | undefined):
           }))
         : defaultCharacter.classes,
     hpAutoCalc:
-      typeof nextCharacter.hpAutoCalc === 'boolean'
-        ? nextCharacter.hpAutoCalc
+      typeof characterData.hpAutoCalc === 'boolean'
+        ? characterData.hpAutoCalc
         : defaultCharacter.hpAutoCalc,
-    hpBonusEntries: Array.isArray(nextCharacter.hpBonusEntries)
-      ? nextCharacter.hpBonusEntries.map((entry) => ({
+    hpBonusEntries: Array.isArray(characterData.hpBonusEntries)
+      ? characterData.hpBonusEntries.map((entry) => ({
           value:
             typeof entry.value === 'number' && Number.isFinite(entry.value)
               ? entry.value
@@ -328,12 +336,12 @@ function normalizeCharacter(character: Character | LegacyCharacter | undefined):
       : defaultCharacter.hpBonusEntries,
     savingThrows: {
       ...defaultCharacter.savingThrows,
-      ...(nextCharacter.savingThrows ?? {}),
+      ...(characterData.savingThrows ?? {}),
     },
-    skills: nextCharacter.skills ?? defaultCharacter.skills,
+    skills: characterData.skills ?? defaultCharacter.skills,
     attributes:
-      Array.isArray(nextCharacter.attributes) && nextCharacter.attributes.length > 0
-        ? nextCharacter.attributes.map((attribute, index) => ({
+      Array.isArray(characterData.attributes) && characterData.attributes.length > 0
+        ? characterData.attributes.map((attribute, index) => ({
             ...(defaultCharacter.attributes[index] ?? defaultCharacter.attributes[0]),
             ...attribute,
           }))

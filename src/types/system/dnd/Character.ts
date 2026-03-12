@@ -25,9 +25,6 @@ export interface Character {
   xp: number
   appearance: string
   backstoryPersonality: string
-  speciesTraits: string
-  feats: string
-  classFeatures: string
   languages: string[]
   armorTraining: ArmorTraining
   weaponProficiencies: string[]
