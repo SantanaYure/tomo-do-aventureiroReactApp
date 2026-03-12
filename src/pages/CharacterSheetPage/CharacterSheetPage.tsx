@@ -1,7 +1,7 @@
 // src/pages/CharacterSheetPage/CharacterSheetPage.tsx
 // Carrega e persiste a ficha de um personagem pelo id da rota
 
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import type { CharacterSheet } from '../../types/system/dnd'
 import {
@@ -23,78 +23,65 @@ type SheetWithSlots = CharacterSheet & {
   spellSlots?: Record<number, { current: number; max: number }>
 }
 
+const TABS = [
+  'Principal',
+  'Combate',
+  'Magias',
+  'Recursos',
+  'Inventário',
+  'Detalhes',
+] as const
+
+type Tab = (typeof TABS)[number]
+
+const DEFAULT_TAB: Tab = 'Principal'
+
+const TAB_PANEL_IDS: Record<Tab, string> = {
+  Principal: 'character-sheet-panel-principal',
+  Combate: 'character-sheet-panel-combate',
+  Magias: 'character-sheet-panel-magias',
+  Recursos: 'character-sheet-panel-recursos',
+  Inventário: 'character-sheet-panel-inventario',
+  Detalhes: 'character-sheet-panel-detalhes',
+}
+
+const TAB_BUTTON_IDS: Record<Tab, string> = {
+  Principal: 'character-sheet-tab-principal',
+  Combate: 'character-sheet-tab-combate',
+  Magias: 'character-sheet-tab-magias',
+  Recursos: 'character-sheet-tab-recursos',
+  Inventário: 'character-sheet-tab-inventario',
+  Detalhes: 'character-sheet-tab-detalhes',
+}
+
+function getTabStorageKey(id?: string) {
+  return `character-sheet-active-tab:${id ?? 'default'}`
+}
+
+function isTab(value: string | null): value is Tab {
+  return value !== null && TABS.some((tab) => tab === value)
+}
+
+function readStoredTab(id?: string): Tab {
+  if (typeof window === 'undefined') {
+    return DEFAULT_TAB
+  }
+
+  const storedTab = window.sessionStorage.getItem(getTabStorageKey(id))
+
+  return isTab(storedTab) ? storedTab : DEFAULT_TAB
+}
+
 export function CharacterSheetPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [sheet, setSheet] = useState<SheetWithSlots | null>(null)
+  const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [notFound, setNotFound] = useState(false)
   const [isAtBottom, setIsAtBottom] = useState(false)
-  const sheetStackRef = useRef<HTMLDivElement>(null)
+  const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
-  const pendingScrollAnchorRef = useRef<{
-    panelId: string
-    top: number
-  } | null>(null)
   const hasSheet = sheet !== null
-
-  function captureScrollAnchor() {
-    const stack = sheetStackRef.current
-    if (!stack) return
-
-    const panelSlots = Array.from(
-      stack.querySelectorAll<HTMLElement>('[data-panel-id]'),
-    )
-
-    if (panelSlots.length === 0) return
-
-    const anchorY = Math.max(
-      96,
-      Math.min(window.innerHeight * 0.35, window.innerHeight - 160),
-    )
-    const anchorX = window.innerWidth / 2
-    const elementAtPoint = document.elementFromPoint(anchorX, anchorY)
-
-    const anchoredPanel =
-      panelSlots.find((panel) => elementAtPoint && panel.contains(elementAtPoint)) ??
-      panelSlots.reduce((closestPanel, currentPanel) => {
-        const closestDistance = Math.abs(
-          closestPanel.getBoundingClientRect().top - anchorY,
-        )
-        const currentDistance = Math.abs(
-          currentPanel.getBoundingClientRect().top - anchorY,
-        )
-
-        return currentDistance < closestDistance ? currentPanel : closestPanel
-      })
-
-    const panelId = anchoredPanel.dataset.panelId
-    if (!panelId) return
-
-    pendingScrollAnchorRef.current = {
-      panelId,
-      top: anchoredPanel.getBoundingClientRect().top,
-    }
-  }
-
-  useLayoutEffect(() => {
-    const anchor = pendingScrollAnchorRef.current
-    if (!anchor) return
-
-    const stack = sheetStackRef.current
-    const anchoredPanel = stack?.querySelector<HTMLElement>(
-      `[data-panel-id="${anchor.panelId}"]`,
-    )
-
-    pendingScrollAnchorRef.current = null
-
-    if (!anchoredPanel) return
-
-    const delta = anchoredPanel.getBoundingClientRect().top - anchor.top
-
-    if (Math.abs(delta) > 1) {
-      window.scrollBy({ top: delta, left: 0, behavior: 'auto' })
-    }
-  }, [sheet?.isEditMode])
 
   useEffect(() => {
     if (!hasSheet) return
@@ -115,8 +102,19 @@ export function CharacterSheetPage() {
       setNotFound(true)
       return
     }
+    setNotFound(false)
     setSheet(stored.data as SheetWithSlots)
   }, [id])
+
+  useEffect(() => {
+    setActiveTab(readStoredTab(id))
+  }, [id])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    window.sessionStorage.setItem(getTabStorageKey(id), activeTab)
+  }, [activeTab, id])
 
   function handleUpdate(updated: SheetWithSlots) {
     if (!id) return
@@ -126,8 +124,23 @@ export function CharacterSheetPage() {
 
   function handleToggleEditMode() {
     if (!sheet) return
-    captureScrollAnchor()
     handleUpdate({ ...sheet, isEditMode: !sheet.isEditMode })
+  }
+
+  function handleTabChange(tab: Tab) {
+    if (tab === activeTab) return
+
+    setActiveTab(tab)
+
+    const tabBar = tabBarRef.current
+    if (!tabBar) return
+
+    const nextTop = tabBar.getBoundingClientRect().top + window.scrollY
+
+    window.scrollTo({
+      top: Math.max(0, nextTop - 12),
+      behavior: 'smooth',
+    })
   }
 
   if (notFound) {
@@ -153,52 +166,62 @@ export function CharacterSheetPage() {
 
   const spellSlots = sheet.spellSlots ?? {}
 
-  return (
-    <main className={styles.page}>
-      <Link className={styles.backLink} to="/">← Voltar</Link>
+  const handleCharacterChange = (updated: SheetWithSlots['character']) => {
+    handleUpdate({ ...sheet, character: updated })
+  }
 
-      <div className={styles.sheetStack} ref={sheetStackRef}>
-        <div data-panel-id="character-header">
-          <CharacterHeader
+  const activePanelId = TAB_PANEL_IDS[activeTab]
+
+  const renderTabPanel = (tab: Tab) => {
+    switch (tab) {
+      case 'Principal':
+        return (
+          <>
+            <AttributesPanel
+              character={sheet.character}
+              isEditMode={sheet.isEditMode}
+              onChangeCharacter={handleCharacterChange}
+            />
+            <SkillsPanel
+              character={sheet.character}
+              isEditMode={sheet.isEditMode}
+              onChangeCharacter={handleCharacterChange}
+            />
+          </>
+        )
+      case 'Combate':
+        return (
+          <>
+            <CombatPanel
+              character={sheet.character}
+              isEditMode={sheet.isEditMode}
+              onChangeCharacter={handleCharacterChange}
+            />
+            <AttacksPanel
+              attacks={sheet.attacks}
+              character={sheet.character}
+              isEditMode={sheet.isEditMode}
+              onChangeAttacks={(updated) =>
+                handleUpdate({ ...sheet, attacks: updated })
+              }
+            />
+          </>
+        )
+      case 'Magias':
+        return (
+          <SpellsPanel
+            spells={sheet.spells}
             character={sheet.character}
             isEditMode={sheet.isEditMode}
-            onChangeCharacter={(updated) =>
-              handleUpdate({ ...sheet, character: updated })
+            onChangeSpells={(updated) => handleUpdate({ ...sheet, spells: updated })}
+            slotsData={spellSlots}
+            onChangeSlotsData={(updated) =>
+              handleUpdate({ ...sheet, spellSlots: updated })
             }
           />
-        </div>
-
-        <div data-panel-id="attributes">
-          <AttributesPanel
-            character={sheet.character}
-            isEditMode={sheet.isEditMode}
-            onChangeCharacter={(updated) =>
-              handleUpdate({ ...sheet, character: updated })
-            }
-          />
-        </div>
-
-        <div data-panel-id="skills">
-          <SkillsPanel
-            character={sheet.character}
-            isEditMode={sheet.isEditMode}
-            onChangeCharacter={(updated) =>
-              handleUpdate({ ...sheet, character: updated })
-            }
-          />
-        </div>
-
-        <div data-panel-id="combat">
-          <CombatPanel
-            character={sheet.character}
-            isEditMode={sheet.isEditMode}
-            onChangeCharacter={(updated) =>
-              handleUpdate({ ...sheet, character: updated })
-            }
-          />
-        </div>
-
-        <div data-panel-id="resources">
+        )
+      case 'Recursos':
+        return (
           <ResourcesPanel
             resources={sheet.resources}
             isEditMode={sheet.isEditMode}
@@ -206,35 +229,9 @@ export function CharacterSheetPage() {
               handleUpdate({ ...sheet, resources: updated })
             }
           />
-        </div>
-
-        <div data-panel-id="attacks">
-          <AttacksPanel
-            attacks={sheet.attacks}
-            character={sheet.character}
-            isEditMode={sheet.isEditMode}
-            onChangeAttacks={(updated) =>
-              handleUpdate({ ...sheet, attacks: updated })
-            }
-          />
-        </div>
-
-        <div data-panel-id="spells">
-          <SpellsPanel
-            spells={sheet.spells}
-            character={sheet.character}
-            isEditMode={sheet.isEditMode}
-            onChangeSpells={(updated) =>
-              handleUpdate({ ...sheet, spells: updated })
-            }
-            slotsData={spellSlots}
-            onChangeSlotsData={(updated) =>
-              handleUpdate({ ...sheet, spellSlots: updated })
-            }
-          />
-        </div>
-
-        <div data-panel-id="inventory">
+        )
+      case 'Inventário':
+        return (
           <InventoryPanel
             inventory={sheet.inventory}
             character={sheet.character}
@@ -242,21 +239,65 @@ export function CharacterSheetPage() {
             onChangeInventory={(updated) =>
               handleUpdate({ ...sheet, inventory: updated })
             }
-            onChangeCharacter={(updated) =>
-              handleUpdate({ ...sheet, character: updated })
-            }
+            onChangeCharacter={handleCharacterChange}
           />
-        </div>
-
-        <div data-panel-id="details">
+        )
+      case 'Detalhes':
+        return (
           <CharacterDetailsPanel
             character={sheet.character}
             isEditMode={sheet.isEditMode}
-            onChangeCharacter={(updated) =>
-              handleUpdate({ ...sheet, character: updated })
-            }
+            onChangeCharacter={handleCharacterChange}
           />
-        </div>
+        )
+      default:
+        return null
+    }
+  }
+
+  return (
+    <main className={styles.page}>
+      <Link className={styles.backLink} to="/">← Voltar</Link>
+
+      <CharacterHeader
+        character={sheet.character}
+        isEditMode={sheet.isEditMode}
+        onChangeCharacter={handleCharacterChange}
+      />
+
+      <div ref={tabBarRef} className={styles.tabBarShell}>
+        <nav
+          className={styles.tabBar}
+          aria-label="Seções da ficha"
+          role="tablist"
+        >
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              id={TAB_BUTTON_IDS[tab]}
+              type="button"
+              role="tab"
+              aria-selected={tab === activeTab}
+              aria-controls={TAB_PANEL_IDS[tab]}
+              className={tab === activeTab ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+              onClick={() => handleTabChange(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </nav>
+        <span className={styles.tabScrollHint} aria-hidden="true">
+          ↔ Deslize para ver mais seções
+        </span>
+      </div>
+
+      <div
+        id={TAB_PANEL_IDS[activeTab]}
+        role="tabpanel"
+        aria-labelledby={TAB_BUTTON_IDS[activeTab]}
+        className={styles.tabContent}
+      >
+        {renderTabPanel(activeTab)}
       </div>
       <div className={styles.editToggleSlot}>
         <div
@@ -265,6 +306,7 @@ export function CharacterSheetPage() {
           <button
             className={styles.editToggleButton}
             onClick={handleToggleEditMode}
+            aria-controls={activePanelId}
           >
             {sheet.isEditMode ? '✓ Concluir edição' : '✎ Editar ficha'}
           </button>
