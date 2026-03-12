@@ -84,6 +84,9 @@ export function ResourcesPanel({
   onChangeResources,
 }: ResourcesPanelProps) {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+  const resourceIds = resources.map((_, index) => `resource-${index}`)
+  const areAllCollapsed =
+    resourceIds.length > 0 && resourceIds.every((resourceId) => collapsedIds.has(resourceId))
 
   function toggleCollapse(id: string) {
     setCollapsedIds((previous) => {
@@ -97,6 +100,10 @@ export function ResourcesPanel({
 
       return next
     })
+  }
+
+  function toggleCollapseAll() {
+    setCollapsedIds(areAllCollapsed ? new Set() : new Set(resourceIds))
   }
 
   function setResource(index: number, partial: Partial<Resource>) {
@@ -178,7 +185,20 @@ export function ResourcesPanel({
 
   return (
     <section className={panelStyles.panel}>
-      <h2 className={panelStyles.panelTitle}>Habilidades e Traços</h2>
+      <div className={styles.panelHeaderRow}>
+        <h2 className={panelStyles.panelTitle}>Habilidades e Traços</h2>
+
+        {!isEditMode && resources.length > 0 && (
+          <button
+            type="button"
+            className={styles.toggleAllButton}
+            onClick={toggleCollapseAll}
+            aria-pressed={areAllCollapsed}
+          >
+            {areAllCollapsed ? 'Expandir tudo' : 'Recolher tudo'}
+          </button>
+        )}
+      </div>
 
       <div className={styles.restRow}>
         <button
@@ -200,7 +220,7 @@ export function ResourcesPanel({
 
       <div className={styles.resourceList}>
         {resources.map((resource, index) => {
-          const resourceId = `resource-${index}`
+          const resourceId = resourceIds[index]
           const isCollapsed = !isEditMode && collapsedIds.has(resourceId)
           const collapsedMeta = getResourceCollapsedMeta(resource)
 

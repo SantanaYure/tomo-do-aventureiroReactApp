@@ -27,7 +27,7 @@ const TABS = [
   'Principal',
   'Combate',
   'Magias',
-  'Recursos',
+  'Habilidades',
   'Inventário',
   'Detalhes',
 ] as const
@@ -40,7 +40,7 @@ const TAB_PANEL_IDS: Record<Tab, string> = {
   Principal: 'character-sheet-panel-principal',
   Combate: 'character-sheet-panel-combate',
   Magias: 'character-sheet-panel-magias',
-  Recursos: 'character-sheet-panel-recursos',
+  Habilidades: 'character-sheet-panel-habilidades',
   Inventário: 'character-sheet-panel-inventario',
   Detalhes: 'character-sheet-panel-detalhes',
 }
@@ -49,7 +49,7 @@ const TAB_BUTTON_IDS: Record<Tab, string> = {
   Principal: 'character-sheet-tab-principal',
   Combate: 'character-sheet-tab-combate',
   Magias: 'character-sheet-tab-magias',
-  Recursos: 'character-sheet-tab-recursos',
+  Habilidades: 'character-sheet-tab-habilidades',
   Inventário: 'character-sheet-tab-inventario',
   Detalhes: 'character-sheet-tab-detalhes',
 }
@@ -68,6 +68,10 @@ function readStoredTab(id?: string): Tab {
   }
 
   const storedTab = window.sessionStorage.getItem(getTabStorageKey(id))
+
+  if (storedTab === 'Recursos') {
+    return 'Habilidades'
+  }
 
   return isTab(storedTab) ? storedTab : DEFAULT_TAB
 }
@@ -220,7 +224,7 @@ export function CharacterSheetPage() {
             }
           />
         )
-      case 'Recursos':
+      case 'Habilidades':
         return (
           <ResourcesPanel
             resources={sheet.resources}
