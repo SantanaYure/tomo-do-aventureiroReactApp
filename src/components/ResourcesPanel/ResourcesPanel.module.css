@@ -76,6 +76,47 @@
   gap: var(--space-2);
 }
 
+.featureHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+}
+
+.featureTitle {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.featureMeta {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.collapseIcon {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  transition: transform var(--transition);
+  flex-shrink: 0;
+}
+
+.featureBody {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
 .resourceHeader {
   display: flex;
   align-items: baseline;

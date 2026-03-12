@@ -1,4 +1,5 @@
 ﻿// src/components/CharacterDetailsPanel/CharacterDetailsPanel.tsx
+import { useState } from 'react'
 import type { AttunementItem, Character, ItemRarity } from '../../types/system/dnd'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './CharacterDetailsPanel.module.css'
@@ -46,6 +47,22 @@ interface CharacterDetailsPanelProps {
 }
 
 export function CharacterDetailsPanel({ character, isEditMode, onChangeCharacter }: CharacterDetailsPanelProps) {
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+
+  function toggleCollapse(id: string) {
+    setCollapsedIds((previous) => {
+      const next = new Set(previous)
+
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+
+      return next
+    })
+  }
+
   function set<K extends keyof Character>(key: K, value: Character[K]) {
     onChangeCharacter({ ...character, [key]: value })
   }
@@ -71,18 +88,40 @@ export function CharacterDetailsPanel({ character, isEditMode, onChangeCharacter
     <section className={panelStyles.panel}>
       <h2 className={panelStyles.panelTitle}>Detalhes do Personagem</h2>
 
-      {textareaFields.map(({ key, label, placeholder }) => (
-        <div key={key} className={styles.section}>
-          <div className={styles.sectionTitle}>{label}</div>
-          {isEditMode ? (
-            <textarea value={String(character[key] ?? '')} placeholder={placeholder} rows={4} onChange={(e) => set(key, e.target.value as any)} style={{ width: '100%' }} />
-          ) : (
-            <div className={`${styles.textareaView} ${!character[key] ? styles.emptyText : ''}`}>
-              {String(character[key] || '—')}
-            </div>
-          )}
-        </div>
-      ))}
+      {textareaFields.map(({ key, label, placeholder }) => {
+        const sectionId = String(key)
+        const isCollapsed = !isEditMode && collapsedIds.has(sectionId)
+
+        return (
+          <div key={key} className={styles.section}>
+            <button
+              type="button"
+              className={styles.featureHeader}
+              onClick={() => {
+                if (!isEditMode) {
+                  toggleCollapse(sectionId)
+                }
+              }}
+              aria-expanded={!isCollapsed}
+            >
+              <span className={`${styles.sectionTitle} ${styles.featureTitle}`}>{label}</span>
+              <span className={styles.collapseIcon}>{isCollapsed ? '▸' : '▾'}</span>
+            </button>
+
+            {!isCollapsed && (
+              <div className={styles.featureBody}>
+                {isEditMode ? (
+                  <textarea value={String(character[key] ?? '')} placeholder={placeholder} rows={4} onChange={(e) => set(key, e.target.value as any)} style={{ width: '100%' }} />
+                ) : (
+                  <div className={`${styles.textareaView} ${!character[key] ? styles.emptyText : ''}`}>
+                    {String(character[key] || '—')}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       {isEditMode ? (
         <>

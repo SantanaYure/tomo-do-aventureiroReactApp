@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Resource, ResourceOrigin, ResourceReset } from '../../types/system/dnd'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './ResourcesPanel.module.css'
@@ -56,6 +57,21 @@ function getResourceOriginLabel(resource: Resource): string {
   return ''
 }
 
+function getResourceCollapsedMeta(resource: Resource): string {
+  const current = resource.current ?? 0
+  const max = resource.max ?? 0
+
+  if (max > 0) {
+    return `${current}/${max} usos`
+  }
+
+  if (typeof resource.level === 'number' && Number.isFinite(resource.level)) {
+    return `Nível ${resource.level}`
+  }
+
+  return ''
+}
+
 interface ResourcesPanelProps {
   resources: Resource[]
   isEditMode: boolean
@@ -67,6 +83,22 @@ export function ResourcesPanel({
   isEditMode,
   onChangeResources,
 }: ResourcesPanelProps) {
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+
+  function toggleCollapse(id: string) {
+    setCollapsedIds((previous) => {
+      const next = new Set(previous)
+
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+
+      return next
+    })
+  }
+
   function setResource(index: number, partial: Partial<Resource>) {
     onChangeResources(
       resources.map((resource, currentIndex) =>
@@ -167,9 +199,13 @@ export function ResourcesPanel({
       </div>
 
       <div className={styles.resourceList}>
-        {resources.map((resource, index) => (
-          <div key={index} className={styles.resourceCard}>
-            <div>
+        {resources.map((resource, index) => {
+          const resourceId = `resource-${index}`
+          const isCollapsed = !isEditMode && collapsedIds.has(resourceId)
+          const collapsedMeta = getResourceCollapsedMeta(resource)
+
+          return (
+            <div key={resourceId} className={styles.resourceCard}>
               {isEditMode ? (
                 <div className={styles.editStack}>
                   <input
@@ -312,73 +348,125 @@ export function ResourcesPanel({
                       setResource(index, { description: event.target.value })
                     }
                   />
+
+                  <div className={styles.counter}>
+                    <button
+                      type="button"
+                      className={styles.counterBtn}
+                      onClick={() => setCurrent(index, (resource.current ?? 0) - 1)}
+                    >
+                      −
+                    </button>
+
+                    <span className={styles.counterVal}>
+                      {resource.current ?? 0}
+                      <span className={styles.counterMax}> / {resource.max ?? 0}</span>
+                    </span>
+
+                    <button
+                      type="button"
+                      className={styles.counterBtn}
+                      onClick={() => setCurrent(index, (resource.current ?? 0) + 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={styles.resetBtn}
+                    onClick={() => resetResource(index)}
+                  >
+                    ↺ Restaurar
+                  </button>
                 </div>
               ) : (
-                <div className={styles.readStack}>
-                  <div className={styles.resourceHeader}>
-                    <div className={styles.resourceName}>{resource.name || '(sem nome)'}</div>
-                    <div className={styles.resourceReset}>{RESET_LABEL[resource.resetOn ?? 'long-rest']}</div>
-                  </div>
-
-                  <div className={styles.resourceMetaRow}>
-                    {getResourceOriginLabel(resource) && (
-                      <span className={styles.resourceMeta}>
-                        Origem: {getResourceOriginLabel(resource)}
+                <>
+                  <button
+                    type="button"
+                    className={`${styles.resourceHeader} ${styles.featureHeader}`}
+                    onClick={() => toggleCollapse(resourceId)}
+                    aria-expanded={!isCollapsed}
+                  >
+                    <span className={`${styles.resourceName} ${styles.featureTitle}`}>
+                      {resource.name || '(sem nome)'}
+                    </span>
+                    {collapsedMeta && (
+                      <span className={`${styles.resourceReset} ${styles.featureMeta}`}>
+                        {collapsedMeta}
                       </span>
                     )}
-                    {typeof resource.level === 'number' && Number.isFinite(resource.level) && (
-                      <span className={styles.resourceMeta}>Nível: {resource.level}</span>
-                    )}
-                    {resource.duration?.trim() && (
-                      <span className={styles.resourceMeta}>Duração: {resource.duration}</span>
-                    )}
-                    {resource.action?.trim() && (
-                      <span className={styles.resourceMeta}>Ação: {resource.action}</span>
-                    )}
-                    {resource.range?.trim() && (
-                      <span className={styles.resourceMeta}>Alcance: {resource.range}</span>
-                    )}
-                  </div>
+                    <span className={styles.collapseIcon}>{isCollapsed ? '▸' : '▾'}</span>
+                  </button>
 
-                  {resource.description?.trim() && (
-                    <p className={styles.resourceDescription}>{resource.description}</p>
+                  {!isCollapsed && (
+                    <div className={styles.featureBody}>
+                      <div className={styles.readStack}>
+                        <div className={styles.resourceMetaRow}>
+                          {getResourceOriginLabel(resource) && (
+                            <span className={styles.resourceMeta}>
+                              Origem: {getResourceOriginLabel(resource)}
+                            </span>
+                          )}
+                          {typeof resource.level === 'number' && Number.isFinite(resource.level) && (
+                            <span className={styles.resourceMeta}>Nível: {resource.level}</span>
+                          )}
+                          {resource.duration?.trim() && (
+                            <span className={styles.resourceMeta}>Duração: {resource.duration}</span>
+                          )}
+                          {resource.action?.trim() && (
+                            <span className={styles.resourceMeta}>Ação: {resource.action}</span>
+                          )}
+                          {resource.range?.trim() && (
+                            <span className={styles.resourceMeta}>Alcance: {resource.range}</span>
+                          )}
+                          <span className={styles.resourceMeta}>
+                            {RESET_LABEL[resource.resetOn ?? 'long-rest']}
+                          </span>
+                        </div>
+
+                        {resource.description?.trim() && (
+                          <p className={styles.resourceDescription}>{resource.description}</p>
+                        )}
+                      </div>
+
+                      <div className={styles.counter}>
+                        <button
+                          type="button"
+                          className={styles.counterBtn}
+                          onClick={() => setCurrent(index, (resource.current ?? 0) - 1)}
+                        >
+                          −
+                        </button>
+
+                        <span className={styles.counterVal}>
+                          {resource.current ?? 0}
+                          <span className={styles.counterMax}> / {resource.max ?? 0}</span>
+                        </span>
+
+                        <button
+                          type="button"
+                          className={styles.counterBtn}
+                          onClick={() => setCurrent(index, (resource.current ?? 0) + 1)}
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        className={styles.resetBtn}
+                        onClick={() => resetResource(index)}
+                      >
+                        ↺ Restaurar
+                      </button>
+                    </div>
                   )}
-                </div>
+                </>
               )}
             </div>
-
-            <div className={styles.counter}>
-              <button
-                type="button"
-                className={styles.counterBtn}
-                onClick={() => setCurrent(index, (resource.current ?? 0) - 1)}
-              >
-                  −
-                </button>
-
-              <span className={styles.counterVal}>
-                {resource.current ?? 0}
-                <span className={styles.counterMax}> / {resource.max ?? 0}</span>
-              </span>
-
-              <button
-                type="button"
-                className={styles.counterBtn}
-                onClick={() => setCurrent(index, (resource.current ?? 0) + 1)}
-              >
-                  +
-                </button>
-            </div>
-
-            <button
-              type="button"
-              className={styles.resetBtn}
-              onClick={() => resetResource(index)}
-            >
-              ↺ Restaurar
-            </button>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {isEditMode && (
