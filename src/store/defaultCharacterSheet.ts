@@ -33,7 +33,11 @@ export function createDefaultCharacterSheet(): CharacterSheet {
       size: 'Médio',
       xp: 0,
       appearance: '',
-      backstoryPersonality: '',
+      backstory: '',
+      traits: '',
+      ideals: '',
+      bonds: '',
+      flaws: '',
       languages: [],
       armorTraining: {
         light: false,

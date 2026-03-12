@@ -33,6 +33,7 @@ type LegacyCharacter = Character & {
   speciesTraits?: string
   feats?: string
   classFeatures?: string
+  backstoryPersonality?: string
 }
 
 let inMemoryStore: CharacterSheetStoreMap = {}
@@ -235,6 +236,7 @@ function normalizeCharacter(character: Character | LegacyCharacter | undefined):
     speciesTraits: _speciesTraits,
     feats: _feats,
     classFeatures: _classFeatures,
+    backstoryPersonality,
     ...characterData
   } = nextCharacter
   const legacyAttunements = Array.isArray(attunements)
@@ -276,6 +278,12 @@ function normalizeCharacter(character: Character | LegacyCharacter | undefined):
   return {
     ...defaultCharacter,
     ...characterData,
+    backstory:
+      typeof characterData.backstory === 'string'
+        ? characterData.backstory
+        : typeof backstoryPersonality === 'string'
+          ? backstoryPersonality
+          : defaultCharacter.backstory,
     armorTraining: {
       ...defaultCharacter.armorTraining,
       ...(characterData.armorTraining ?? {}),

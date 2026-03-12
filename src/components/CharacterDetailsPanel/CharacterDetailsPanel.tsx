@@ -60,7 +60,11 @@ export function CharacterDetailsPanel({ character, isEditMode, onChangeCharacter
 
   const textareaFields: { key: keyof Character; label: string; placeholder: string }[] = [
     { key: 'appearance',           label: 'Aparência',               placeholder: 'Descreva a aparência do personagem…' },
-    { key: 'backstoryPersonality', label: 'História e Personalidade', placeholder: 'Backstory, traços, ideais, vínculos, defeitos…' },
+    { key: 'backstory',            label: 'História do Personagem',  placeholder: 'Backstory e eventos marcantes da jornada…' },
+    { key: 'traits',               label: 'Traços',                  placeholder: 'Maneirismos, traços de personalidade e comportamento…' },
+    { key: 'ideals',               label: 'Ideais',                  placeholder: 'Princípios, crenças e convicções do personagem…' },
+    { key: 'bonds',                label: 'Vínculos',                placeholder: 'Pessoas, lugares, juramentos e laços importantes…' },
+    { key: 'flaws',                label: 'Fraquezas',               placeholder: 'Medos, defeitos e vulnerabilidades…' },
   ]
 
   return (

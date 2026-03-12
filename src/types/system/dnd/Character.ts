@@ -24,7 +24,11 @@ export interface Character {
   size: string
   xp: number
   appearance: string
-  backstoryPersonality: string
+  backstory: string
+  traits: string
+  ideals: string
+  bonds: string
+  flaws: string
   languages: string[]
   armorTraining: ArmorTraining
   weaponProficiencies: string[]
