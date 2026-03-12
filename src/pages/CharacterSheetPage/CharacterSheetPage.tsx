@@ -217,6 +217,7 @@ export function CharacterSheetPage() {
             spells={sheet.spells}
             character={sheet.character}
             isEditMode={sheet.isEditMode}
+            onChangeCharacter={handleCharacterChange}
             onChangeSpells={(updated) => handleUpdate({ ...sheet, spells: updated })}
             slotsData={spellSlots}
             onChangeSlotsData={(updated) =>

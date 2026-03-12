@@ -1,8 +1,9 @@
 // src/components/SpellsPanel/SpellsPanel.tsx
 import { useState } from 'react'
-import type { Character, Spell } from '../../types/system/dnd'
+import type { AttributeName, Character, Spell, SpellcastingAbility } from '../../types/system/dnd'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './SpellsPanel.module.css'
+import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
 
 interface SpellSlots { [level: number]: { current: number; max: number } }
 
@@ -15,6 +16,35 @@ const LEVEL_LABEL: Record<number, string> = {
 }
 
 const SCHOOLS = ['Abjuração','Adivinhação','Conjuração','Encantamento','Evocação','Ilusão','Necromancia','Transmutação']
+const SPELLCASTING_OPTIONS: SpellcastingAbility[] = [
+  '',
+  'Força',
+  'Destreza',
+  'Constituição',
+  'Inteligência',
+  'Sabedoria',
+  'Carisma',
+]
+
+function formatModifier(modifier: number): string {
+  return modifier >= 0 ? `+${modifier}` : `${modifier}`
+}
+
+function getSpellcastingModifier(character: Character): number | null {
+  if (!character.spellcastingAbility) {
+    return null
+  }
+
+  const attribute = character.attributes.find(
+    (currentAttribute) => currentAttribute.name === character.spellcastingAbility,
+  )
+
+  if (!attribute) {
+    return null
+  }
+
+  return calcModifier(attribute.value)
+}
 
 function createSpell(): Spell {
   return { name: '', level: 0, school: '', castingTime: '', range: '', duration: '', components: [], prepared: false, description: '' }
@@ -24,13 +54,31 @@ interface SpellsPanelProps {
   spells: Spell[]
   character: Character
   isEditMode: boolean
+  onChangeCharacter: (updated: Character) => void
   onChangeSpells: (updated: Spell[]) => void
   slotsData: SpellSlots
   onChangeSlotsData: (updated: SpellSlots) => void
 }
 
-export function SpellsPanel({ spells, character, isEditMode, onChangeSpells, slotsData, onChangeSlotsData }: SpellsPanelProps) {
+export function SpellsPanel({
+  spells,
+  character,
+  isEditMode,
+  onChangeCharacter,
+  onChangeSpells,
+  slotsData,
+  onChangeSlotsData,
+}: SpellsPanelProps) {
   const [expandedLevels, setExpandedLevels] = useState<Set<number>>(new Set([0]))
+  const proficiencyBonus = calcProficiencyBonus(character.classes)
+  const spellcastingModifier = getSpellcastingModifier(character)
+  const spellAttackBonus =
+    spellcastingModifier === null ? null : proficiencyBonus + spellcastingModifier
+  const spellSaveDc = spellcastingModifier === null ? null : 8 + proficiencyBonus + spellcastingModifier
+
+  function setSpellcastingAbility(value: SpellcastingAbility) {
+    onChangeCharacter({ ...character, spellcastingAbility: value })
+  }
 
   function toggleLevel(level: number) {
     setExpandedLevels((prev) => { const next = new Set(prev); next.has(level) ? next.delete(level) : next.add(level); return next })
@@ -55,18 +103,53 @@ export function SpellsPanel({ spells, character, isEditMode, onChangeSpells, slo
     ? SPELL_LEVELS
     : SPELL_LEVELS.filter((l) => spellsByLevel[l].length > 0 || (slotsData[l]?.max ?? 0) > 0)
 
-  if (usedLevels.length === 0) return null
-
   return (
     <section className={panelStyles.panel}>
       <h2 className={panelStyles.panelTitle}>Magias</h2>
 
       <div className={styles.spellHeader}>
         <div className={styles.spellStat}>
-          <span className={styles.spellStatLabel}>Atributo</span>
-          <span className={styles.spellStatValue}>{character.spellcastingAbility || '—'}</span>
+          <span className={styles.spellStatLabel}>Atributo-chave</span>
+          {isEditMode ? (
+            <select
+              className={styles.spellAbilitySelect}
+              value={character.spellcastingAbility}
+              onChange={(event) =>
+                setSpellcastingAbility(event.target.value as SpellcastingAbility)
+              }
+            >
+              <option value="">— Atributo —</option>
+              {SPELLCASTING_OPTIONS.filter(Boolean).map((attribute) => (
+                <option key={attribute} value={attribute}>
+                  {attribute}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className={styles.spellStatValue}>{character.spellcastingAbility || '—'}</span>
+          )}
+        </div>
+
+        <div className={styles.spellStat}>
+          <span className={styles.spellStatLabel}>Ataque com magia</span>
+          <span className={styles.spellStatValue}>
+            {spellAttackBonus === null ? '—' : formatModifier(spellAttackBonus)}
+          </span>
+        </div>
+
+        <div className={styles.spellStat}>
+          <span className={styles.spellStatLabel}>CD das magias</span>
+          <span className={styles.spellStatValue}>
+            {spellSaveDc === null ? '—' : spellSaveDc}
+          </span>
         </div>
       </div>
+
+      {!isEditMode && usedLevels.length === 0 && (
+        <p className={panelStyles.emptyState}>
+          Nenhuma magia cadastrada.
+        </p>
+      )}
 
       {usedLevels.map((level) => {
         const slots = slotsData[level] ?? { current: 0, max: 0 }
