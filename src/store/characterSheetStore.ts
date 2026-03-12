@@ -530,12 +530,66 @@ export interface ImportResult {
   errors: number
 }
 
-export function exportAllSheetsAsJSON(): string {
-  const store = readStore()
-  return JSON.stringify(store, null, 2)
+type ImportedCharacterSheetPayload = {
+  id: string
+  data: CharacterSheet
+  createdAt?: string
 }
 
-export function importSheetsFromJSON(json: string): ImportResult {
+function extractImportedCharacterSheetPayload(
+  parsed: unknown,
+): ImportedCharacterSheetPayload | null {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return null
+  }
+
+  const entry = parsed as Record<string, unknown>
+
+  if (typeof entry.id === 'string' && entry.data && typeof entry.data === 'object') {
+    return {
+      id: entry.id,
+      data: entry.data as CharacterSheet,
+      createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : undefined,
+    }
+  }
+
+  const entries = Object.entries(entry)
+
+  if (entries.length !== 1) {
+    return null
+  }
+
+  const [key, value] = entries[0]
+
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+
+  const nestedEntry = value as Record<string, unknown>
+
+  if (!nestedEntry.data || typeof nestedEntry.data !== 'object') {
+    return null
+  }
+
+  return {
+    id: typeof nestedEntry.id === 'string' ? nestedEntry.id : key,
+    data: nestedEntry.data as CharacterSheet,
+    createdAt:
+      typeof nestedEntry.createdAt === 'string' ? nestedEntry.createdAt : undefined,
+  }
+}
+
+export function exportCharacterSheetAsJSON(id: string): string | null {
+  const entry = getCharacterSheet(id)
+
+  if (!entry) {
+    return null
+  }
+
+  return JSON.stringify(entry, null, 2)
+}
+
+export function importCharacterSheetFromJSON(json: string): ImportResult {
   const result: ImportResult = { imported: 0, skipped: 0, errors: 0 }
 
   let parsed: unknown
@@ -546,49 +600,35 @@ export function importSheetsFromJSON(json: string): ImportResult {
     return result
   }
 
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+  const payload = extractImportedCharacterSheetPayload(parsed)
+
+  if (!payload) {
     result.errors = 1
     return result
   }
 
   const store = readStore()
-  const incoming = parsed as Record<string, unknown>
 
-  for (const [key, value] of Object.entries(incoming)) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      result.errors += 1
-      continue
+  try {
+    const normalizedId = normalizeId(payload.id)
+
+    if (store[normalizedId]) {
+      result.skipped = 1
+      return result
     }
 
-    const entry = value as Record<string, unknown>
-
-    if (!entry.data || typeof entry.data !== 'object') {
-      result.errors += 1
-      continue
+    const timestamp = new Date().toISOString()
+    store[normalizedId] = {
+      id: normalizedId,
+      data: normalizeCharacterSheet(payload.data),
+      createdAt: payload.createdAt ?? timestamp,
+      updatedAt: timestamp,
     }
 
-    try {
-      if (store[key]) {
-        result.skipped += 1
-        continue
-      }
-
-      const timestamp = new Date().toISOString()
-      store[key] = {
-        id: key,
-        data: normalizeCharacterSheet(entry.data as CharacterSheet),
-        createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : timestamp,
-        updatedAt: timestamp,
-      }
-
-      result.imported += 1
-    } catch {
-      result.errors += 1
-    }
-  }
-
-  if (result.imported > 0) {
+    result.imported = 1
     writeStore(store)
+  } catch {
+    result.errors = 1
   }
 
   return result

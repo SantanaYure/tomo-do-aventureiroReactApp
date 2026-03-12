@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 import {
   listCharacterSheets,
   deleteCharacterSheet,
-  exportAllSheetsAsJSON,
-  importSheetsFromJSON,
+  exportCharacterSheetAsJSON,
+  importCharacterSheetFromJSON,
   type StoredCharacterSheet,
   type ImportResult,
 } from '../../store/characterSheetStore'
@@ -23,13 +23,30 @@ export function Home() {
     setSheets((prev) => prev.filter((s) => s.id !== id))
   }
 
-  function handleExport() {
-    const json = exportAllSheetsAsJSON()
+  function createSheetFileName(sheet: StoredCharacterSheet): string {
+    const rawName = sheet.data.character.name.trim() || sheet.id
+    const normalizedName = rawName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+
+    return `tomo-personagem-${normalizedName || sheet.id}.json`
+  }
+
+  function handleExport(sheet: StoredCharacterSheet) {
+    const json = exportCharacterSheetAsJSON(sheet.id)
+
+    if (!json) {
+      return
+    }
+
     const blob = new Blob([json], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `tomo-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = createSheetFileName(sheet)
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -46,7 +63,7 @@ export function Home() {
     const reader = new FileReader()
     reader.onload = (event) => {
       const json = event.target?.result as string
-      const result = importSheetsFromJSON(json)
+      const result = importCharacterSheetFromJSON(json)
       setImportFeedback(result)
       if (result.imported > 0) {
         setSheets(listCharacterSheets())
@@ -58,11 +75,10 @@ export function Home() {
   }
 
   function feedbackMessage(result: ImportResult): string {
-    const parts: string[] = []
-    if (result.imported > 0) parts.push(`${result.imported} ficha${result.imported > 1 ? 's' : ''} importada${result.imported > 1 ? 's' : ''}`)
-    if (result.skipped > 0) parts.push(`${result.skipped} já existia${result.skipped > 1 ? 'm' : ''}`)
-    if (result.errors > 0) parts.push(`${result.errors} com erro`)
-    return parts.join(', ') || 'Nenhuma ficha encontrada no arquivo'
+    if (result.imported > 0) return 'Ficha importada com sucesso.'
+    if (result.skipped > 0) return 'Essa ficha já existe e não foi sobrescrita.'
+    if (result.errors > 0) return 'Não foi possível importar o arquivo selecionado.'
+    return 'Nenhuma ficha foi importada.'
   }
 
   return (
@@ -71,7 +87,19 @@ export function Home() {
       <p className={styles.subtitle}>Suas fichas de personagem</p>
       <div className={styles.ornament}>✦ ✦ ✦</div>
 
-      <Link to="/ficha/nova" className={styles.newButton}>+ Nova Ficha</Link>
+      <div className={styles.primaryActions}>
+        <Link to="/ficha/nova" className={styles.newButton}>+ Nova Ficha</Link>
+        <button type="button" className={styles.secondaryButton} onClick={handleImportClick}>
+          ↑ Importar ficha
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json,application/json"
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+        />
+      </div>
 
       {sheets.length === 0 ? (
         <p className={styles.empty}>Nenhuma ficha encontrada. Crie a primeira!</p>
@@ -82,27 +110,26 @@ export function Home() {
               <Link to={`/ficha/${sheet.id}`} className={styles.sheetLink}>
                 {sheet.data.character.name || '(sem nome)'}
               </Link>
-              <button className={styles.deleteButton} onClick={() => handleDelete(sheet.id)}>Excluir</button>
+              <div className={styles.sheetActions}>
+                <button
+                  type="button"
+                  className={styles.exportButton}
+                  onClick={() => handleExport(sheet)}
+                >
+                  ↓ Exportar JSON
+                </button>
+                <button
+                  type="button"
+                  className={styles.deleteButton}
+                  onClick={() => handleDelete(sheet.id)}
+                >
+                  Excluir
+                </button>
+              </div>
             </li>
           ))}
         </ul>
       )}
-
-      <div className={styles.backupRow}>
-        <button className={styles.backupButton} onClick={handleExport}>
-          ↓ Exportar fichas
-        </button>
-        <button className={styles.backupButton} onClick={handleImportClick}>
-          ↑ Importar fichas
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json,application/json"
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-        />
-      </div>
 
       {importFeedback && (
         <p className={
