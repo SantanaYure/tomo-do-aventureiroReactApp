@@ -177,20 +177,24 @@
 .editToggleSlot {
   display: flex;
   justify-content: center;
-  min-height: calc(var(--space-12) + var(--space-6));
+  align-items: flex-end;
+  min-height: calc(var(--space-12) + var(--space-8));
+  padding-top: var(--space-4);
 }
 
 .editToggle {
   position: fixed;
-  bottom: var(--space-6);
+  bottom: calc(var(--space-6) + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   z-index: 200;
-  transition: all 300ms ease;
+  transition: transform 300ms ease, bottom 300ms ease, opacity 300ms ease;
 }
 
 .editToggleAnchored {
-  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 .editToggleButton {
@@ -199,6 +203,7 @@
   justify-content: center;
   gap: var(--space-2);
   min-width: 14rem;
+  max-width: calc(100vw - var(--space-8));
   padding: var(--space-2) var(--space-5);
   font-weight: 700;
   font-size: var(--text-sm);
@@ -229,4 +234,15 @@
 .editToggleSentinel {
   width: 100%;
   height: 1px;
+}
+
+@media (max-width: 479px) {
+  .editToggleSlot {
+    min-height: calc(var(--space-12) + var(--space-6));
+    padding-top: var(--space-3);
+  }
+
+  .editToggleButton {
+    min-width: min(14rem, calc(100vw - var(--space-8)));
+  }
 }
