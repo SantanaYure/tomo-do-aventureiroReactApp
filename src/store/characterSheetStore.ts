@@ -523,3 +523,73 @@ export function deleteCharacterSheet(id: string): boolean {
 export function createAndStoreCharacterSheet(): StoredCharacterSheet {
   return createCharacterSheet(defaultCharacterSheet)
 }
+
+export interface ImportResult {
+  imported: number
+  skipped: number
+  errors: number
+}
+
+export function exportAllSheetsAsJSON(): string {
+  const store = readStore()
+  return JSON.stringify(store, null, 2)
+}
+
+export function importSheetsFromJSON(json: string): ImportResult {
+  const result: ImportResult = { imported: 0, skipped: 0, errors: 0 }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(json)
+  } catch {
+    result.errors = 1
+    return result
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    result.errors = 1
+    return result
+  }
+
+  const store = readStore()
+  const incoming = parsed as Record<string, unknown>
+
+  for (const [key, value] of Object.entries(incoming)) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      result.errors += 1
+      continue
+    }
+
+    const entry = value as Record<string, unknown>
+
+    if (!entry.data || typeof entry.data !== 'object') {
+      result.errors += 1
+      continue
+    }
+
+    try {
+      if (store[key]) {
+        result.skipped += 1
+        continue
+      }
+
+      const timestamp = new Date().toISOString()
+      store[key] = {
+        id: key,
+        data: normalizeCharacterSheet(entry.data as CharacterSheet),
+        createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : timestamp,
+        updatedAt: timestamp,
+      }
+
+      result.imported += 1
+    } catch {
+      result.errors += 1
+    }
+  }
+
+  if (result.imported > 0) {
+    writeStore(store)
+  }
+
+  return result
+}
