@@ -32,7 +32,8 @@
 
 .newButton,
 .secondaryButton,
-.exportButton {
+.exportButton,
+.deleteButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -53,7 +54,8 @@
 }
 
 .secondaryButton,
-.exportButton {
+.exportButton,
+.deleteButton {
   min-width: 10rem;
   font-size: var(--text-sm);
   letter-spacing: 0.02em;
@@ -61,7 +63,8 @@
 
 .newButton:hover,
 .secondaryButton:hover,
-.exportButton:hover {
+.exportButton:hover,
+.deleteButton:hover {
   background:
     linear-gradient(180deg, rgba(255, 248, 229, 0.98), rgba(232, 214, 164, 0.94)),
     radial-gradient(circle at top, rgba(122, 30, 30, 0.18), transparent 48%);
@@ -72,7 +75,8 @@
 
 .newButton:focus-visible,
 .secondaryButton:focus-visible,
-.exportButton:focus-visible {
+.exportButton:focus-visible,
+.deleteButton:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -129,8 +133,20 @@
 
 .deleteButton {
   flex-shrink: 0;
-  background: rgba(122, 30, 30, 0.08);
-  border-color: rgba(122, 30, 30, 0.35);
+  min-width: 8.5rem;
+  padding-inline: var(--space-4);
+  border-color: rgba(122, 30, 30, 0.5);
+  background:
+    linear-gradient(180deg, rgba(255, 242, 238, 0.98), rgba(243, 217, 205, 0.94)),
+    radial-gradient(circle at top, rgba(122, 30, 30, 0.22), transparent 48%);
+  color: var(--accent);
+}
+
+.deleteButton:hover {
+  background:
+    linear-gradient(180deg, rgba(255, 238, 232, 1), rgba(236, 202, 188, 0.96)),
+    radial-gradient(circle at top, rgba(122, 30, 30, 0.28), transparent 48%);
+  border-color: var(--accent);
   color: var(--accent);
 }
 
