@@ -56,6 +56,7 @@ function readStoredTab(id?: string): Tab {
   }
 
   const storedTab = window.sessionStorage.getItem(getTabStorageKey(id))
+
   return isTab(storedTab) ? storedTab : DEFAULT_TAB
 }
 
@@ -165,7 +166,7 @@ export function MonsterSheetPage() {
   }, [activeTab, id])
 
   function handleSheetChange(patch: DeepPartial<MonsterSheet>) {
-    if (!sheet || !id || !isEditing) {
+    if (!sheet || !id) {
       return
     }
 

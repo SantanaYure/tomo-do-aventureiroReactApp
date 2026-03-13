@@ -49,6 +49,13 @@ function createReaction(): MonsterFeature {
         id: globalThis.crypto.randomUUID(),
         name: '',
         description: '',
+        hasLimitedUses: false,
+        maxUses: 1,
+        currentUses: 1,
+        recharge: 'none',
+        duration: '',
+        range: '',
+        requirements: '',
     }
 }
 

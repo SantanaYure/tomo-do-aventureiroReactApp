@@ -6,13 +6,21 @@ import type {
     LegendaryAction,
     MonsterAction,
     MonsterFeature,
+    MonsterMovement,
     MonsterSheet,
+    RechargeType,
     StoredMonsterSheet,
 } from '../types/system/dnd/monsterSheet'
 
 export type { StoredMonsterSheet } from '../types/system/dnd/monsterSheet'
 
 export const MONSTER_SHEETS_STORAGE_KEY = 'tomo-monsters'
+
+export interface MonsterImportResult {
+    imported: number
+    skipped: number
+    errors: number
+}
 
 type MonsterSheetStoreMap = Record<string, StoredMonsterSheet>
 
@@ -59,6 +67,16 @@ const CONDITION_TYPES: readonly ConditionType[] = [
 ]
 
 const ATTACK_TYPES: readonly AttackType[] = ['Corpo-a-corpo', 'Distância', 'Magia']
+
+const RECHARGE_TYPES: readonly RechargeType[] = [
+    'none',
+    'turn',
+    'recharge56',
+    'recharge46',
+    'short',
+    'long',
+    'day',
+]
 
 let inMemoryStore: MonsterSheetStoreMap = {}
 
@@ -118,6 +136,25 @@ function createDefaultMonsterFeature(id = ''): MonsterFeature {
         id,
         name: '',
         description: '',
+        hasLimitedUses: false,
+        maxUses: 1,
+        currentUses: 1,
+        recharge: 'none',
+        duration: '',
+        range: '',
+        requirements: '',
+    }
+}
+
+function createDefaultMonsterMovement(
+    id = '',
+    source = '',
+    distance = 0,
+): MonsterMovement {
+    return {
+        id,
+        source,
+        distance,
     }
 }
 
@@ -150,15 +187,43 @@ function normalizeNestedId(value: unknown, fallback: string): string {
     return typeof value === 'string' && value.trim().length > 0 ? value : fallback
 }
 
+function normalizeRechargeType(value: unknown): RechargeType {
+    return isOneOf(value, RECHARGE_TYPES) ? value : 'none'
+}
+
 function normalizeMonsterFeature(value: unknown, fallbackId: string): MonsterFeature {
     const defaultFeature = createDefaultMonsterFeature(fallbackId)
     const nextValue = isRecord(value) ? value : defaultFeature
+    const maxUses = normalizeInteger(nextValue.maxUses, defaultFeature.maxUses, 0)
+    const currentUses = normalizeInteger(nextValue.currentUses, defaultFeature.currentUses, 0)
 
     return {
         ...defaultFeature,
         id: normalizeNestedId(nextValue.id, fallbackId),
         name: normalizeString(nextValue.name),
         description: normalizeString(nextValue.description),
+        hasLimitedUses:
+            typeof nextValue.hasLimitedUses === 'boolean'
+                ? nextValue.hasLimitedUses
+                : defaultFeature.hasLimitedUses,
+        maxUses,
+        currentUses: Math.min(currentUses, maxUses),
+        recharge: normalizeRechargeType(nextValue.recharge),
+        duration: normalizeString(nextValue.duration),
+        range: normalizeString(nextValue.range),
+        requirements: normalizeString(nextValue.requirements),
+    }
+}
+
+function normalizeMonsterMovement(value: unknown, fallbackId: string): MonsterMovement {
+    const defaultMovement = createDefaultMonsterMovement(fallbackId)
+    const nextValue = isRecord(value) ? value : defaultMovement
+
+    return {
+        ...defaultMovement,
+        id: normalizeNestedId(nextValue.id, fallbackId),
+        source: normalizeString(nextValue.source),
+        distance: normalizeInteger(nextValue.distance, defaultMovement.distance),
     }
 }
 
@@ -215,10 +280,11 @@ export function createDefaultMonsterSheet(): MonsterSheet {
             lore: '',
         },
         stats: {
-            hp: 10,
+            hpCurrent: 10,
             maxHp: 10,
+            hpTemp: 0,
             ac: 10,
-            speed: 9,
+            movements: [createDefaultMonsterMovement('movement-1', 'Terra', 9)],
             strength: 10,
             dexterity: 10,
             constitution: 10,
@@ -240,6 +306,7 @@ export function createDefaultMonsterSheet(): MonsterSheet {
         reactions: [],
         legendary: {
             pointsPerRound: 3,
+            pointsUsed: 0,
             description: '',
             actions: [],
         },
@@ -250,11 +317,33 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
     const defaultSheet = createDefaultMonsterSheet()
     const nextValue = isRecord(raw) ? raw : defaultSheet
     const details = isRecord(nextValue.details) ? nextValue.details : defaultSheet.details
-    const stats = isRecord(nextValue.stats) ? nextValue.stats : defaultSheet.stats
+    const rawStats = isRecord(nextValue.stats) ? nextValue.stats : null
+    const stats = rawStats ?? defaultSheet.stats
     const traits = isRecord(nextValue.traits) ? nextValue.traits : defaultSheet.traits
     const legendary = isRecord(nextValue.legendary)
         ? nextValue.legendary
         : defaultSheet.legendary
+    const pointsPerRound = normalizeInteger(
+        legendary.pointsPerRound,
+        defaultSheet.legendary.pointsPerRound,
+        0,
+    )
+    const pointsUsed = normalizeInteger(legendary.pointsUsed, defaultSheet.legendary.pointsUsed, 0)
+    const maxHp = normalizeInteger(stats.maxHp, defaultSheet.stats.maxHp)
+    const legacyHp = normalizeInteger(stats.hp, defaultSheet.stats.hpCurrent)
+    const hpCurrent = normalizeInteger(stats.hpCurrent, legacyHp)
+    const defaultMovement = defaultSheet.stats.movements[0] ?? createDefaultMonsterMovement()
+    const movements = Array.isArray(stats.movements)
+        ? stats.movements.map((movement, index) =>
+            normalizeMonsterMovement(movement, `movement-${index + 1}`),
+        )
+        : [
+            createDefaultMonsterMovement(
+                'movement-1',
+                defaultMovement.source || 'Terra',
+                normalizeInteger(rawStats?.speed, defaultMovement.distance),
+            ),
+        ]
 
     return {
         systemId: normalizeMonsterSystemId(nextValue.systemId),
@@ -268,10 +357,11 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
             lore: normalizeString(details.lore),
         },
         stats: {
-            hp: normalizeInteger(stats.hp, defaultSheet.stats.hp),
-            maxHp: normalizeInteger(stats.maxHp, defaultSheet.stats.maxHp),
+            hpCurrent: Math.min(hpCurrent, maxHp),
+            maxHp,
+            hpTemp: normalizeInteger(stats.hpTemp, defaultSheet.stats.hpTemp),
             ac: normalizeInteger(stats.ac, defaultSheet.stats.ac),
-            speed: normalizeInteger(stats.speed, defaultSheet.stats.speed),
+            movements,
             strength: normalizeInteger(stats.strength, defaultSheet.stats.strength),
             dexterity: normalizeInteger(stats.dexterity, defaultSheet.stats.dexterity),
             constitution: normalizeInteger(
@@ -316,11 +406,8 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
             )
             : defaultSheet.reactions,
         legendary: {
-            pointsPerRound: normalizeInteger(
-                legendary.pointsPerRound,
-                defaultSheet.legendary.pointsPerRound,
-                0,
-            ),
+            pointsPerRound,
+            pointsUsed: Math.min(pointsUsed, pointsPerRound),
             description: normalizeString(legendary.description),
             actions: Array.isArray(legendary.actions)
                 ? legendary.actions.map((action, index) =>
@@ -456,4 +543,108 @@ export function deleteMonsterSheet(id: string): void {
 
     delete store[normalizedId]
     writeStore(store)
+}
+
+type ImportedMonsterSheetPayload = {
+    id: string
+    data: MonsterSheet
+    createdAt?: string
+}
+
+function extractImportedMonsterSheetPayload(
+    parsed: unknown,
+): ImportedMonsterSheetPayload | null {
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return null
+    }
+
+    const entry = parsed as Record<string, unknown>
+
+    if (typeof entry.id === 'string' && entry.data && typeof entry.data === 'object') {
+        return {
+            id: entry.id,
+            data: entry.data as MonsterSheet,
+            createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : undefined,
+        }
+    }
+
+    const entries = Object.entries(entry)
+
+    if (entries.length !== 1) {
+        return null
+    }
+
+    const [key, value] = entries[0]
+
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return null
+    }
+
+    const nestedEntry = value as Record<string, unknown>
+
+    if (!nestedEntry.data || typeof nestedEntry.data !== 'object') {
+        return null
+    }
+
+    return {
+        id: typeof nestedEntry.id === 'string' ? nestedEntry.id : key,
+        data: nestedEntry.data as MonsterSheet,
+        createdAt:
+            typeof nestedEntry.createdAt === 'string' ? nestedEntry.createdAt : undefined,
+    }
+}
+
+export function exportMonsterSheetAsJSON(id: string): string | null {
+    const entry = getMonsterSheet(id)
+
+    if (!entry) {
+        return null
+    }
+
+    return JSON.stringify(entry, null, 2)
+}
+
+export function importMonsterSheetFromJSON(json: string): MonsterImportResult {
+    const result: MonsterImportResult = { imported: 0, skipped: 0, errors: 0 }
+
+    let parsed: unknown
+    try {
+        parsed = JSON.parse(json)
+    } catch {
+        result.errors = 1
+        return result
+    }
+
+    const payload = extractImportedMonsterSheetPayload(parsed)
+
+    if (!payload) {
+        result.errors = 1
+        return result
+    }
+
+    const store = readStore()
+
+    try {
+        const normalizedId = normalizeId(payload.id)
+
+        if (store[normalizedId]) {
+            result.skipped = 1
+            return result
+        }
+
+        const timestamp = new Date().toISOString()
+        store[normalizedId] = {
+            id: normalizedId,
+            data: normalizeMonsterSheet(payload.data),
+            createdAt: payload.createdAt ?? timestamp,
+            updatedAt: timestamp,
+        }
+
+        result.imported = 1
+        writeStore(store)
+    } catch {
+        result.errors = 1
+    }
+
+    return result
 }

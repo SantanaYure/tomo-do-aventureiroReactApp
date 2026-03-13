@@ -39,6 +39,15 @@ export type ConditionType =
 
 export type AttackType = 'Corpo-a-corpo' | 'Distância' | 'Magia'
 
+export type RechargeType =
+    | 'none'
+    | 'turn'
+    | 'recharge56'
+    | 'recharge46'
+    | 'short'
+    | 'long'
+    | 'day'
+
 export type MonsterSystemId = 'dnd-monster' | 'dnd5e-monster'
 
 export interface MonsterAction {
@@ -66,6 +75,19 @@ export interface MonsterFeature {
     id: string
     name: string
     description: string
+    hasLimitedUses: boolean
+    maxUses: number
+    currentUses: number
+    recharge: RechargeType
+    duration: string
+    range: string
+    requirements: string
+}
+
+export interface MonsterMovement {
+    id: string
+    source: string
+    distance: number
 }
 
 export interface MonsterSheet {
@@ -82,10 +104,11 @@ export interface MonsterSheet {
     }
 
     stats: {
-        hp: number
+        hpCurrent: number
         maxHp: number
+        hpTemp: number
         ac: number
-        speed: number
+        movements: MonsterMovement[]
         strength: number
         dexterity: number
         constitution: number
@@ -110,6 +133,7 @@ export interface MonsterSheet {
 
     legendary: {
         pointsPerRound: number
+        pointsUsed: number
         description: string
         actions: LegendaryAction[]
     }

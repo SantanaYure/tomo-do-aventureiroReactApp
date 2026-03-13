@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import type { LegendaryAction } from '../../../types/system/dnd/monsterSheet'
 import panelStyles from '../../../styles/panel.module.css'
-import type { MonsterComponentProps } from '../shared'
+import {
+    clampTrackerValue,
+    MAX_TRACKER_DOTS,
+    type MonsterComponentProps,
+} from '../shared'
 import styles from './LegendaryActionsPanel.module.css'
 
 function createLegendaryAction(): LegendaryAction {
@@ -27,6 +31,10 @@ export function LegendaryActionsPanel({
     const legendary = sheet.legendary
     const actions = legendary.actions
 
+    function updateLegendary(patch: Partial<typeof legendary>) {
+        onChange({ legendary: patch })
+    }
+
     function toggleCollapse(id: string) {
         setCollapsedIds((previous) => {
             const next = new Set(previous)
@@ -42,7 +50,7 @@ export function LegendaryActionsPanel({
     }
 
     function updateActions(updated: LegendaryAction[]) {
-        onChange({ legendary: { actions: updated } })
+        updateLegendary({ actions: updated })
     }
 
     function setAction(index: number, patch: Partial<LegendaryAction>) {
@@ -59,6 +67,49 @@ export function LegendaryActionsPanel({
 
     function removeAction(index: number) {
         updateActions(actions.filter((_, currentIndex) => currentIndex !== index))
+    }
+
+    function setPointsUsed(value: number) {
+        updateLegendary({ pointsUsed: clampTrackerValue(value, legendary.pointsPerRound) })
+    }
+
+    function adjustPointsUsed(delta: number) {
+        setPointsUsed(legendary.pointsUsed + delta)
+    }
+
+    function renderPointsTracker() {
+        if (legendary.pointsPerRound > MAX_TRACKER_DOTS) {
+            return <span className={styles.pointsSummary}>{legendary.pointsUsed} / {legendary.pointsPerRound} pontos usados</span>
+        }
+
+        return (
+            <div className={styles.usageTracker}>
+                {Array.from({ length: legendary.pointsPerRound }, (_, dotIndex) => {
+                    const isFilled = dotIndex < legendary.pointsUsed
+
+                    return (
+                        <button
+                            key={`legendary-points-${dotIndex}`}
+                            type="button"
+                            className={isFilled ? `${styles.usageDot} ${styles.usageDotFilled}` : styles.usageDot}
+                            onClick={() => adjustPointsUsed(isFilled ? -1 : 1)}
+                            aria-label={isFilled ? 'Remover um ponto gasto' : 'Marcar um ponto gasto'}
+                            aria-pressed={isFilled}
+                        />
+                    )
+                })}
+            </div>
+        )
+    }
+
+    function renderCostTracker(cost: number) {
+        return (
+            <span className={styles.costTracker} aria-hidden="true">
+                {Array.from({ length: cost }, (_, dotIndex) => (
+                    <span key={`cost-${cost}-${dotIndex}`} className={`${styles.costDot} ${styles.costDotFilled}`} />
+                ))}
+            </span>
+        )
     }
 
     if (!isEditing && actions.length === 0) {
@@ -82,13 +133,11 @@ export function LegendaryActionsPanel({
                                 min={0}
                                 value={legendary.pointsPerRound}
                                 onChange={(event) =>
-                                    onChange({
-                                        legendary: {
-                                            pointsPerRound: parsePoints(
-                                                event.target.value,
-                                                legendary.pointsPerRound,
-                                            ),
-                                        },
+                                    updateLegendary({
+                                        pointsPerRound: parsePoints(
+                                            event.target.value,
+                                            legendary.pointsPerRound,
+                                        ),
                                     })
                                 }
                             />
@@ -100,7 +149,7 @@ export function LegendaryActionsPanel({
                                 rows={4}
                                 value={legendary.description}
                                 onChange={(event) =>
-                                    onChange({ legendary: { description: event.target.value } })
+                                    updateLegendary({ description: event.target.value })
                                 }
                                 placeholder="Explique quando e como as ações lendárias são usadas"
                             />
@@ -177,10 +226,21 @@ export function LegendaryActionsPanel({
                         <p className={styles.overview}>{legendary.description}</p>
                     )}
 
-                    <div className={styles.badgeRow}>
-                        <span className={styles.pointsBadge}>
-                            {legendary.pointsPerRound} ponto{legendary.pointsPerRound === 1 ? '' : 's'} por rodada
-                        </span>
+                    <div className={styles.trackerRow}>
+                        <div className={styles.trackerSummary}>
+                            {renderPointsTracker()}
+                            <span className={styles.pointsSummary}>
+                                {legendary.pointsUsed} / {legendary.pointsPerRound} pontos usados
+                            </span>
+                        </div>
+
+                        <button
+                            type="button"
+                            className={styles.rechargeButton}
+                            onClick={() => setPointsUsed(0)}
+                        >
+                            Resetar turno
+                        </button>
                     </div>
 
                     <div className={styles.list}>
@@ -198,6 +258,7 @@ export function LegendaryActionsPanel({
                                     >
                                         <span className={styles.cardTitle}>{action.name || '(sem nome)'}</span>
                                         <span className={styles.cardMeta}>
+                                            {renderCostTracker(action.cost)}
                                             {action.cost} ponto{action.cost === 1 ? '' : 's'}
                                         </span>
                                         <span className={styles.collapseIcon}>{isCollapsed ? '▸' : '▾'}</span>
