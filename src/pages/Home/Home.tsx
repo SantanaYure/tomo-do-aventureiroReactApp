@@ -8,19 +8,34 @@ import {
   type StoredCharacterSheet,
   type ImportResult,
 } from '../../store/characterSheetStore'
+import {
+  listMonsterSheets,
+  deleteMonsterSheet as deleteMonster,
+  type StoredMonsterSheet,
+} from '../../store/monsterSheetStore'
 import styles from './Home.module.css'
 
 export function Home() {
   const [sheets, setSheets] = useState<StoredCharacterSheet[]>([])
+  const [monsters, setMonsters] = useState<StoredMonsterSheet[]>([])
   const [importFeedback, setImportFeedback] = useState<ImportResult | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { setSheets(listCharacterSheets()) }, [])
+  useEffect(() => {
+    setSheets(listCharacterSheets())
+    setMonsters(listMonsterSheets())
+  }, [])
 
   function handleDeleteSheet(id: string) {
     if (!confirm('Excluir esta ficha permanentemente?')) return
     deleteCharacterSheet(id)
     setSheets((prev) => prev.filter((s) => s.id !== id))
+  }
+
+  function handleDeleteMonster(id: string) {
+    if (!confirm('Excluir este monstro ou NPC permanentemente?')) return
+    deleteMonster(id)
+    setMonsters((prev) => prev.filter((monster) => monster.id !== id))
   }
 
   function createSheetFileName(sheet: StoredCharacterSheet): string {
@@ -81,10 +96,14 @@ export function Home() {
     return 'Nenhuma ficha foi importada.'
   }
 
+  const hasCharacters = sheets.length > 0
+  const hasMonsters = monsters.length > 0
+  const isCompletelyEmpty = !hasCharacters && !hasMonsters
+
   return (
     <main className={styles.page}>
       <h1 className={styles.title}>Tomo do Aventureiro</h1>
-      <p className={styles.subtitle}>Suas fichas de personagem</p>
+      <p className={styles.subtitle}>Suas fichas de personagem, monstros e NPCs</p>
       <div className={styles.ornament}>✦ ✦ ✦</div>
 
       <div className={styles.primaryActions}>
@@ -101,34 +120,71 @@ export function Home() {
         />
       </div>
 
-      {sheets.length === 0 ? (
-        <p className={styles.empty}>Nenhuma ficha encontrada. Crie a primeira!</p>
+      {isCompletelyEmpty ? (
+        <p className={styles.empty}>Nenhuma ficha encontrada. Crie um personagem ou um monstro para começar.</p>
       ) : (
-        <ul className={styles.sheetList}>
-          {sheets.map((sheet) => (
-            <li key={sheet.id} className={styles.sheetItem}>
-              <Link to={`/ficha/${sheet.id}`} className={styles.sheetLink}>
-                {sheet.data.character.name || '(sem nome)'}
-              </Link>
-              <div className={styles.sheetActions}>
-                <button
-                  type="button"
-                  className={styles.exportButton}
-                  onClick={() => handleExportSheet(sheet)}
-                >
-                  ↓ Exportar JSON
-                </button>
-                <button
-                  type="button"
-                  className={styles.deleteButton}
-                  onClick={() => handleDeleteSheet(sheet.id)}
-                >
-                  Excluir
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <>
+          <section className={styles.collectionSection}>
+            <h2 className={styles.sectionTitle}>Personagens</h2>
+
+            {hasCharacters ? (
+              <ul className={styles.sheetList}>
+                {sheets.map((sheet) => (
+                  <li key={sheet.id} className={styles.sheetItem}>
+                    <Link to={`/ficha/${sheet.id}`} className={styles.sheetLink}>
+                      {sheet.data.character.name || '(sem nome)'}
+                    </Link>
+                    <div className={styles.sheetActions}>
+                      <button
+                        type="button"
+                        className={styles.exportButton}
+                        onClick={() => handleExportSheet(sheet)}
+                      >
+                        ↓ Exportar JSON
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.deleteButton}
+                        onClick={() => handleDeleteSheet(sheet.id)}
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.emptySection}>Nenhum personagem encontrado.</p>
+            )}
+          </section>
+
+          <section className={styles.collectionSection}>
+            <h2 className={styles.sectionTitle}>Monstros e NPCs</h2>
+
+            {hasMonsters ? (
+              <ul className={styles.sheetList}>
+                {monsters.map((monster) => (
+                  <li key={monster.id} className={styles.sheetItem}>
+                    <Link to={`/monstro/${monster.id}`} className={styles.sheetLink}>
+                      {monster.data.details.name || '(sem nome)'}
+                    </Link>
+                    <div className={styles.sheetActions}>
+                      <button
+                        type="button"
+                        className={styles.deleteButton}
+                        onClick={() => handleDeleteMonster(monster.id)}
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.emptySection}>Nenhum monstro ou NPC encontrado.</p>
+            )}
+          </section>
+        </>
       )}
 
       {importFeedback && (

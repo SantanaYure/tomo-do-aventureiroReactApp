@@ -1,0 +1,245 @@
+.page {
+    width: 100%;
+    max-width: var(--page-max);
+    margin: 0 auto;
+    padding: 0.425rem;
+}
+
+.backLink {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+    font-family: var(--font-display);
+    letter-spacing: 0.03em;
+    margin-bottom: var(--space-4);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    background: var(--parchment-light);
+    transition: all var(--transition);
+    text-decoration: none;
+}
+
+.backLink:hover {
+    color: var(--accent);
+    border-color: var(--border);
+    background: var(--parchment-dark);
+    text-decoration: none;
+}
+
+.tabBarShell {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    margin: var(--space-4) 0;
+}
+
+.tabBar {
+    position: relative;
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-snap-type: x mandatory;
+    background: var(--parchment-dark);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius-sm) + 0.35rem);
+    box-shadow: var(--shadow-card);
+    gap: var(--space-1);
+    padding: var(--space-1);
+}
+
+.tabBar::-webkit-scrollbar {
+    display: none;
+}
+
+.tab {
+    flex-shrink: 0;
+    min-width: 3rem;
+    scroll-snap-align: start;
+    padding: var(--space-3) var(--space-4);
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    letter-spacing: 0.04em;
+    color: var(--ink-muted);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: color var(--transition), border-color var(--transition), background var(--transition);
+    white-space: nowrap;
+}
+
+.tab:hover:not(:disabled) {
+    color: var(--ink);
+    background: rgba(255, 249, 235, 0.4);
+    border-color: transparent;
+}
+
+.tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
+.tabActive {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+    background: rgba(255, 249, 235, 0.6);
+}
+
+.tabScrollHint {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: var(--space-2);
+    padding: 0.2rem 0.7rem;
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    background: rgba(255, 248, 229, 0.72);
+    color: var(--ink-muted);
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+}
+
+.tabContent {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.loading,
+.emptyTab {
+    text-align: center;
+    padding: var(--space-12);
+    font-style: italic;
+    color: var(--ink-muted);
+    font-size: var(--text-lg);
+}
+
+.notFound {
+    text-align: center;
+    padding: var(--space-12);
+}
+
+@media (min-width: 480px) {
+    .page {
+        padding: var(--space-3) 0 var(--space-12);
+    }
+
+    .tabContent {
+        gap: var(--space-5);
+    }
+}
+
+@media (min-width: 600px) {
+    .page {
+        padding: var(--space-5) 0 var(--space-12);
+    }
+
+    .tabBarShell {
+        margin-bottom: var(--space-4);
+    }
+
+    .tabBar {
+        overflow-x: visible;
+        scroll-snap-type: none;
+    }
+
+    .tab {
+        flex: 1;
+        text-align: center;
+    }
+
+    .tabContent {
+        gap: var(--space-6);
+    }
+
+    .tabScrollHint {
+        display: none;
+    }
+}
+
+@media (min-width: 780px) {
+    .page {
+        padding: var(--space-6) 0 var(--space-12);
+    }
+
+    .tabContent {
+        gap: var(--space-8);
+    }
+}
+
+.editToggleSlot {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    min-height: calc(var(--space-12) + var(--space-8));
+    padding-top: var(--space-4);
+}
+
+.editToggle {
+    position: fixed;
+    bottom: calc(var(--space-6) + env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    transition: transform 300ms ease, bottom 300ms ease, opacity 300ms ease;
+}
+
+.editToggleAnchored {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.editToggleButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-width: 14rem;
+    max-width: calc(100vw - var(--space-8));
+    padding: var(--space-2) var(--space-5);
+    font-weight: 700;
+    font-size: var(--text-sm);
+    color: var(--ink);
+    border: 2px double var(--border-dark);
+    border-radius: 999px;
+    box-shadow: var(--shadow-card);
+    background:
+        linear-gradient(180deg, rgba(255, 248, 229, 0.96), rgba(239, 225, 188, 0.92)),
+        radial-gradient(circle at top, rgba(122, 30, 30, 0.14), transparent 48%);
+    cursor: pointer;
+    transition: all var(--transition);
+    white-space: nowrap;
+}
+
+.editToggleButton:hover {
+    background:
+        linear-gradient(180deg, rgba(255, 248, 229, 0.98), rgba(232, 214, 164, 0.94)),
+        radial-gradient(circle at top, rgba(122, 30, 30, 0.18), transparent 48%);
+    border-color: var(--border-dark);
+}
+
+.editToggleButton:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.editToggleSentinel {
+    width: 100%;
+    height: 1px;
+}
+
+@media (max-width: 479px) {
+    .editToggleSlot {
+        min-height: calc(var(--space-12) + var(--space-6));
+        padding-top: var(--space-3);
+    }
+
+    .editToggleButton {
+        min-width: min(14rem, calc(100vw - var(--space-8)));
+    }
+}

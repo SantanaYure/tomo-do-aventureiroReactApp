@@ -1,0 +1,14 @@
+.page {
+    width: 100%;
+    max-width: var(--page-max);
+    margin: 0 auto;
+    padding: var(--space-6) 0 var(--space-12);
+}
+
+.loading {
+    text-align: center;
+    padding: var(--space-12);
+    font-style: italic;
+    color: var(--ink-muted);
+    font-size: var(--text-lg);
+}

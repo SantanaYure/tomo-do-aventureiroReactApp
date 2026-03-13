@@ -1,0 +1,170 @@
+.panel {
+    gap: var(--space-5);
+}
+
+.summaryRow {
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.summaryCard {
+    display: grid;
+    gap: var(--space-2);
+    align-content: start;
+    padding: var(--space-3);
+    background: rgba(255, 250, 241, 0.7);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    text-align: center;
+}
+
+.summaryLabel {
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+}
+
+.summaryValueGroup {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: var(--space-2);
+}
+
+.summaryValue {
+    font-family: var(--font-display);
+    font-size: clamp(1.9rem, 4vw, 2.5rem);
+    color: var(--accent);
+    line-height: 1;
+}
+
+.summarySeparator {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    color: var(--ink-muted);
+}
+
+.hitPointsEditor {
+    display: inline-flex;
+    align-items: end;
+    justify-content: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.inlineField {
+    align-items: center;
+    text-align: center;
+}
+
+.summaryInput {
+    width: 5rem !important;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+}
+
+.abilityGrid {
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.abilityCard {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-2);
+    background: var(--parchment-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    text-align: center;
+}
+
+.abilityCard::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 1px solid var(--border-light);
+    border-radius: 1px;
+    pointer-events: none;
+}
+
+.abilityShortLabel,
+.abilityName,
+.abilityValue,
+.abilityModifier,
+.abilityField {
+    position: relative;
+    z-index: 1;
+}
+
+.abilityShortLabel {
+    font-family: var(--font-display);
+    font-size: var(--text-base);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.abilityName {
+    min-height: 2.1rem;
+    font-size: var(--text-sm);
+    color: var(--ink-muted);
+}
+
+.abilityValue {
+    font-family: var(--font-display);
+    font-size: clamp(1.8rem, 4vw, 2.3rem);
+    line-height: 1;
+}
+
+.abilityField {
+    align-items: center;
+}
+
+.abilityInput {
+    width: 4.5rem !important;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    line-height: 1;
+}
+
+.abilityModifier {
+    min-width: 3rem;
+    padding: 0.2rem 0.7rem;
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    background: rgba(255, 249, 235, 0.9);
+    font-family: var(--font-display);
+    font-size: var(--text-base);
+    color: var(--accent);
+}
+
+@media (max-width: 980px) {
+    .abilityGrid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .summaryRow {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 560px) {
+    .abilityGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 360px) {
+    .abilityGrid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,82 @@
+.panel {
+    gap: var(--space-4);
+}
+
+.list {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.card {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 250, 241, 0.72);
+    box-shadow: var(--shadow-card);
+}
+
+.cardHeader {
+    display: flex;
+    align-items: start;
+    gap: var(--space-3);
+}
+
+.nameField {
+    flex: 1;
+}
+
+.field {
+    gap: var(--space-2);
+}
+
+.cardToggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: 0;
+    background: none;
+    border: none;
+    text-align: left;
+}
+
+.cardTitle {
+    flex: 1;
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.collapseIcon {
+    flex-shrink: 0;
+    font-size: var(--text-sm);
+    color: var(--ink-muted);
+}
+
+.cardBody {
+    margin-top: calc(var(--space-2) * -1);
+}
+
+.description,
+.emptyText {
+    white-space: pre-wrap;
+    line-height: 1.65;
+}
+
+.emptyText {
+    color: var(--ink-muted);
+    font-style: italic;
+}
+
+@media (max-width: 640px) {
+    .cardHeader {
+        flex-direction: column;
+    }
+
+    .cardHeader :global(button) {
+        width: 100%;
+    }
+}

@@ -1,0 +1,71 @@
+.header {
+    gap: var(--space-4);
+}
+
+.editLayout {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.field {
+    gap: var(--space-2);
+}
+
+.nameField input {
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    padding-block: var(--space-2);
+}
+
+.metaGrid {
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.viewLayout {
+    display: grid;
+    gap: var(--space-3);
+    text-align: center;
+}
+
+.name {
+    font-size: clamp(2.4rem, 6vw, 3.8rem);
+}
+
+.meta {
+    font-size: var(--text-lg);
+    color: var(--ink-muted);
+    font-style: italic;
+}
+
+.classification {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    letter-spacing: 0.04em;
+    color: var(--accent);
+}
+
+.divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-dark), transparent);
+}
+
+.bodyText,
+.placeholder {
+    font-size: var(--text-lg);
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+
+.placeholder {
+    color: var(--ink-faint);
+    font-style: italic;
+}
+
+@media (max-width: 760px) {
+    .metaGrid {
+        grid-template-columns: 1fr;
+    }
+}

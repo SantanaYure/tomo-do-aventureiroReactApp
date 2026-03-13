@@ -17,8 +17,18 @@
   font-size: var(--text-lg);
 }
 
+.optionsGrid {
+  display: grid;
+  gap: var(--space-4);
+  width: min(100%, 52rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .card {
-  width: min(100%, 40rem);
+  width: 100%;
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
   padding: var(--space-5);
   border: 3px double var(--border-dark);
   border-radius: var(--radius-lg);
@@ -28,13 +38,17 @@
   box-shadow: var(--shadow-soft);
 }
 
+.optionTitle {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+}
+
 .description {
-  margin-bottom: var(--space-6);
   font-size: var(--text-base);
   color: var(--ink-muted);
 }
 
 .submitBtn {
+  width: 100%;
   min-width: 14rem;
   padding-inline: var(--space-5);
   font-weight: 700;
@@ -52,6 +66,10 @@
 @media (max-width: 720px) {
   .page {
     padding-top: var(--space-4);
+  }
+
+  .optionsGrid {
+    grid-template-columns: 1fr;
   }
 
   .card {

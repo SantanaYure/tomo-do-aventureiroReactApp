@@ -1,0 +1,127 @@
+.panel {
+    gap: var(--space-4);
+}
+
+.layout {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.topGrid {
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: minmax(0, 10rem) minmax(0, 1fr);
+    align-items: start;
+}
+
+.list {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.card {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 250, 241, 0.72);
+    box-shadow: var(--shadow-card);
+}
+
+.cardHeader {
+    display: flex;
+    align-items: start;
+    gap: var(--space-3);
+}
+
+.field {
+    gap: var(--space-2);
+}
+
+.nameField {
+    flex: 1;
+}
+
+.costField,
+.pointsField {
+    width: min(100%, 10rem);
+}
+
+.overview,
+.description,
+.emptyText {
+    white-space: pre-wrap;
+    line-height: 1.65;
+}
+
+.emptyText {
+    color: var(--ink-muted);
+    font-style: italic;
+}
+
+.badgeRow {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.pointsBadge,
+.cardMeta {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.7rem;
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    background: rgba(255, 249, 235, 0.88);
+    color: var(--accent);
+    font-size: var(--text-sm);
+    font-weight: 700;
+}
+
+.cardToggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: 0;
+    background: none;
+    border: none;
+    text-align: left;
+}
+
+.cardTitle {
+    flex: 1;
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 700;
+}
+
+.collapseIcon {
+    flex-shrink: 0;
+    font-size: var(--text-sm);
+    color: var(--ink-muted);
+}
+
+.cardBody {
+    margin-top: calc(var(--space-2) * -1);
+}
+
+@media (max-width: 760px) {
+    .topGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .cardHeader {
+        flex-direction: column;
+    }
+
+    .costField,
+    .pointsField,
+    .cardHeader :global(button) {
+        width: 100%;
+    }
+
+    .cardToggle {
+        flex-wrap: wrap;
+    }
+}
