@@ -3,6 +3,7 @@
   justify-items: center;
   gap: var(--space-3);
   text-align: center;
+  padding-bottom: var(--space-12);
 }
 
 .title {
