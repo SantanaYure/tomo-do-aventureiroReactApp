@@ -9,6 +9,8 @@ import type {
     MonsterMovement,
     MonsterSheet,
     RechargeType,
+    Spell,
+    SpellcastingAbility,
     StoredMonsterSheet,
 } from '../types/system/dnd/monsterSheet'
 
@@ -65,6 +67,16 @@ const CONDITION_TYPES: readonly ConditionType[] = [
     'Restrito',
     'Atordoado',
     'Inconsciente',
+]
+
+const SPELLCASTING_ABILITIES: readonly SpellcastingAbility[] = [
+    '',
+    'Força',
+    'Destreza',
+    'Constituição',
+    'Inteligência',
+    'Sabedoria',
+    'Carisma',
 ]
 
 const ATTACK_TYPES: readonly AttackType[] = ['Corpo-a-corpo', 'Distância', 'Magia']
@@ -262,6 +274,35 @@ function normalizeLegendaryAction(value: unknown, fallbackId: string): Legendary
     }
 }
 
+function normalizeSpell(value: unknown): Spell {
+    if (!isRecord(value)) return { name: '', level: 0, school: '', castingTime: '', range: '', duration: '', components: [], prepared: false, description: '' }
+    return {
+        name: normalizeString(value.name),
+        level: typeof value.level === 'number' ? Math.max(0, Math.min(9, Math.trunc(value.level))) : 0,
+        school: normalizeString(value.school),
+        castingTime: normalizeString(value.castingTime),
+        range: normalizeString(value.range),
+        duration: normalizeString(value.duration),
+        components: Array.isArray(value.components) ? value.components.filter((c): c is string => typeof c === 'string') : [],
+        concentration: typeof value.concentration === 'boolean' ? value.concentration : false,
+        prepared: typeof value.prepared === 'boolean' ? value.prepared : false,
+        description: normalizeString(value.description),
+    }
+}
+
+function normalizeSlotsRecord(value: unknown): Record<number, { current: number; max: number }> {
+    if (!isRecord(value)) return {}
+    const result: Record<number, { current: number; max: number }> = {}
+    for (let level = 1; level <= 9; level++) {
+        const entry = value[level]
+        if (!isRecord(entry)) continue
+        const max = normalizeInteger(entry.max, 0)
+        const current = Math.min(normalizeInteger(entry.current, 0), max)
+        result[level] = { current, max }
+    }
+    return result
+}
+
 function normalizeMonsterSystemId(value: unknown): MonsterSheet['systemId'] {
     return value === 'dnd-monster' || value === 'dnd5e-monster'
         ? 'dnd5e-monster'
@@ -311,6 +352,12 @@ export function createDefaultMonsterSheet(): MonsterSheet {
             pointsUsed: 0,
             description: '',
             actions: [],
+        },
+        spells: {
+            spellcastingAbility: '',
+            proficiencyBonus: 2,
+            items: [],
+            slots: {},
         },
     }
 }
@@ -418,6 +465,16 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
                 )
                 : defaultSheet.legendary.actions,
         },
+        spells: (() => {
+            const rawSpells = isRecord(nextValue.spells) ? nextValue.spells : defaultSheet.spells
+            const ability = rawSpells.spellcastingAbility
+            return {
+                spellcastingAbility: isOneOf(ability, SPELLCASTING_ABILITIES) ? ability : '',
+                proficiencyBonus: normalizeInteger(rawSpells.proficiencyBonus, defaultSheet.spells.proficiencyBonus, 1),
+                items: Array.isArray(rawSpells.items) ? rawSpells.items.map(normalizeSpell) : [],
+                slots: normalizeSlotsRecord(rawSpells.slots),
+            }
+        })(),
     }
 }
 

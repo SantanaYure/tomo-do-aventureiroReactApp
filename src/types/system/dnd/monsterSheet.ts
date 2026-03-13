@@ -1,3 +1,7 @@
+import type { Spell } from './Spell'
+import type { SpellcastingAbility } from './Attribute'
+export type { Spell, SpellcastingAbility }
+
 export type CreatureSize =
     | 'Minúsculo'
     | 'Pequeno'
@@ -138,6 +142,13 @@ export interface MonsterSheet {
         pointsUsed: number
         description: string
         actions: LegendaryAction[]
+    }
+
+    spells: {
+        spellcastingAbility: SpellcastingAbility
+        proficiencyBonus: number
+        items: Spell[]
+        slots: Record<number, { current: number; max: number }>
     }
 }
 

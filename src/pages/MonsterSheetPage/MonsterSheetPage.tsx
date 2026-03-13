@@ -4,6 +4,7 @@ import { MonsterActionsPanel } from '../../components/monster/MonsterActionsPane
 import { MonsterFeaturesPanel } from '../../components/monster/MonsterFeaturesPanel/MonsterFeaturesPanel'
 import { MonsterHeader } from '../../components/monster/MonsterHeader/MonsterHeader'
 import { LegendaryActionsPanel } from '../../components/monster/LegendaryActionsPanel/LegendaryActionsPanel'
+import { MonsterSpellsPanel } from '../../components/monster/MonsterSpellsPanel/MonsterSpellsPanel'
 import { MonsterStatsPanel } from '../../components/monster/MonsterStatsPanel/MonsterStatsPanel'
 import { MonsterTraitsPanel } from '../../components/monster/MonsterTraitsPanel/MonsterTraitsPanel'
 import type { DeepPartial } from '../../components/monster/shared'
@@ -14,7 +15,7 @@ import {
 import type { MonsterSheet } from '../../types/system/dnd/monsterSheet'
 import styles from './MonsterSheetPage.module.css'
 
-const TABS = ['Detalhes', 'Combate', 'Habilidades', 'Ações', 'Lendárias'] as const
+const TABS = ['Detalhes', 'Combate', 'Habilidades', 'Ações', 'Magias', 'Lendárias'] as const
 
 type Tab = (typeof TABS)[number]
 
@@ -31,6 +32,7 @@ const TAB_PANEL_IDS: Record<Tab, string> = {
   Combate: 'monster-sheet-panel-combate',
   Habilidades: 'monster-sheet-panel-habilidades',
   Ações: 'monster-sheet-panel-acoes',
+  Magias: 'monster-sheet-panel-magias',
   Lendárias: 'monster-sheet-panel-lendarias',
 }
 
@@ -39,6 +41,7 @@ const TAB_BUTTON_IDS: Record<Tab, string> = {
   Combate: 'monster-sheet-tab-combate',
   Habilidades: 'monster-sheet-tab-habilidades',
   Ações: 'monster-sheet-tab-acoes',
+  Magias: 'monster-sheet-tab-magias',
   Lendárias: 'monster-sheet-tab-lendarias',
 }
 
@@ -237,6 +240,14 @@ export function MonsterSheetPage() {
     return <MonsterActionsPanel sheet={sheet} isEditing={isEditing} onChange={handleSheetChange} />
   }
 
+  function renderSpellsTab() {
+    if (!isEditing && sheet.spells.items.length === 0) {
+      return <p className={styles.emptyTab}>Este monstro não possui magias cadastradas.</p>
+    }
+
+    return <MonsterSpellsPanel sheet={sheet} isEditing={isEditing} onChange={handleSheetChange} />
+  }
+
   function renderLegendaryTab() {
     if (!isEditing && sheet.legendary.actions.length === 0) {
       return <p className={styles.emptyTab}>Este monstro não possui ações lendárias.</p>
@@ -255,6 +266,8 @@ export function MonsterSheetPage() {
         return renderFeaturesTab()
       case 'Ações':
         return renderActionsTab()
+      case 'Magias':
+        return renderSpellsTab()
       case 'Lendárias':
         return renderLegendaryTab()
       default:

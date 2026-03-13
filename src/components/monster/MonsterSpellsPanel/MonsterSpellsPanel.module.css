@@ -1,0 +1,207 @@
+.spellHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.spellStat {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 9rem;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 252, 245, 0.72);
+}
+
+.spellStatLabel {
+    color: var(--ink-muted);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.spellStatValue {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 700;
+}
+
+.spellAbilitySelect {
+    min-width: 10rem;
+    width: auto;
+    background: rgba(255, 251, 241, 0.8);
+    border: 1px solid var(--border-dark);
+}
+
+.profInput {
+    width: 5rem;
+}
+
+/* ── Level sections ── */
+
+.levelSection {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 250, 241, 0.7);
+}
+
+.levelHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+}
+
+.chevron {
+    display: inline-block;
+    transition: transform var(--transition);
+    font-size: var(--text-sm);
+}
+
+.chevronOpen {
+    transform: rotate(90deg);
+}
+
+.levelTitle {
+    font-weight: 700;
+}
+
+.levelCount {
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+    margin-left: auto;
+}
+
+/* ── Slot controls ── */
+
+.slotInput {
+    width: 4rem;
+}
+
+.slotCounter {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin-left: var(--space-2);
+}
+
+.slotBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    font-size: var(--text-lg);
+    font-weight: 700;
+    line-height: 1;
+    border-radius: var(--radius-sm);
+}
+
+.slotNumbers {
+    font-weight: 700;
+    min-width: 3rem;
+    text-align: center;
+}
+
+/* ── Spell rows ── */
+
+.levelBody {
+    display: grid;
+    gap: var(--space-2);
+}
+
+.spellRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 252, 245, 0.72);
+}
+
+.spellPrepared {
+    font-weight: 700;
+    color: var(--accent);
+    cursor: pointer;
+    user-select: none;
+}
+
+.spellConc {
+    font-weight: 700;
+    font-size: var(--text-xs);
+    color: var(--ink-muted);
+    min-width: 1rem;
+}
+
+.spellNameInput {
+    flex: 1 1 10rem;
+    min-width: 8rem;
+}
+
+.castingTimeInput {
+    width: 7rem;
+}
+
+.rangeInput {
+    width: 5rem;
+}
+
+.durationInput {
+    width: 6rem;
+}
+
+.spellSchoolSelect {
+    width: auto;
+    min-width: 8rem;
+}
+
+.spellName {
+    font-weight: 600;
+}
+
+.spellSchool {
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+}
+
+.spellMetaText {
+    font-size: var(--text-xs);
+    color: var(--ink-faint);
+}
+
+.spellDescription {
+    flex-basis: 100%;
+    min-height: 3.5rem;
+    resize: vertical;
+}
+
+.spellDescriptionRead {
+    flex-basis: 100%;
+    margin: var(--space-1) 0 0;
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+    white-space: pre-wrap;
+}
+
+@media (max-width: 720px) {
+    .spellRow {
+        gap: var(--space-1);
+    }
+}
