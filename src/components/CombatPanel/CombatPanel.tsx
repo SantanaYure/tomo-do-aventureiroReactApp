@@ -9,17 +9,18 @@ import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/Attribute
 
 const DAMAGE_TYPES = [
   'Ácido',
-  'Concussão',
-  'Cortante',
-  'Fogo',
   'Frio',
-  'Energia',
-  'Necrótico',
-  'Perfurante',
-  'Psíquico',
-  'Radiante',
+  'Fogo',
+  'Elétrico',
   'Trovão',
   'Veneno',
+  'Necrótico',
+  'Radiante',
+  'Psíquico',
+  'Força',
+  'Concussão',
+  'Perfuração',
+  'Corte',
 ] as const
 
 type HpActionType = 'damage' | 'heal' | 'temp'

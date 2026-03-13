@@ -7,35 +7,54 @@ import panelStyles from '../../../styles/panel.module.css'
 import type { DeepPartial, MonsterComponentProps } from '../shared'
 import styles from './MonsterTraitsPanel.module.css'
 
-const DAMAGE_OPTIONS: readonly DamageType[] = [
+const RESISTANCE_OPTIONS: readonly DamageType[] = [
   'Ácido',
-  'Concussão',
-  'Cortante',
-  'Fogo',
   'Frio',
-  'Energia',
-  'Necrótico',
-  'Perfurante',
-  'Psíquico',
-  'Radiante',
+  'Fogo',
+  'Elétrico',
   'Trovão',
   'Veneno',
+  'Necrótico',
+  'Radiante',
+  'Psíquico',
+  'Força',
+  'Concussão',
+  'Perfuração',
+  'Corte',
+]
+
+const IMMUNITY_OPTIONS: readonly DamageType[] = [
+  'Ácido',
+  'Frio',
+  'Fogo',
+  'Elétrico',
+  'Trovão',
+  'Veneno',
+  'Necrótico',
+  'Radiante',
+  'Psíquico',
+  'Força',
+  'Concussão',
+  'Perfuração',
+  'Corte',
+  'Doenças',
 ]
 
 const CONDITION_OPTIONS: readonly ConditionType[] = [
+  'Cego',
+  'Surdo',
+  'Enfeitiçado',
   'Amedrontado',
   'Agarrado',
-  'Atordoado',
-  'Caído',
-  'Cego',
-  'Enfeitiçado',
-  'Envenenado',
-  'Exausto',
   'Incapacitado',
   'Invisível',
   'Paralisado',
   'Petrificado',
-  'Surdo',
+  'Envenenado',
+  'Caído',
+  'Restrito',
+  'Atordoado',
+  'Inconsciente',
 ]
 
 const XP_FORMATTER = new Intl.NumberFormat('pt-BR')
@@ -128,6 +147,7 @@ export function MonsterTraitsPanel({
   }
 
   const hasVisibleContent =
+    hasTextItems(traits.savingThrows) ||
     hasTextItems(traits.skills) ||
     hasTextItems(traits.languages) ||
     hasTypedItems(traits.resistances) ||
@@ -144,6 +164,17 @@ export function MonsterTraitsPanel({
       {isEditing ? (
         <div className={styles.editLayout}>
           <div className={styles.textGrid}>
+            <label className={styles.field}>
+              Testes de Resistência
+              <textarea
+                value={formatLines(traits.savingThrows)}
+                onChange={(event) =>
+                  updateTraits({ savingThrows: parseLines(event.target.value) })
+                }
+                placeholder="Um por linha. Ex.: Força +5"
+              />
+            </label>
+
             <label className={styles.field}>
               Perícias
               <textarea
@@ -169,7 +200,7 @@ export function MonsterTraitsPanel({
             <section className={styles.block}>
               <h3 className={styles.blockTitle}>Resistências a Dano</h3>
               <div className={styles.tagGrid}>
-                {DAMAGE_OPTIONS.map((damageType) => {
+                {RESISTANCE_OPTIONS.map((damageType) => {
                   const checked = traits.resistances.includes(damageType)
 
                   return (
@@ -193,7 +224,7 @@ export function MonsterTraitsPanel({
             <section className={styles.block}>
               <h3 className={styles.blockTitle}>Imunidades a Dano</h3>
               <div className={styles.tagGrid}>
-                {DAMAGE_OPTIONS.map((damageType) => {
+                {IMMUNITY_OPTIONS.map((damageType) => {
                   const checked = traits.immunities.includes(damageType)
 
                   return (
@@ -263,6 +294,7 @@ export function MonsterTraitsPanel({
         </div>
       ) : hasVisibleContent ? (
         <div className={styles.viewLayout}>
+          {renderTextList('Testes de Resistência', traits.savingThrows)}
           {renderTextList('Perícias', traits.skills)}
           {renderTextList('Idiomas', traits.languages)}
           {renderTagList('Resistências a Dano', traits.resistances)}

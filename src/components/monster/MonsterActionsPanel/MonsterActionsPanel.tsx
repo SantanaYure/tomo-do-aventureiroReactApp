@@ -13,17 +13,18 @@ const ATTACK_TYPES: AttackType[] = ['Corpo-a-corpo', 'Distância', 'Magia']
 
 const DAMAGE_TYPES: DamageType[] = [
     'Ácido',
-    'Concussão',
-    'Cortante',
-    'Fogo',
     'Frio',
-    'Energia',
-    'Necrótico',
-    'Perfurante',
-    'Psíquico',
-    'Radiante',
+    'Fogo',
+    'Elétrico',
     'Trovão',
     'Veneno',
+    'Necrótico',
+    'Radiante',
+    'Psíquico',
+    'Força',
+    'Concussão',
+    'Perfuração',
+    'Corte',
 ]
 
 function createAction(): MonsterAction {

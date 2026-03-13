@@ -49,6 +49,10 @@
     width: min(100%, 10rem);
 }
 
+.pointsField input {
+    width: 100%;
+}
+
 .overview,
 .description,
 .emptyText {

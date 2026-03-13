@@ -8,32 +8,35 @@ export type CreatureSize =
 
 export type DamageType =
     | 'Ácido'
-    | 'Concussão'
-    | 'Cortante'
-    | 'Fogo'
     | 'Frio'
-    | 'Energia'
-    | 'Necrótico'
-    | 'Perfurante'
-    | 'Psíquico'
-    | 'Radiante'
+    | 'Fogo'
+    | 'Elétrico'
     | 'Trovão'
     | 'Veneno'
+    | 'Necrótico'
+    | 'Radiante'
+    | 'Psíquico'
+    | 'Força'
+    | 'Concussão'
+    | 'Perfuração'
+    | 'Corte'
+    | 'Doenças'
 
 export type ConditionType =
+    | 'Cego'
+    | 'Surdo'
+    | 'Enfeitiçado'
     | 'Amedrontado'
     | 'Agarrado'
-    | 'Atordoado'
-    | 'Caído'
-    | 'Cego'
-    | 'Enfeitiçado'
-    | 'Envenenado'
-    | 'Exausto'
     | 'Incapacitado'
     | 'Invisível'
     | 'Paralisado'
     | 'Petrificado'
-    | 'Surdo'
+    | 'Envenenado'
+    | 'Caído'
+    | 'Restrito'
+    | 'Atordoado'
+    | 'Inconsciente'
 
 export type AttackType = 'Corpo-a-corpo' | 'Distância' | 'Magia'
 
@@ -116,6 +119,7 @@ export interface MonsterSheet {
     }
 
     traits: {
+        savingThrows: string[]
         skills: string[]
         languages: string[]
         resistances: DamageType[]

@@ -35,33 +35,36 @@ const CREATURE_SIZES: readonly CreatureSize[] = [
 
 const DAMAGE_TYPES: readonly DamageType[] = [
     'Ácido',
-    'Concussão',
-    'Cortante',
-    'Fogo',
     'Frio',
-    'Energia',
-    'Necrótico',
-    'Perfurante',
-    'Psíquico',
-    'Radiante',
+    'Fogo',
+    'Elétrico',
     'Trovão',
     'Veneno',
+    'Necrótico',
+    'Radiante',
+    'Psíquico',
+    'Força',
+    'Concussão',
+    'Perfuração',
+    'Corte',
+    'Doenças',
 ]
 
 const CONDITION_TYPES: readonly ConditionType[] = [
+    'Cego',
+    'Surdo',
+    'Enfeitiçado',
     'Amedrontado',
     'Agarrado',
-    'Atordoado',
-    'Caído',
-    'Cego',
-    'Enfeitiçado',
-    'Envenenado',
-    'Exausto',
     'Incapacitado',
     'Invisível',
     'Paralisado',
     'Petrificado',
-    'Surdo',
+    'Envenenado',
+    'Caído',
+    'Restrito',
+    'Atordoado',
+    'Inconsciente',
 ]
 
 const ATTACK_TYPES: readonly AttackType[] = ['Corpo-a-corpo', 'Distância', 'Magia']
@@ -291,6 +294,7 @@ export function createDefaultMonsterSheet(): MonsterSheet {
             charisma: 10,
         },
         traits: {
+            savingThrows: [],
             skills: [],
             languages: [],
             resistances: [],
@@ -374,6 +378,7 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
             charisma: normalizeInteger(stats.charisma, defaultSheet.stats.charisma),
         },
         traits: {
+            savingThrows: normalizeStringArray(traits.savingThrows),
             skills: normalizeStringArray(traits.skills),
             languages: normalizeStringArray(traits.languages),
             resistances: normalizeTypedArray(traits.resistances, DAMAGE_TYPES),
