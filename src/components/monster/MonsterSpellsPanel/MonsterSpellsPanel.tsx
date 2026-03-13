@@ -86,10 +86,6 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
         ? SPELL_LEVELS
         : SPELL_LEVELS.filter((l) => spellsByLevel[l].length > 0 || (spells.slots[l]?.max ?? 0) > 0)
 
-    if (!isEditing && usedLevels.length === 0) {
-        return null
-    }
-
     return (
         <section className={panelStyles.panel}>
             <div className={panelStyles.panelHeader}>

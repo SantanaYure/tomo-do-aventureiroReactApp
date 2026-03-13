@@ -1,4 +1,4 @@
-import type { CreatureSize, MonsterSheet } from '../../../types/system/dnd/monsterSheet'
+import type { CreatureSize, MonsterKind, MonsterSheet } from '../../../types/system/dnd/monsterSheet'
 import panelStyles from '../../../styles/panel.module.css'
 import type { DeepPartial, MonsterComponentProps } from '../shared'
 import styles from './MonsterHeader.module.css'
@@ -11,6 +11,11 @@ const SIZE_OPTIONS: CreatureSize[] = [
   'Enorme',
   'Colossal',
 ]
+
+const KIND_LABELS: Record<MonsterKind, string> = {
+  monster: 'Monstro',
+  npc: 'NPC',
+}
 
 function buildMeta(details: MonsterSheet['details']): string {
   const parts = [details.species, details.size, details.alignment].filter(
@@ -43,6 +48,17 @@ export function MonsterHeader({ sheet, isEditing, onChange }: MonsterComponentPr
               onChange={(event) => updateDetails({ name: event.target.value })}
               placeholder="Nome do monstro ou NPC"
             />
+          </label>
+
+          <label className={styles.field}>
+            Tipo
+            <select
+              value={details.kind}
+              onChange={(event) => updateDetails({ kind: event.target.value as MonsterKind })}
+            >
+              <option value="monster">Monstro</option>
+              <option value="npc">NPC</option>
+            </select>
           </label>
 
           <div className={styles.metaGrid}>
@@ -115,6 +131,7 @@ export function MonsterHeader({ sheet, isEditing, onChange }: MonsterComponentPr
       ) : (
         <div className={styles.viewLayout}>
           <h1 className={styles.name}>{details.name || '(sem nome)'}</h1>
+          <p className={styles.kindBadge}>{KIND_LABELS[details.kind]}</p>
           <p className={styles.meta}>{meta}</p>
           {details.creatureClass.trim().length > 0 ? (
             <p className={styles.classification}>{details.creatureClass}</p>

@@ -159,9 +159,13 @@ export function Home() {
     return `Nenhum ${label.toLowerCase()} foi importado.`
   }
 
+  const monsterList = monsters.filter((m) => m.data.details.kind !== 'npc')
+  const npcList = monsters.filter((m) => m.data.details.kind === 'npc')
+
   const hasCharacters = sheets.length > 0
-  const hasMonsters = monsters.length > 0
-  const isCompletelyEmpty = !hasCharacters && !hasMonsters
+  const hasMonsters = monsterList.length > 0
+  const hasNpcs = npcList.length > 0
+  const isCompletelyEmpty = !hasCharacters && !hasMonsters && !hasNpcs
 
   return (
     <main className={styles.page}>
@@ -232,11 +236,11 @@ export function Home() {
           </section>
 
           <section className={styles.collectionSection}>
-            <h2 className={styles.sectionTitle}>Monstros e NPCs</h2>
+            <h2 className={styles.sectionTitle}>Monstros</h2>
 
             {hasMonsters ? (
               <ul className={styles.sheetList}>
-                {monsters.map((monster) => (
+                {monsterList.map((monster) => (
                   <li key={monster.id} className={styles.sheetItem}>
                     <Link to={`/monstro/${monster.id}`} className={styles.sheetLink}>
                       {monster.data.details.name || '(sem nome)'}
@@ -261,7 +265,41 @@ export function Home() {
                 ))}
               </ul>
             ) : (
-              <p className={styles.emptySection}>Nenhum monstro ou NPC encontrado.</p>
+              <p className={styles.emptySection}>Nenhum monstro encontrado.</p>
+            )}
+          </section>
+
+          <section className={styles.collectionSection}>
+            <h2 className={styles.sectionTitle}>NPCs</h2>
+
+            {hasNpcs ? (
+              <ul className={styles.sheetList}>
+                {npcList.map((npc) => (
+                  <li key={npc.id} className={styles.sheetItem}>
+                    <Link to={`/monstro/${npc.id}`} className={styles.sheetLink}>
+                      {npc.data.details.name || '(sem nome)'}
+                    </Link>
+                    <div className={styles.sheetActions}>
+                      <button
+                        type="button"
+                        className={styles.exportButton}
+                        onClick={() => handleExportMonster(npc)}
+                      >
+                        ↓ Exportar JSON
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.deleteButton}
+                        onClick={() => handleDeleteMonster(npc.id)}
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.emptySection}>Nenhum NPC encontrado.</p>
             )}
           </section>
         </>

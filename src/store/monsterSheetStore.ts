@@ -6,6 +6,7 @@ import type {
     LegendaryAction,
     MonsterAction,
     MonsterFeature,
+    MonsterKind,
     MonsterMovement,
     MonsterSheet,
     RechargeType,
@@ -25,6 +26,8 @@ export interface MonsterImportResult {
 }
 
 type MonsterSheetStoreMap = Record<string, StoredMonsterSheet>
+
+const MONSTER_KINDS: readonly MonsterKind[] = ['monster', 'npc']
 
 const CREATURE_SIZES: readonly CreatureSize[] = [
     'Minúsculo',
@@ -314,6 +317,7 @@ export function createDefaultMonsterSheet(): MonsterSheet {
         systemId: 'dnd5e-monster',
         details: {
             name: '',
+            kind: 'monster',
             species: '',
             size: '',
             alignment: '',
@@ -398,6 +402,7 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
         systemId: normalizeMonsterSystemId(nextValue.systemId),
         details: {
             name: normalizeString(details.name),
+            kind: isOneOf(details.kind, MONSTER_KINDS) ? details.kind : 'monster',
             species: normalizeString(details.species),
             size: isOneOf(details.size, CREATURE_SIZES) ? details.size : '',
             alignment: normalizeString(details.alignment),

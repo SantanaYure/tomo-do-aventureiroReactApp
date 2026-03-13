@@ -95,11 +95,14 @@ export interface MonsterMovement {
     distance: number
 }
 
+export type MonsterKind = 'monster' | 'npc'
+
 export interface MonsterSheet {
     systemId: MonsterSystemId
 
     details: {
         name: string
+        kind: MonsterKind
         species: string
         size: CreatureSize | ''
         alignment: string

@@ -241,10 +241,6 @@ export function MonsterSheetPage() {
   }
 
   function renderSpellsTab() {
-    if (!isEditing && sheet.spells.items.length === 0) {
-      return <p className={styles.emptyTab}>Este monstro não possui magias cadastradas.</p>
-    }
-
     return <MonsterSpellsPanel sheet={sheet} isEditing={isEditing} onChange={handleSheetChange} />
   }
 
