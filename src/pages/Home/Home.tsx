@@ -217,7 +217,7 @@ export function Home() {
                         className={styles.exportButton}
                         onClick={() => handleExportSheet(sheet)}
                       >
-                        ↓ Exportar JSON
+                        ↓ Exportar
                       </button>
                       <button
                         type="button"
@@ -251,7 +251,7 @@ export function Home() {
                         className={styles.exportButton}
                         onClick={() => handleExportMonster(monster)}
                       >
-                        ↓ Exportar JSON
+                        ↓ Exportar
                       </button>
                       <button
                         type="button"
@@ -285,7 +285,7 @@ export function Home() {
                         className={styles.exportButton}
                         onClick={() => handleExportMonster(npc)}
                       >
-                        ↓ Exportar JSON
+                        ↓ Exportar
                       </button>
                       <button
                         type="button"
