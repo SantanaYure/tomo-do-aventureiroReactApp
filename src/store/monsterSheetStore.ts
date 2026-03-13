@@ -39,15 +39,13 @@ const DAMAGE_TYPES: readonly DamageType[] = [
     'Cortante',
     'Fogo',
     'Frio',
-    'Força',
-    'Fulgurante',
+    'Energia',
     'Necrótico',
     'Perfurante',
     'Psíquico',
     'Radiante',
     'Trovão',
     'Veneno',
-    'Não-mágico',
 ]
 
 const CONDITION_TYPES: readonly ConditionType[] = [
