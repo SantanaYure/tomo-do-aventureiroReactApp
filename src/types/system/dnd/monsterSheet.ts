@@ -103,6 +103,7 @@ export interface MonsterSheet {
     details: {
         name: string
         kind: MonsterKind
+        avatar: string
         species: string
         size: CreatureSize | ''
         alignment: string

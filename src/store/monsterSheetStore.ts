@@ -318,6 +318,7 @@ export function createDefaultMonsterSheet(): MonsterSheet {
         details: {
             name: '',
             kind: 'monster',
+            avatar: '',
             species: '',
             size: '',
             alignment: '',
@@ -403,6 +404,7 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
         details: {
             name: normalizeString(details.name),
             kind: isOneOf(details.kind, MONSTER_KINDS) ? details.kind : 'monster',
+            avatar: normalizeString(details.avatar),
             species: normalizeString(details.species),
             size: isOneOf(details.size, CREATURE_SIZES) ? details.size : '',
             alignment: normalizeString(details.alignment),

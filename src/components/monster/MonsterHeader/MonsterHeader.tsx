@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import type { CreatureSize, MonsterKind, MonsterSheet } from '../../../types/system/dnd/monsterSheet'
+import { AvatarCropper } from '../../AvatarCropper/AvatarCropper'
 import panelStyles from '../../../styles/panel.module.css'
 import type { DeepPartial, MonsterComponentProps } from '../shared'
 import styles from './MonsterHeader.module.css'
@@ -27,19 +29,47 @@ function buildMeta(details: MonsterSheet['details']): string {
 
 export function MonsterHeader({ sheet, isEditing, onChange }: MonsterComponentProps) {
   const { details } = sheet
+  const [showCropper, setShowCropper] = useState(false)
 
   function updateDetails(patch: DeepPartial<MonsterSheet['details']>) {
     onChange({ details: patch })
+  }
+
+  function handleAvatarSave(base64: string) {
+    updateDetails({ avatar: base64 })
+    setShowCropper(false)
   }
 
   const meta = buildMeta(details)
   const description = details.description.trim()
   const lore = details.lore.trim()
 
+  const avatarElement = details.avatar ? (
+    <img src={details.avatar} alt={`Foto de ${details.name || 'monstro'}`} className={styles.avatar} />
+  ) : (
+    <span className={styles.avatarPlaceholder}>+ Foto</span>
+  )
+
   return (
     <header className={`${panelStyles.panel} ${styles.header}`}>
+      {showCropper && (
+        <AvatarCropper
+          currentImage={details.avatar || undefined}
+          onSave={handleAvatarSave}
+          onCancel={() => setShowCropper(false)}
+        />
+      )}
+
       {isEditing ? (
         <div className={styles.editLayout}>
+          <button
+            type="button"
+            className={styles.avatarButton}
+            onClick={() => setShowCropper(true)}
+          >
+            {avatarElement}
+          </button>
+
           <label className={`${styles.field} ${styles.nameField}`}>
             Nome
             <input
@@ -130,6 +160,13 @@ export function MonsterHeader({ sheet, isEditing, onChange }: MonsterComponentPr
         </div>
       ) : (
         <div className={styles.viewLayout}>
+          {details.avatar && (
+            <img
+              src={details.avatar}
+              alt={`Foto de ${details.name || 'monstro'}`}
+              className={styles.avatarView}
+            />
+          )}
           <h1 className={styles.name}>{details.name || '(sem nome)'}</h1>
           <p className={styles.kindBadge}>{KIND_LABELS[details.kind]}</p>
           <p className={styles.meta}>{meta}</p>

@@ -24,6 +24,47 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.avatarButton {
+    justify-self: center;
+    padding: 0;
+    background: none;
+    border: 2px double var(--border-dark);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    overflow: hidden;
+    width: 120px;
+    height: 120px;
+    flex-shrink: 0;
+}
+
+.avatar {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    display: block;
+}
+
+.avatarPlaceholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 120px;
+    height: 120px;
+    font-size: var(--text-sm);
+    color: var(--ink-muted);
+    font-family: var(--font-display);
+    background: rgba(255, 250, 241, 0.82);
+}
+
+.avatarView {
+    justify-self: center;
+    width: 160px;
+    height: 160px;
+    object-fit: cover;
+    border: 2px double var(--border-dark);
+    border-radius: var(--radius-sm);
+}
+
 .viewLayout {
     display: grid;
     gap: var(--space-3);
