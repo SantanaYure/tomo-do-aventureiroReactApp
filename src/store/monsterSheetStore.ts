@@ -8,7 +8,6 @@ import {
 } from 'firebase/firestore'
 import type {
     AttackType,
-    ConditionType,
     CreatureSize,
     DamageType,
     LegendaryAction,
@@ -69,23 +68,6 @@ const DAMAGE_TYPES: readonly DamageType[] = [
     'Perfuração',
     'Corte',
     'Doenças',
-]
-
-const CONDITION_TYPES: readonly ConditionType[] = [
-    'Cego',
-    'Surdo',
-    'Enfeitiçado',
-    'Amedrontado',
-    'Agarrado',
-    'Incapacitado',
-    'Invisível',
-    'Paralisado',
-    'Petrificado',
-    'Envenenado',
-    'Caído',
-    'Restrito',
-    'Atordoado',
-    'Inconsciente',
 ]
 
 const SPELLCASTING_ABILITIES: readonly SpellcastingAbility[] = [
@@ -436,12 +418,9 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
             savingThrows: normalizeStringArray(traits.savingThrows),
             skills: normalizeStringArray(traits.skills),
             languages: normalizeStringArray(traits.languages),
-            resistances: normalizeTypedArray(traits.resistances, DAMAGE_TYPES),
-            immunities: normalizeTypedArray(traits.immunities, DAMAGE_TYPES),
-            conditionImmunities: normalizeTypedArray(
-                traits.conditionImmunities,
-                CONDITION_TYPES,
-            ),
+            resistances: normalizeStringArray(traits.resistances),
+            immunities: normalizeStringArray(traits.immunities),
+            conditionImmunities: normalizeStringArray(traits.conditionImmunities),
             challengeRating: normalizeString(
                 traits.challengeRating,
                 defaultSheet.traits.challengeRating,
@@ -492,6 +471,27 @@ function normalizeId(id: string): string {
     const normalizedId = id.trim()
     if (!normalizedId) throw new Error('Monster sheet id is required.')
     return normalizedId
+}
+
+function normalizeSearchName(value: string): string {
+    return value.trim().toLocaleLowerCase('pt-BR')
+}
+
+function createMonsterSheetPayload(
+    data: MonsterSheet,
+    timestamp: string,
+    createdAt = timestamp,
+    id?: string,
+) {
+    const normalizedData = normalizeMonsterSheet(data)
+
+    return {
+        ...(id ? { id } : {}),
+        data: normalizedData,
+        name_lower: normalizeSearchName(normalizedData.details.name),
+        createdAt,
+        updatedAt: timestamp,
+    }
 }
 
 // ── Import validation ─────────────────────────────────────────────────────────
@@ -574,11 +574,7 @@ function isValidMonsterSheetPayload(data: unknown): boolean {
 export async function createMonsterSheet(uid: string): Promise<StoredMonsterSheet> {
     const data = normalizeMonsterSheet(createDefaultMonsterSheet())
     const timestamp = new Date().toISOString()
-    const payload = {
-        data,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-    }
+    const payload = createMonsterSheetPayload(data, timestamp)
     const ref = await addDoc(getCollectionRef(uid), payload)
     return { id: ref.id, ...payload }
 }
@@ -597,10 +593,7 @@ export async function saveMonsterSheet(
             : new Date().toISOString()
 
     await setDoc(docRef, {
-        id: normalizedId,
-        data: normalizeMonsterSheet(data),
-        createdAt,
-        updatedAt: new Date().toISOString(),
+        ...createMonsterSheetPayload(data, new Date().toISOString(), createdAt, normalizedId),
     })
 }
 
@@ -649,12 +642,15 @@ export async function importMonsterSheetFromJSON(
         }
 
         const timestamp = new Date().toISOString()
-        await setDoc(docRef, {
-            id: normalizedId,
-            data: normalizeMonsterSheet(payload.data),
-            createdAt: payload.createdAt ?? timestamp,
-            updatedAt: timestamp,
-        })
+        await setDoc(
+            docRef,
+            createMonsterSheetPayload(
+                payload.data,
+                timestamp,
+                payload.createdAt ?? timestamp,
+                normalizedId,
+            ),
+        )
 
         result.imported = 1
     } catch {

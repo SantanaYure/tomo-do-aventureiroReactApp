@@ -1,61 +1,8 @@
-import type {
-  ConditionType,
-  DamageType,
-  MonsterSheet,
-} from '../../../types/system/dnd/monsterSheet'
+import { useEffect, useState } from 'react'
+import type { MonsterSheet } from '../../../types/system/dnd/monsterSheet'
 import panelStyles from '../../../styles/panel.module.css'
 import type { DeepPartial, MonsterComponentProps } from '../shared'
 import styles from './MonsterTraitsPanel.module.css'
-
-const RESISTANCE_OPTIONS: readonly DamageType[] = [
-  'Ácido',
-  'Frio',
-  'Fogo',
-  'Elétrico',
-  'Trovão',
-  'Veneno',
-  'Necrótico',
-  'Radiante',
-  'Psíquico',
-  'Força',
-  'Concussão',
-  'Perfuração',
-  'Corte',
-]
-
-const IMMUNITY_OPTIONS: readonly DamageType[] = [
-  'Ácido',
-  'Frio',
-  'Fogo',
-  'Elétrico',
-  'Trovão',
-  'Veneno',
-  'Necrótico',
-  'Radiante',
-  'Psíquico',
-  'Força',
-  'Concussão',
-  'Perfuração',
-  'Corte',
-  'Doenças',
-]
-
-const CONDITION_OPTIONS: readonly ConditionType[] = [
-  'Cego',
-  'Surdo',
-  'Enfeitiçado',
-  'Amedrontado',
-  'Agarrado',
-  'Incapacitado',
-  'Invisível',
-  'Paralisado',
-  'Petrificado',
-  'Envenenado',
-  'Caído',
-  'Restrito',
-  'Atordoado',
-  'Inconsciente',
-]
 
 const XP_FORMATTER = new Intl.NumberFormat('pt-BR')
 
@@ -72,12 +19,12 @@ function formatLines(values: string[]): string {
   return values.join('\n')
 }
 
-function hasTextItems(values: string[]): boolean {
-  return values.some((value) => value.trim().length > 0)
+function areLinesEqual(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index])
 }
 
-function hasTypedItems(values: readonly string[]): boolean {
-  return values.length > 0
+function hasTextItems(values: string[]): boolean {
+  return values.some((value) => value.trim().length > 0)
 }
 
 function renderTextList(title: string, values: string[]) {
@@ -99,175 +46,158 @@ function renderTextList(title: string, values: string[]) {
   )
 }
 
-function renderTagList(title: string, values: readonly string[]) {
-  if (!hasTypedItems(values)) {
-    return null
-  }
-
-  return (
-    <section className={styles.block}>
-      <h3 className={styles.blockTitle}>{title}</h3>
-      <div className={styles.tagGrid}>
-        {values.map((value) => (
-          <span className={`${styles.tag} ${styles.tagReadOnly}`} key={value}>
-            {value}
-          </span>
-        ))}
-      </div>
-    </section>
-  )
-}
-
 export function MonsterTraitsPanel({
   sheet,
   isEditing,
   onChange,
 }: MonsterComponentProps) {
   const { traits } = sheet
+  const [savingThrowsDraft, setSavingThrowsDraft] = useState(formatLines(sheet.traits.savingThrows))
+  const [skillsDraft, setSkillsDraft] = useState(formatLines(sheet.traits.skills))
+  const [languagesDraft, setLanguagesDraft] = useState(formatLines(sheet.traits.languages))
+  const [resistancesDraft, setResistancesDraft] = useState(formatLines(sheet.traits.resistances))
+  const [immunitiesDraft, setImmunitiesDraft] = useState(formatLines(sheet.traits.immunities))
+  const [conditionImmunitiesDraft, setConditionImmunitiesDraft] = useState(
+    formatLines(sheet.traits.conditionImmunities),
+  )
 
   function updateTraits(patch: DeepPartial<MonsterSheet['traits']>) {
     onChange({ traits: patch })
   }
 
-  function toggleDamageList(key: 'resistances' | 'immunities', value: DamageType) {
-    const currentList = traits[key]
-    const nextList = currentList.includes(value)
-      ? currentList.filter((entry) => entry !== value)
-      : [...currentList, value]
+  useEffect(() => {
+    if (!areLinesEqual(traits.savingThrows, parseLines(savingThrowsDraft))) {
+      setSavingThrowsDraft(formatLines(traits.savingThrows))
+    }
+  }, [savingThrowsDraft, traits.savingThrows])
 
-    updateTraits({ [key]: nextList })
-  }
+  useEffect(() => {
+    if (!areLinesEqual(traits.skills, parseLines(skillsDraft))) {
+      setSkillsDraft(formatLines(traits.skills))
+    }
+  }, [skillsDraft, traits.skills])
 
-  function toggleConditionImmunity(value: ConditionType) {
-    const nextList = traits.conditionImmunities.includes(value)
-      ? traits.conditionImmunities.filter((entry) => entry !== value)
-      : [...traits.conditionImmunities, value]
+  useEffect(() => {
+    if (!areLinesEqual(traits.languages, parseLines(languagesDraft))) {
+      setLanguagesDraft(formatLines(traits.languages))
+    }
+  }, [languagesDraft, traits.languages])
 
-    updateTraits({ conditionImmunities: nextList })
-  }
+  useEffect(() => {
+    if (!areLinesEqual(traits.resistances, parseLines(resistancesDraft))) {
+      setResistancesDraft(formatLines(traits.resistances))
+    }
+  }, [resistancesDraft, traits.resistances])
+
+  useEffect(() => {
+    if (!areLinesEqual(traits.immunities, parseLines(immunitiesDraft))) {
+      setImmunitiesDraft(formatLines(traits.immunities))
+    }
+  }, [immunitiesDraft, traits.immunities])
+
+  useEffect(() => {
+    if (!areLinesEqual(traits.conditionImmunities, parseLines(conditionImmunitiesDraft))) {
+      setConditionImmunitiesDraft(formatLines(traits.conditionImmunities))
+    }
+  }, [conditionImmunitiesDraft, traits.conditionImmunities])
 
   const hasVisibleContent =
     hasTextItems(traits.savingThrows) ||
     hasTextItems(traits.skills) ||
     hasTextItems(traits.languages) ||
-    hasTypedItems(traits.resistances) ||
-    hasTypedItems(traits.immunities) ||
-    hasTypedItems(traits.conditionImmunities)
+    hasTextItems(traits.resistances) ||
+    hasTextItems(traits.immunities) ||
+    hasTextItems(traits.conditionImmunities)
 
   return (
     <section className={`${panelStyles.panel} ${styles.panel}`}>
       <div className={panelStyles.panelHeader}>
-        <h2 className={panelStyles.panelTitle}>Características</h2>
-        <p className={panelStyles.panelSubtitle}>Perícias, idiomas e defesas especiais</p>
+        <h2 className={panelStyles.panelTitle}>Caracteristicas</h2>
+        <p className={panelStyles.panelSubtitle}>Pericias, idiomas e defesas especiais</p>
       </div>
 
       {isEditing ? (
         <div className={styles.editLayout}>
           <div className={styles.textGrid}>
             <label className={styles.field}>
-              Testes de Resistência
+              Testes de Resistencia
               <textarea
-                value={formatLines(traits.savingThrows)}
-                onChange={(event) =>
-                  updateTraits({ savingThrows: parseLines(event.target.value) })
-                }
-                placeholder="Um por linha. Ex.: Força +5"
+                value={savingThrowsDraft}
+                onChange={(event) => {
+                  const nextValue = event.target.value
+                  setSavingThrowsDraft(nextValue)
+                  updateTraits({ savingThrows: parseLines(nextValue) })
+                }}
+                placeholder="Um por linha. Ex.: Forca +5"
               />
             </label>
 
             <label className={styles.field}>
-              Perícias
+              Pericias
               <textarea
-                value={formatLines(traits.skills)}
-                onChange={(event) => updateTraits({ skills: parseLines(event.target.value) })}
-                placeholder="Uma por linha. Ex.: Percepção +5"
+                value={skillsDraft}
+                onChange={(event) => {
+                  const nextValue = event.target.value
+                  setSkillsDraft(nextValue)
+                  updateTraits({ skills: parseLines(nextValue) })
+                }}
+                placeholder="Uma por linha. Ex.: Percepcao +5"
               />
             </label>
 
             <label className={styles.field}>
               Idiomas
               <textarea
-                value={formatLines(traits.languages)}
-                onChange={(event) =>
-                  updateTraits({ languages: parseLines(event.target.value) })
-                }
-                placeholder="Uma por linha. Ex.: Comum, Dracônico"
+                value={languagesDraft}
+                onChange={(event) => {
+                  const nextValue = event.target.value
+                  setLanguagesDraft(nextValue)
+                  updateTraits({ languages: parseLines(nextValue) })
+                }}
+                placeholder="Uma por linha. Ex.: Comum, Draconico"
               />
             </label>
           </div>
 
           <div className={styles.selectionGrid}>
-            <section className={styles.block}>
-              <h3 className={styles.blockTitle}>Resistências a Dano</h3>
-              <div className={styles.tagGrid}>
-                {RESISTANCE_OPTIONS.map((damageType) => {
-                  const checked = traits.resistances.includes(damageType)
+            <label className={styles.field}>
+              Resistencias a Dano
+              <textarea
+                value={resistancesDraft}
+                onChange={(event) => {
+                  const nextValue = event.target.value
+                  setResistancesDraft(nextValue)
+                  updateTraits({ resistances: parseLines(nextValue) })
+                }}
+                placeholder="Uma por linha. Ex.: Fogo"
+              />
+            </label>
 
-                  return (
-                    <label
-                      className={`${styles.tag} ${checked ? styles.tagSelected : ''}`}
-                      key={damageType}
-                    >
-                      <input
-                        className={styles.tagInput}
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleDamageList('resistances', damageType)}
-                      />
-                      <span>{damageType}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            </section>
+            <label className={styles.field}>
+              Imunidades a Dano
+              <textarea
+                value={immunitiesDraft}
+                onChange={(event) => {
+                  const nextValue = event.target.value
+                  setImmunitiesDraft(nextValue)
+                  updateTraits({ immunities: parseLines(nextValue) })
+                }}
+                placeholder="Uma por linha. Ex.: Veneno"
+              />
+            </label>
 
-            <section className={styles.block}>
-              <h3 className={styles.blockTitle}>Imunidades a Dano</h3>
-              <div className={styles.tagGrid}>
-                {IMMUNITY_OPTIONS.map((damageType) => {
-                  const checked = traits.immunities.includes(damageType)
-
-                  return (
-                    <label
-                      className={`${styles.tag} ${checked ? styles.tagSelected : ''}`}
-                      key={damageType}
-                    >
-                      <input
-                        className={styles.tagInput}
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleDamageList('immunities', damageType)}
-                      />
-                      <span>{damageType}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            </section>
-
-            <section className={styles.block}>
-              <h3 className={styles.blockTitle}>Imunidades a Condições</h3>
-              <div className={styles.tagGrid}>
-                {CONDITION_OPTIONS.map((condition) => {
-                  const checked = traits.conditionImmunities.includes(condition)
-
-                  return (
-                    <label
-                      className={`${styles.tag} ${checked ? styles.tagSelected : ''}`}
-                      key={condition}
-                    >
-                      <input
-                        className={styles.tagInput}
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleConditionImmunity(condition)}
-                      />
-                      <span>{condition}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            </section>
+            <label className={styles.field}>
+              Imunidades a Condicoes
+              <textarea
+                value={conditionImmunitiesDraft}
+                onChange={(event) => {
+                  const nextValue = event.target.value
+                  setConditionImmunitiesDraft(nextValue)
+                  updateTraits({ conditionImmunities: parseLines(nextValue) })
+                }}
+                placeholder="Uma por linha. Ex.: Enfeiticado"
+              />
+            </label>
           </div>
 
           <div className={styles.ratingRow}>
@@ -294,12 +224,12 @@ export function MonsterTraitsPanel({
         </div>
       ) : hasVisibleContent ? (
         <div className={styles.viewLayout}>
-          {renderTextList('Testes de Resistência', traits.savingThrows)}
-          {renderTextList('Perícias', traits.skills)}
+          {renderTextList('Testes de Resistencia', traits.savingThrows)}
+          {renderTextList('Pericias', traits.skills)}
           {renderTextList('Idiomas', traits.languages)}
-          {renderTagList('Resistências a Dano', traits.resistances)}
-          {renderTagList('Imunidades a Dano', traits.immunities)}
-          {renderTagList('Imunidades a Condições', traits.conditionImmunities)}
+          {renderTextList('Resistencias a Dano', traits.resistances)}
+          {renderTextList('Imunidades a Dano', traits.immunities)}
+          {renderTextList('Imunidades a Condicoes', traits.conditionImmunities)}
 
           <div className={styles.ratingRow}>
             <div className={styles.ratingCard}>
@@ -315,7 +245,7 @@ export function MonsterTraitsPanel({
         </div>
       ) : (
         <div className={styles.viewLayout}>
-          <p className={panelStyles.emptyState}>Nenhuma característica preenchida.</p>
+          <p className={panelStyles.emptyState}>Nenhuma caracteristica preenchida.</p>
           <div className={styles.ratingRow}>
             <div className={styles.ratingCard}>
               <span className={styles.ratingLabel}>ND</span>

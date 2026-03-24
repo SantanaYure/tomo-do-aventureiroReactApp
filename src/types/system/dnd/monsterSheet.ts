@@ -130,9 +130,9 @@ export interface MonsterSheet {
         savingThrows: string[]
         skills: string[]
         languages: string[]
-        resistances: DamageType[]
-        immunities: DamageType[]
-        conditionImmunities: ConditionType[]
+        resistances: string[]
+        immunities: string[]
+        conditionImmunities: string[]
         challengeRating: string
         xp: number
     }

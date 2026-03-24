@@ -397,6 +397,27 @@ function normalizeId(id: string): string {
   return normalizedId
 }
 
+function normalizeSearchName(value: string): string {
+  return value.trim().toLocaleLowerCase('pt-BR')
+}
+
+function createCharacterSheetPayload(
+  data: CharacterSheet,
+  timestamp: string,
+  createdAt = timestamp,
+  id?: string,
+) {
+  const normalizedData = normalizeCharacterSheet(data)
+
+  return {
+    ...(id ? { id } : {}),
+    data: normalizedData,
+    name_lower: normalizeSearchName(normalizedData.character.name),
+    createdAt,
+    updatedAt: timestamp,
+  }
+}
+
 // ── Import validation ─────────────────────────────────────────────────────────
 
 type ImportedCharacterSheetPayload = {
@@ -467,11 +488,7 @@ export async function createCharacterSheet(
 ): Promise<StoredCharacterSheet> {
   const data = normalizeCharacterSheet(initialValue ?? createDefaultCharacterSheet())
   const timestamp = new Date().toISOString()
-  const payload = {
-    data,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  }
+  const payload = createCharacterSheetPayload(data, timestamp)
   const ref = await addDoc(getCollectionRef(uid), payload)
   return { id: ref.id, ...payload }
 }
@@ -490,10 +507,7 @@ export async function saveCharacterSheet(
       : new Date().toISOString()
 
   await setDoc(docRef, {
-    id: normalizedId,
-    data: normalizeCharacterSheet(sheet),
-    createdAt,
-    updatedAt: new Date().toISOString(),
+    ...createCharacterSheetPayload(sheet, new Date().toISOString(), createdAt, normalizedId),
   })
 }
 
@@ -542,12 +556,15 @@ export async function importCharacterSheetFromJSON(
     }
 
     const timestamp = new Date().toISOString()
-    await setDoc(docRef, {
-      id: normalizedId,
-      data: normalizeCharacterSheet(payload.data),
-      createdAt: payload.createdAt ?? timestamp,
-      updatedAt: timestamp,
-    })
+    await setDoc(
+      docRef,
+      createCharacterSheetPayload(
+        payload.data,
+        timestamp,
+        payload.createdAt ?? timestamp,
+        normalizedId,
+      ),
+    )
 
     result.imported = 1
   } catch {
