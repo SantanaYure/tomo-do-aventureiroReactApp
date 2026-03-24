@@ -188,16 +188,15 @@ export function SpellsPanel({
               <span className={styles.levelCount}>{levelSpells.length} magia{levelSpells.length !== 1 ? 's' : ''}</span>
               {level > 0 && (
                 isEditMode ? (
-                  <label onClick={(e) => e.stopPropagation()}>
-                    Slots máx
-                    <input
-                      className={styles.slotInput}
-                      type="number"
-                      min={0}
-                      value={slots.max}
-                      onChange={(e) => setSlot(level, 'max', Number(e.target.value))}
-                    />
-                  </label>
+                  <input
+                    className={styles.slotInput}
+                    type="number"
+                    min={0}
+                    placeholder="Slots Máximos"
+                    value={slots.max || ''}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setSlot(level, 'max', Number(e.target.value))}
+                  />
                 ) : slots.max > 0 ? (
                   <div className={styles.slotCounter} onClick={(e) => e.stopPropagation()}>
                     <button className={styles.slotBtn} onClick={() => setSlot(level, 'current', slots.current - 1)}>−</button>

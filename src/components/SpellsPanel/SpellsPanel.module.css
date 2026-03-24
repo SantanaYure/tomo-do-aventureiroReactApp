@@ -82,11 +82,12 @@
   flex-wrap: wrap;
   background: none;
   border: none;
-  padding: 0;
+  padding: var(--space-2) var(--space-1);
   cursor: pointer;
   text-align: left;
   font: inherit;
   color: inherit;
+  width: 100%;
 }
 
 .chevron {
