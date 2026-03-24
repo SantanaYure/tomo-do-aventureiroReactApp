@@ -17,6 +17,7 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import { useCharacterSheets } from '../../hooks/useCharacterSheets'
 import { useMonsterSheets } from '../../hooks/useMonsterSheets'
+import { useFirestoreSearch } from '../../hooks/useFirestoreSearch'
 import styles from './CharactersPage.module.css'
 
 type ImportFeedback = {
@@ -34,10 +35,10 @@ const MAX_JSON_BYTES = 2 * 1024 * 1024
 
 // ── SheetSkeleton ─────────────────────────────────────────────────────────────
 
-function SheetSkeleton() {
+function SheetSkeleton({ count = 3 }: { count?: number }) {
   return (
     <ul className={styles.sheetList} aria-hidden="true">
-      {[0, 1, 2].map((i) => (
+      {Array.from({ length: count }, (_, i) => (
         <li key={i} className={styles.skeletonItem}>
           <div className={styles.skeletonContent}>
             <div className={`${styles.skeletonLine} ${styles.skeletonName}`} />
@@ -59,6 +60,7 @@ interface SheetSectionProps<T> {
   title: string
   items: T[]
   loading: boolean
+  skeletonCount?: number
   importLabel: string
   onImport: () => void
   renderItem: (item: T) => React.ReactNode
@@ -69,6 +71,7 @@ function SheetSection<T>({
   title,
   items,
   loading,
+  skeletonCount = 3,
   importLabel,
   onImport,
   renderItem,
@@ -83,7 +86,7 @@ function SheetSection<T>({
         </button>
       </div>
       {loading ? (
-        <SheetSkeleton />
+        <SheetSkeleton count={skeletonCount} />
       ) : items.length > 0 ? (
         <ul className={styles.sheetList}>{items.map(renderItem)}</ul>
       ) : (
@@ -167,36 +170,40 @@ function MonsterSheetItem({ sheet, onExport, onDelete }: MonsterSheetItemProps) 
 
 export function CharactersPage() {
   const { uid } = useAuth()
+
+  // ── Listas completas (tempo-real via onSnapshot) ─────────────────────────
   const { sheets, isLoading: isLoadingSheets, error: sheetsError } = useCharacterSheets(uid)
   const { monsters, isLoading: isLoadingMonsters, error: monstersError } = useMonsterSheets(uid)
+
+  // ── Busca ────────────────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState('')
+  const { characters: searchChars, monsters: searchMonsters, isSearching, searchError, retrySearch } =
+    useFirestoreSearch(uid, searchTerm)
+
+  // ── Estado local ─────────────────────────────────────────────────────────
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const characterFileInputRef = useRef<HTMLInputElement>(null)
   const monsterFileInputRef = useRef<HTMLInputElement>(null)
 
-  const error = sheetsError ?? monstersError
+  // ── Modo de busca vs. lista padrão ───────────────────────────────────────
+  const isSearchMode = searchTerm.trim().length > 0
 
-  // ── Search filtering ────────────────────────────────────────────────────────
+  const displayedSheets = isSearchMode ? searchChars : sheets
+  const displayedAllMonsters = isSearchMode ? searchMonsters : monsters
 
-  const term = searchTerm.trim().toLowerCase()
+  const displayedMonsters = displayedAllMonsters.filter((m) => m.data.details.kind !== 'npc')
+  const displayedNpcs = displayedAllMonsters.filter((m) => m.data.details.kind === 'npc')
 
-  const filteredSheets = term
-    ? sheets.filter((s) => s.data.character.name.toLowerCase().includes(term))
-    : sheets
+  // Skeleton mais leve (2 itens) durante busca; padrão (3 itens) no carregamento inicial
+  const loadingSheets = isSearchMode ? isSearching : isLoadingSheets
+  const loadingMonsters = isSearchMode ? isSearching : isLoadingMonsters
+  const skeletonCount = isSearchMode ? 2 : 3
 
-  const allMonsters = monsters.filter((m) => m.data.details.kind !== 'npc')
-  const allNpcs = monsters.filter((m) => m.data.details.kind === 'npc')
+  // ── Erros de carregamento inicial ────────────────────────────────────────
+  const loadError = sheetsError ?? monstersError
 
-  const filteredMonsters = term
-    ? allMonsters.filter((m) => m.data.details.name.toLowerCase().includes(term))
-    : allMonsters
-
-  const filteredNpcs = term
-    ? allNpcs.filter((m) => m.data.details.name.toLowerCase().includes(term))
-    : allNpcs
-
-  // ── Delete ──────────────────────────────────────────────────────────────────
+  // ── Delete ──────────────────────────────────────────────────────────────
 
   function requestDeleteSheet(id: string, name: string) {
     setPendingDelete({ type: 'character', id, name })
@@ -216,7 +223,7 @@ export function CharactersPage() {
     setPendingDelete(null)
   }
 
-  // ── Export ──────────────────────────────────────────────────────────────────
+  // ── Export ──────────────────────────────────────────────────────────────
 
   function normalizeFileName(rawName: string, fallbackId: string, prefix: string): string {
     const normalizedName = rawName
@@ -248,7 +255,7 @@ export function CharactersPage() {
     downloadJsonFile(json, normalizeFileName(monster.data.details.name.trim() || monster.id, monster.id, 'tomo-monstro'))
   }
 
-  // ── Import ──────────────────────────────────────────────────────────────────
+  // ── Import ──────────────────────────────────────────────────────────────
 
   function handleImportClick(scope: 'character' | 'monster') {
     setImportFeedback(null)
@@ -304,9 +311,9 @@ export function CharactersPage() {
     return `Nenhum ${label.toLowerCase()} foi importado.`
   }
 
-  // ── Error state ─────────────────────────────────────────────────────────────
+  // ── Erro de carregamento inicial (tela inteira) ──────────────────────────
 
-  if (error) {
+  if (loadError) {
     return (
       <main className={styles.page}>
         <div className={styles.errorState}>
@@ -323,7 +330,7 @@ export function CharactersPage() {
     )
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────
 
   return (
     <main className={styles.page}>
@@ -365,13 +372,24 @@ export function CharactersPage() {
             </button>
           )}
         </div>
+
+        {/* Erro inline da busca (Etapa 8) */}
+        {searchError && (
+          <div className={styles.searchError}>
+            <span>Erro ao buscar fichas.</span>
+            <button type="button" className={styles.retryButton} onClick={retrySearch}>
+              Tentar novamente
+            </button>
+          </div>
+        )}
       </header>
 
       {/* ── Personagens ── */}
       <SheetSection
         title="Personagens"
-        items={filteredSheets}
-        loading={isLoadingSheets}
+        items={displayedSheets}
+        loading={loadingSheets}
+        skeletonCount={skeletonCount}
         importLabel="↑ Importar personagem"
         onImport={() => handleImportClick('character')}
         renderItem={(sheet) => (
@@ -382,14 +400,15 @@ export function CharactersPage() {
             onDelete={() => requestDeleteSheet(sheet.id, sheet.data.character.name)}
           />
         )}
-        emptyMessage="Nenhum personagem encontrado."
+        emptyMessage={isSearchMode ? 'Nenhuma ficha encontrada.' : 'Nenhum personagem encontrado.'}
       />
 
       {/* ── Monstros & NPCs ── */}
       <SheetSection
         title="Monstros & NPCs"
-        items={[...filteredMonsters, ...filteredNpcs]}
-        loading={isLoadingMonsters}
+        items={[...displayedMonsters, ...displayedNpcs]}
+        loading={loadingMonsters}
+        skeletonCount={skeletonCount}
         importLabel="↑ Importar Monstro/NPC"
         onImport={() => handleImportClick('monster')}
         renderItem={(monster) => (
@@ -400,10 +419,10 @@ export function CharactersPage() {
             onDelete={() => requestDeleteMonster(monster.id, monster.data.details.name)}
           />
         )}
-        emptyMessage="Nenhum monstro ou NPC encontrado."
+        emptyMessage={isSearchMode ? 'Nenhum monstro ou NPC encontrado.' : 'Nenhum monstro ou NPC encontrado.'}
       />
 
-      {/* ── Feedback ── */}
+      {/* ── Feedback de importação ── */}
       {importFeedback && (
         <p
           className={
@@ -416,7 +435,7 @@ export function CharactersPage() {
         </p>
       )}
 
-      {/* ── Delete dialog ── */}
+      {/* ── Dialog de exclusão ── */}
       {pendingDelete && (
         <div className={styles.dialogOverlay}>
           <div
