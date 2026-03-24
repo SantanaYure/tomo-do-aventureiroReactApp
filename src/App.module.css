@@ -1,0 +1,17 @@
+.appShell {
+  display: flex;
+  min-height: 100dvh;
+  width: 100%;
+}
+
+.mainContent {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 860px) {
+  .mainContent {
+    /* Espaço para a bottom bar */
+    padding-bottom: 3.75rem;
+  }
+}
