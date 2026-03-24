@@ -16,6 +16,7 @@ import {
   type MonsterImportResult,
   type StoredMonsterSheet,
 } from '../../store/monsterSheetStore'
+import { useAuth } from '../../context/AuthContext'
 import styles from './Home.module.css'
 
 type ImportFeedback = {
@@ -32,6 +33,7 @@ type PendingDelete = {
 const MAX_JSON_BYTES = 2 * 1024 * 1024
 
 export function Home() {
+  const { uid } = useAuth()
   const [sheets, setSheets] = useState<StoredCharacterSheet[]>([])
   const [monsters, setMonsters] = useState<StoredMonsterSheet[]>([])
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
@@ -40,9 +42,10 @@ export function Home() {
   const monsterFileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setSheets(listCharacterSheets())
-    setMonsters(listMonsterSheets())
-  }, [])
+    if (!uid) return
+    setSheets(listCharacterSheets(uid))
+    setMonsters(listMonsterSheets(uid))
+  }, [uid])
 
   function requestDeleteSheet(id: string, name: string) {
     setPendingDelete({ type: 'character', id, name })
@@ -53,13 +56,13 @@ export function Home() {
   }
 
   function confirmDelete() {
-    if (!pendingDelete) return
+    if (!pendingDelete || !uid) return
 
     if (pendingDelete.type === 'character') {
-      deleteCharacterSheet(pendingDelete.id)
+      deleteCharacterSheet(uid, pendingDelete.id)
       setSheets((prev) => prev.filter((s) => s.id !== pendingDelete.id))
     } else {
-      deleteMonster(pendingDelete.id)
+      deleteMonster(uid, pendingDelete.id)
       setMonsters((prev) => prev.filter((m) => m.id !== pendingDelete.id))
     }
 
@@ -108,7 +111,8 @@ export function Home() {
   }
 
   function handleExportSheet(sheet: StoredCharacterSheet) {
-    const json = exportCharacterSheetAsJSON(sheet.id)
+    if (!uid) return
+    const json = exportCharacterSheetAsJSON(uid, sheet.id)
 
     if (!json) {
       return
@@ -118,7 +122,8 @@ export function Home() {
   }
 
   function handleExportMonster(monster: StoredMonsterSheet) {
-    const json = exportMonsterSheetAsJSON(monster.id)
+    if (!uid) return
+    const json = exportMonsterSheetAsJSON(uid, monster.id)
 
     if (!json) {
       return
@@ -150,13 +155,15 @@ export function Home() {
       return
     }
 
+    if (!uid) return
+
     const reader = new FileReader()
     reader.onload = (loadEvent) => {
       const json = loadEvent.target?.result as string
-      const result = importCharacterSheetFromJSON(json)
+      const result = importCharacterSheetFromJSON(uid, json)
       setImportFeedback({ scope: 'character', result })
       if (result.imported > 0) {
-        setSheets(listCharacterSheets())
+        setSheets(listCharacterSheets(uid))
       }
     }
     reader.readAsText(file)
@@ -177,13 +184,15 @@ export function Home() {
       return
     }
 
+    if (!uid) return
+
     const reader = new FileReader()
     reader.onload = (loadEvent) => {
       const json = loadEvent.target?.result as string
-      const result = importMonsterSheetFromJSON(json)
+      const result = importMonsterSheetFromJSON(uid, json)
       setImportFeedback({ scope: 'monster', result })
       if (result.imported > 0) {
-        setMonsters(listMonsterSheets())
+        setMonsters(listMonsterSheets(uid))
       }
     }
     reader.readAsText(file)
@@ -220,7 +229,7 @@ export function Home() {
           ↑ Importar personagem
         </button>
         <button type="button" className={styles.secondaryButton} onClick={handleMonsterImportClick}>
-          ↑ Importar monstro
+          ↑ Importar Monstro/NPC
         </button>
         <input
           ref={characterFileInputRef}

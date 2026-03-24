@@ -1,12 +1,15 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { createCharacterSheet } from '../../store/characterSheetStore'
+import { useAuth } from '../../context/AuthContext'
 import styles from './NewCharacterPage.module.css'
 
 export function NewCharacterPage() {
+  const { uid } = useAuth()
   const navigate = useNavigate()
 
   function handleCreateCharacter() {
-    const stored = createCharacterSheet()
+    if (!uid) return
+    const stored = createCharacterSheet(uid)
     navigate(`/ficha/${stored.id}`)
   }
 

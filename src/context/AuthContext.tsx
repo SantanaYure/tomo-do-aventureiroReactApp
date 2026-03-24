@@ -5,6 +5,7 @@ import { loginWithGoogle as loginWithGoogleService } from '../services/authServi
 
 type AuthContextValue = {
     user: User | null
+    uid: string | null
     loading: boolean
     loginWithGoogle: () => Promise<void>
 }
@@ -52,7 +53,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     return (
-        <AuthContext.Provider value={{ user, loading, loginWithGoogle }}>
+        <AuthContext.Provider value={{ user, uid: user?.uid ?? null, loading, loginWithGoogle }}>
             {children}
         </AuthContext.Provider>
     )

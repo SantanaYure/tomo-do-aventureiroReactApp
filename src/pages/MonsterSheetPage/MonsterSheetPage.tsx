@@ -12,6 +12,7 @@ import {
   getMonsterSheet,
   saveMonsterSheet,
 } from '../../store/monsterSheetStore'
+import { useAuth } from '../../context/AuthContext'
 import type { MonsterSheet } from '../../types/system/dnd/monsterSheet'
 import styles from './MonsterSheetPage.module.css'
 
@@ -102,6 +103,7 @@ function mergeDeepPatch<T>(current: T, patch: DeepPartial<T>): T {
 }
 
 export function MonsterSheetPage() {
+  const { uid } = useAuth()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
@@ -131,13 +133,13 @@ export function MonsterSheetPage() {
   }, [hasSheet])
 
   useEffect(() => {
-    if (!id) {
+    if (!id || !uid) {
       setNotFound(true)
       setSheet(null)
       return
     }
 
-    const stored = getMonsterSheet(id)
+    const stored = getMonsterSheet(uid, id)
 
     if (!stored) {
       setNotFound(true)
@@ -147,7 +149,7 @@ export function MonsterSheetPage() {
 
     setNotFound(false)
     setSheet(stored.data)
-  }, [id])
+  }, [id, uid])
 
   useEffect(() => {
     const locationState = location.state as MonsterLocationState | null
@@ -169,12 +171,12 @@ export function MonsterSheetPage() {
   }, [activeTab, id])
 
   function handleSheetChange(patch: DeepPartial<MonsterSheet>) {
-    if (!sheet || !id) {
+    if (!sheet || !id || !uid) {
       return
     }
 
     const updatedSheet = mergeDeepPatch(sheet, patch)
-    const stored = saveMonsterSheet(id, updatedSheet)
+    const stored = saveMonsterSheet(uid, id, updatedSheet)
     setSheet(stored.data)
   }
 

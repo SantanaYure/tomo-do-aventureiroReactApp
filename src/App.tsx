@@ -7,6 +7,7 @@ import { MonsterSheetPage } from './pages/MonsterSheetPage/MonsterSheetPage'
 import { NewMonsterPage } from './pages/NewMonsterPage/NewMonsterPage'
 import { NotFound } from './pages/NotFound/NotFound'
 import { Header } from './components/Header/Header'
+import { ProtectedRoute } from './components/ProtectedRoute/ProtectedRoute'
 
 function AppLayout() {
   return (
@@ -22,13 +23,15 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/ficha/nova" element={<NewCharacterPage />} />
-          <Route path="/ficha/:id" element={<CharacterSheetPage />} />
-          <Route path="/monstro/novo" element={<NewMonsterPage />} />
-          <Route path="/monstro/:id" element={<MonsterSheetPage />} />
-          <Route path="*" element={<NotFound />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/ficha/nova" element={<NewCharacterPage />} />
+            <Route path="/ficha/:id" element={<CharacterSheetPage />} />
+            <Route path="/monstro/novo" element={<NewMonsterPage />} />
+            <Route path="/monstro/:id" element={<MonsterSheetPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

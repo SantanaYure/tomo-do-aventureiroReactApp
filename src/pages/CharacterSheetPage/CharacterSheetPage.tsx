@@ -8,6 +8,7 @@ import {
   getCharacterSheet,
   saveCharacterSheet,
 } from '../../store/characterSheetStore'
+import { useAuth } from '../../context/AuthContext'
 import { CharacterHeader } from '../../components/CharacterHeader/CharacterHeader'
 import { AttributesPanel } from '../../components/AttributesPanel/AttributesPanel'
 import { SkillsPanel } from '../../components/SkillsPanel/SkillsPanel'
@@ -77,6 +78,7 @@ function readStoredTab(id?: string): Tab {
 }
 
 export function CharacterSheetPage() {
+  const { uid } = useAuth()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [sheet, setSheet] = useState<SheetWithSlots | null>(null)
@@ -100,15 +102,15 @@ export function CharacterSheetPage() {
   }, [hasSheet])
 
   useEffect(() => {
-    if (!id) return
-    const stored = getCharacterSheet(id)
+    if (!id || !uid) return
+    const stored = getCharacterSheet(uid, id)
     if (!stored) {
       setNotFound(true)
       return
     }
     setNotFound(false)
     setSheet(stored.data as SheetWithSlots)
-  }, [id])
+  }, [id, uid])
 
   useEffect(() => {
     setActiveTab(readStoredTab(id))
@@ -121,9 +123,9 @@ export function CharacterSheetPage() {
   }, [activeTab, id])
 
   function handleUpdate(updated: SheetWithSlots) {
-    if (!id) return
+    if (!id || !uid) return
     setSheet(updated)
-    saveCharacterSheet(id, updated)
+    saveCharacterSheet(uid, id, updated)
   }
 
   function handleToggleEditMode() {

@@ -28,7 +28,7 @@ export function LoginPage() {
             setIsSubmitting(true)
             setErrorMessage(null)
             await loginWithGoogle()
-            navigate('/', { replace: true })
+            // navegação acontece via useEffect quando user for atualizado
         } catch (error) {
             setErrorMessage(getErrorMessage(error))
         } finally {
