@@ -224,6 +224,11 @@
   width: auto;
 }
 
+.materialsInput {
+  width: 100%;
+  min-width: 0;
+}
+
 .spellName {
   font-weight: 600;
 }

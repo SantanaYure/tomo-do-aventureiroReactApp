@@ -50,6 +50,17 @@ function createSpell(): Spell {
   return { name: '', level: 0, school: '', castingTime: '', range: '', duration: '', components: [], prepared: false, description: '' }
 }
 
+function parseMaterialComponents(value: string): string[] {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function formatMaterialComponents(components: string[] | undefined): string {
+  return (components ?? []).join(', ')
+}
+
 interface SpellsPanelProps {
   spells: Spell[]
   character: Character
@@ -279,6 +290,16 @@ export function SpellsPanel({
                           </div>
 
                           {/* Linha 4: descrição */}
+                          <input
+                            className={styles.materialsInput}
+                            type="text"
+                            value={formatMaterialComponents(spell.components)}
+                            placeholder="Componentes materiais"
+                            onChange={(e) =>
+                              setSpell(globalIndex, { components: parseMaterialComponents(e.target.value) })
+                            }
+                          />
+
                           <textarea
                             className={styles.spellDescription}
                             value={spell.description ?? ''}
@@ -298,6 +319,11 @@ export function SpellsPanel({
                           <span className={styles.spellMetaText}>{spell.castingTime}</span>
                           <span className={styles.spellMetaText}>{spell.range}</span>
                           <span className={styles.spellMetaText}>{spell.duration}</span>
+                          {spell.components && spell.components.length > 0 && (
+                            <span className={styles.spellMetaText}>
+                              Materiais: {formatMaterialComponents(spell.components)}
+                            </span>
+                          )}
                           {spell.description && <p className={styles.spellDescriptionRead}>{spell.description}</p>}
                         </>
                       )}
