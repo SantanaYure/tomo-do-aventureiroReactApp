@@ -9,6 +9,7 @@ import { MonsterStatsPanel } from '../../components/monster/MonsterStatsPanel/Mo
 import { MonsterTraitsPanel } from '../../components/monster/MonsterTraitsPanel/MonsterTraitsPanel'
 import type { DeepPartial } from '../../components/monster/shared'
 import { saveMonsterSheet } from '../../store/monsterSheetStore'
+import { recordOpened } from '../../utils/recentlyOpened'
 import { useAuth } from '../../context/AuthContext'
 import { useMonsterSheet } from '../../hooks/useMonsterSheet'
 import type { MonsterSheet } from '../../types/system/dnd/monsterSheet'
@@ -113,6 +114,11 @@ export function MonsterSheetPage() {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasSheet = sheet !== null
+
+  // Registra abertura da ficha para a lista de recentes
+  useEffect(() => {
+    if (id) recordOpened(id)
+  }, [id])
 
   // Sync Firestore snapshot → local state (only on first load)
   useEffect(() => {
