@@ -159,11 +159,35 @@
   background: rgba(255, 252, 245, 0.72);
 }
 
+/* No modo de edição o card vira coluna */
+.spellRow:has(.spellEditRow) {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.spellEditRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.spellConcLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 .spellPrepared {
   font-weight: 700;
   color: var(--accent);
   cursor: pointer;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .spellConc {
@@ -174,25 +198,29 @@
 }
 
 .spellNameInput {
-  flex: 1 1 10rem;
-  min-width: 8rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .castingTimeInput {
-  width: 7rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .rangeInput {
-  width: 5rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .durationInput {
-  width: 6rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .spellSchoolSelect {
+  flex: 1;
+  min-width: 0;
   width: auto;
-  min-width: 8rem;
 }
 
 .spellName {
@@ -210,7 +238,8 @@
 }
 
 .spellDescription {
-  flex-basis: 100%;
+  width: 100%;
+  box-sizing: border-box;
   min-height: 3.5rem;
   resize: vertical;
 }
