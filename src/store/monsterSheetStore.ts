@@ -8,7 +8,6 @@ import {
 } from 'firebase/firestore'
 import type {
     AttackType,
-    ConditionType,
     CreatureSize,
     DamageType,
     LegendaryAction,
@@ -69,23 +68,6 @@ const DAMAGE_TYPES: readonly DamageType[] = [
     'Perfuração',
     'Corte',
     'Doenças',
-]
-
-const CONDITION_TYPES: readonly ConditionType[] = [
-    'Cego',
-    'Surdo',
-    'Enfeitiçado',
-    'Amedrontado',
-    'Agarrado',
-    'Incapacitado',
-    'Invisível',
-    'Paralisado',
-    'Petrificado',
-    'Envenenado',
-    'Caído',
-    'Restrito',
-    'Atordoado',
-    'Inconsciente',
 ]
 
 const SPELLCASTING_ABILITIES: readonly SpellcastingAbility[] = [
@@ -436,12 +418,9 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
             savingThrows: normalizeStringArray(traits.savingThrows),
             skills: normalizeStringArray(traits.skills),
             languages: normalizeStringArray(traits.languages),
-            resistances: normalizeTypedArray(traits.resistances, DAMAGE_TYPES),
-            immunities: normalizeTypedArray(traits.immunities, DAMAGE_TYPES),
-            conditionImmunities: normalizeTypedArray(
-                traits.conditionImmunities,
-                CONDITION_TYPES,
-            ),
+            resistances: normalizeStringArray(traits.resistances),
+            immunities: normalizeStringArray(traits.immunities),
+            conditionImmunities: normalizeStringArray(traits.conditionImmunities),
             challengeRating: normalizeString(
                 traits.challengeRating,
                 defaultSheet.traits.challengeRating,
