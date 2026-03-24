@@ -8,19 +8,24 @@ import {
 
 export function useMonsterSheets(uid: string | null): {
   monsters: StoredMonsterSheet[]
+  isLoading: boolean
   loading: boolean
   error: Error | null
 } {
   const [monsters, setMonsters] = useState<StoredMonsterSheet[]>([])
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
     if (!uid) {
       setMonsters([])
-      setLoading(false)
+      setError(null)
+      setIsLoading(false)
       return
     }
+
+    setIsLoading(true)
+    setError(null)
 
     const ref = collection(db, 'users', uid, 'monsterSheets')
     const q = query(ref, orderBy('updatedAt', 'desc'))
@@ -38,16 +43,16 @@ export function useMonsterSheets(uid: string | null): {
           }
         })
         setMonsters(results)
-        setLoading(false)
+        setIsLoading(false)
       },
       (err) => {
         setError(err)
-        setLoading(false)
+        setIsLoading(false)
       },
     )
 
     return unsubscribe
   }, [uid])
 
-  return { monsters, loading, error }
+  return { monsters, isLoading, loading: isLoading, error }
 }

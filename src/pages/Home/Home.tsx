@@ -122,10 +122,10 @@ function EmptyRecent() {
 
 export function Home() {
   const { user, uid } = useAuth()
-  const { sheets, loading: loadingSheets } = useCharacterSheets(uid)
-  const { monsters, loading: loadingMonsters } = useMonsterSheets(uid)
+  const { sheets, isLoading: isLoadingSheets } = useCharacterSheets(uid)
+  const { monsters, isLoading: isLoadingMonsters } = useMonsterSheets(uid)
 
-  const isLoading = loadingSheets || loadingMonsters
+  const isLoading = isLoadingSheets || isLoadingMonsters
   const firstName = user?.displayName?.split(' ')[0] ?? 'Aventureiro'
 
   const totalCharacters = sheets.length

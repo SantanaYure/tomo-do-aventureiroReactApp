@@ -167,8 +167,8 @@ function MonsterSheetItem({ sheet, onExport, onDelete }: MonsterSheetItemProps) 
 
 export function CharactersPage() {
   const { uid } = useAuth()
-  const { sheets, loading: loadingSheets, error: sheetsError } = useCharacterSheets(uid)
-  const { monsters, loading: loadingMonsters, error: monstersError } = useMonsterSheets(uid)
+  const { sheets, isLoading: isLoadingSheets, error: sheetsError } = useCharacterSheets(uid)
+  const { monsters, isLoading: isLoadingMonsters, error: monstersError } = useMonsterSheets(uid)
   const [search, setSearch] = useState('')
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
@@ -367,7 +367,7 @@ export function CharactersPage() {
       <SheetSection
         title="Personagens"
         items={filteredSheets}
-        loading={loadingSheets}
+        loading={isLoadingSheets}
         importLabel="↑ Importar personagem"
         onImport={() => handleImportClick('character')}
         renderItem={(sheet) => (
@@ -385,7 +385,7 @@ export function CharactersPage() {
       <SheetSection
         title="Monstros & NPCs"
         items={[...filteredMonsters, ...filteredNpcs]}
-        loading={loadingMonsters}
+        loading={isLoadingMonsters}
         importLabel="↑ Importar Monstro/NPC"
         onImport={() => handleImportClick('monster')}
         renderItem={(monster) => (

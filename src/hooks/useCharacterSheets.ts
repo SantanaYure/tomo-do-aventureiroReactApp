@@ -8,19 +8,24 @@ import {
 
 export function useCharacterSheets(uid: string | null): {
   sheets: StoredCharacterSheet[]
+  isLoading: boolean
   loading: boolean
   error: Error | null
 } {
   const [sheets, setSheets] = useState<StoredCharacterSheet[]>([])
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
     if (!uid) {
       setSheets([])
-      setLoading(false)
+      setError(null)
+      setIsLoading(false)
       return
     }
+
+    setIsLoading(true)
+    setError(null)
 
     const ref = collection(db, 'users', uid, 'characterSheets')
     const q = query(ref, orderBy('updatedAt', 'desc'))
@@ -38,16 +43,16 @@ export function useCharacterSheets(uid: string | null): {
           }
         })
         setSheets(results)
-        setLoading(false)
+        setIsLoading(false)
       },
       (err) => {
         setError(err)
-        setLoading(false)
+        setIsLoading(false)
       },
     )
 
     return unsubscribe
   }, [uid])
 
-  return { sheets, loading, error }
+  return { sheets, isLoading, loading: isLoading, error }
 }
