@@ -18,18 +18,53 @@
 }
 
 .cardHeader {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
     gap: var(--space-3);
 }
 
 .nameField {
     flex: 1;
+    min-width: 0;
 }
 
 .field {
     display: grid;
     gap: var(--space-2);
+}
+
+.removeButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: 1px solid rgba(122, 30, 30, 0.32);
+    border-radius: 999px;
+    background: rgba(122, 30, 30, 0.08);
+    color: var(--accent);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+        transform var(--transition),
+        background var(--transition),
+        border-color var(--transition),
+        color var(--transition);
+}
+
+.removeButton:hover {
+    transform: translateY(-1px);
+    background: rgba(122, 30, 30, 0.14);
+    border-color: rgba(122, 30, 30, 0.48);
+}
+
+.removeButton:focus-visible {
+    outline: 2px solid rgba(122, 30, 30, 0.28);
+    outline-offset: 2px;
 }
 
 .limitedUsesGrid,
@@ -154,14 +189,6 @@
 }
 
 @media (max-width: 640px) {
-    .cardHeader {
-        flex-direction: column;
-    }
-
-    .cardHeader :global(button) {
-        width: 100%;
-    }
-
     .cardToggle {
         flex-wrap: wrap;
     }

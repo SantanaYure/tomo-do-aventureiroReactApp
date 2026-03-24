@@ -109,8 +109,8 @@ export function ResourcesPanel({
   function setResource(index: number, partial: Partial<Resource>) {
     onChangeResources(
       resources.map((resource, currentIndex) =>
-        currentIndex === index ? { ...resource, ...partial } : resource
-      )
+        currentIndex === index ? { ...resource, ...partial } : resource,
+      ),
     )
   }
 
@@ -124,9 +124,10 @@ export function ResourcesPanel({
     const nextMax = Math.max(0, value)
     const previousMax = resource.max ?? 0
     const current = Math.max(0, resource.current ?? 0)
-    const nextCurrent = previousMax === 0 || current >= previousMax
-      ? nextMax
-      : Math.min(nextMax, current)
+    const nextCurrent =
+      previousMax === 0 || current >= previousMax
+        ? nextMax
+        : Math.min(nextMax, current)
 
     setResource(index, {
       max: nextMax,
@@ -176,8 +177,8 @@ export function ResourcesPanel({
       resources.map((resource) =>
         resource.resetOn === type
           ? { ...resource, current: resource.max ?? 0 }
-          : resource
-      )
+          : resource,
+      ),
     )
   }
 
@@ -228,116 +229,90 @@ export function ResourcesPanel({
             <div key={resourceId} className={styles.resourceCard}>
               {isEditMode ? (
                 <div className={styles.editStack}>
-                  <input
-                    className={styles.resourceNameInput}
-                    type="text"
-                    value={resource.name ?? ''}
-                    placeholder="Nome do recurso"
-                    onChange={(event) => setResource(index, { name: event.target.value })}
-                  />
-
-                  <div className={styles.editGrid}>
-                    <label className={styles.metaField}>
-                      Usos
-                      <input
-                        type="number"
-                        min={0}
-                        value={resource.max ?? 0}
-                        onChange={(event) => setMax(index, Number(event.target.value))}
-                      />
-                    </label>
-
-                    <label className={styles.metaField}>
-                      Nível
-                      <input
-                        type="number"
-                        min={1}
-                        value={resource.level ?? ''}
-                        placeholder="1"
-                        onChange={(event) => setLevel(index, event.target.value)}
-                      />
-                    </label>
-
-                    <label className={styles.metaField}>
-                      Duração
-                      <input
-                        type="text"
-                        value={resource.duration ?? ''}
-                        placeholder="1 min, 10 min, 1 h..."
-                        onChange={(event) =>
-                          setResource(index, { duration: event.target.value })
-                        }
-                      />
-                    </label>
-
-                    <label className={styles.metaField}>
-                      Ação
-                      <input
-                        type="text"
-                        value={resource.action ?? ''}
-                        placeholder="Ação, bônus, reação..."
-                        onChange={(event) =>
-                          setResource(index, { action: event.target.value })
-                        }
-                      />
-                    </label>
-
-                    <label className={styles.metaField}>
-                      Alcance
-                      <input
-                        type="text"
-                        value={resource.range ?? ''}
-                        placeholder="Toque, 9 m, pessoal..."
-                        onChange={(event) =>
-                          setResource(index, { range: event.target.value })
-                        }
-                      />
-                    </label>
-
-                    <label className={styles.metaField}>
-                      Reset
-                      <select
-                        value={resource.resetOn ?? 'long-rest'}
-                        onChange={(event) =>
-                          setResource(index, {
-                            resetOn: event.target.value as ResourceReset,
-                          })
-                        }
-                      >
-                        {(Object.keys(RESET_LABEL) as ResourceReset[]).map((key) => (
-                          <option key={key} value={key}>
-                            {RESET_LABEL[key]}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                  <div className={styles.cardHeaderRow}>
+                    <button
+                      type="button"
+                      className={styles.removeAction}
+                      onClick={() => removeResource(index)}
+                      aria-label={`Excluir recurso ${resource.name?.trim() || `#${index + 1}`}`}
+                      title="Excluir recurso"
+                    >
+                      ✕
+                    </button>
                   </div>
 
-                  <div className={styles.originRow}>
+                  <div className={styles.editRow}>
+                    <input
+                      className={styles.resourceNameInput}
+                      type="text"
+                      value={resource.name ?? ''}
+                      placeholder="Nome do recurso"
+                      onChange={(event) => setResource(index, { name: event.target.value })}
+                    />
+                    <input
+                      className={styles.editFieldSm}
+                      type="number"
+                      min={1}
+                      value={resource.level ?? ''}
+                      placeholder="Nível"
+                      onChange={(event) => setLevel(index, event.target.value)}
+                    />
+                    <input
+                      className={styles.editFieldMd}
+                      type="text"
+                      value={resource.duration ?? ''}
+                      placeholder="Duração"
+                      onChange={(event) => setResource(index, { duration: event.target.value })}
+                    />
+                    <input
+                      className={styles.editFieldMd}
+                      type="text"
+                      value={resource.action ?? ''}
+                      placeholder="Ação"
+                      onChange={(event) => setResource(index, { action: event.target.value })}
+                    />
+                  </div>
+
+                  <div className={styles.editRow}>
+                    <input
+                      className={styles.editFieldMd}
+                      type="text"
+                      value={resource.range ?? ''}
+                      placeholder="Alcance"
+                      onChange={(event) => setResource(index, { range: event.target.value })}
+                    />
+                    <select
+                      className={styles.editFieldMd}
+                      value={resource.resetOn ?? 'long-rest'}
+                      onChange={(event) =>
+                        setResource(index, { resetOn: event.target.value as ResourceReset })
+                      }
+                    >
+                      {(Object.keys(RESET_LABEL) as ResourceReset[]).map((key) => (
+                        <option key={key} value={key}>
+                          {RESET_LABEL[key]}
+                        </option>
+                      ))}
+                    </select>
                     <label className={panelStyles.checkboxLabel}>
                       <input
                         type="checkbox"
                         checked={resource.allowCustomOrigin ?? false}
-                        onChange={(event) =>
-                          setCustomOriginEnabled(index, event.target.checked)
-                        }
+                        onChange={(event) => setCustomOriginEnabled(index, event.target.checked)}
                       />
                       Origem personalizada
                     </label>
-
                     {resource.allowCustomOrigin ? (
                       <input
-                        className={styles.originInput}
+                        className={styles.editFieldMd}
                         type="text"
                         value={resource.customOrigin ?? ''}
                         placeholder="Digite a origem"
-                        onChange={(event) =>
-                          setResource(index, { customOrigin: event.target.value })
-                        }
+                        onChange={(event) => setResource(index, { customOrigin: event.target.value })}
                       />
                     ) : (
                       <select
-                        className={styles.originSelect}
+                        className={styles.editFieldMd}
                         value={resource.origin ?? ''}
                         onChange={(event) => setOrigin(index, event.target.value)}
                       >
@@ -349,14 +324,6 @@ export function ResourcesPanel({
                         ))}
                       </select>
                     )}
-
-                    <button
-                      type="button"
-                      className={`${panelStyles.removeButton} ${styles.removeAction}`}
-                      onClick={() => removeResource(index)}
-                    >
-                      ✕
-                    </button>
                   </div>
 
                   <textarea
@@ -364,12 +331,10 @@ export function ResourcesPanel({
                     rows={3}
                     value={resource.description ?? ''}
                     placeholder="Descrição"
-                    onChange={(event) =>
-                      setResource(index, { description: event.target.value })
-                    }
+                    onChange={(event) => setResource(index, { description: event.target.value })}
                   />
 
-                  <div className={styles.counter}>
+                  <div className={styles.editRow}>
                     <button
                       type="button"
                       className={styles.counterBtn}
@@ -377,12 +342,17 @@ export function ResourcesPanel({
                     >
                       −
                     </button>
-
                     <span className={styles.counterVal}>
                       {resource.current ?? 0}
-                      <span className={styles.counterMax}> / {resource.max ?? 0}</span>
+                      <span className={styles.counterMax}> / </span>
                     </span>
-
+                    <input
+                      className={styles.maxInput}
+                      type="number"
+                      min={0}
+                      value={resource.max ?? 0}
+                      onChange={(event) => setMax(index, Number(event.target.value))}
+                    />
                     <button
                       type="button"
                       className={styles.counterBtn}
@@ -390,15 +360,14 @@ export function ResourcesPanel({
                     >
                       +
                     </button>
+                    <button
+                      type="button"
+                      className={styles.resetBtn}
+                      onClick={() => resetResource(index)}
+                    >
+                      ↺ Restaurar
+                    </button>
                   </div>
-
-                  <button
-                    type="button"
-                    className={styles.resetBtn}
-                    onClick={() => resetResource(index)}
-                  >
-                    ↺ Restaurar
-                  </button>
                 </div>
               ) : (
                 <>
