@@ -17,6 +17,7 @@ import { AttacksPanel } from '../../components/AttacksPanel/AttacksPanel'
 import { SpellsPanel } from '../../components/SpellsPanel/SpellsPanel'
 import { InventoryPanel } from '../../components/InventoryPanel/InventoryPanel'
 import { CharacterDetailsPanel } from '../../components/CharacterDetailsPanel/CharacterDetailsPanel'
+import type { SavingStatus } from '../../types/savingStatus'
 import styles from './CharacterSheetPage.module.css'
 
 type SheetWithSlots = CharacterSheet & {
@@ -84,12 +85,19 @@ export function CharacterSheetPage() {
   const navigate = useNavigate()
   const { sheet: storedSheet, notFound, error } = useCharacterSheet(uid, id ?? null)
   const [sheet, setSheet] = useState<SheetWithSlots | null>(null)
+  const [savingStatus, setSavingStatus] = useState<SavingStatus>('idle')
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isAtBottom, setIsAtBottom] = useState(false)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasSheet = sheet !== null
+
+  function updateSavingStatus(nextStatus: SavingStatus) {
+    setSavingStatus((currentStatus) =>
+      currentStatus === nextStatus ? currentStatus : nextStatus
+    )
+  }
 
   // Registra abertura da ficha para a lista de recentes
   useEffect(() => {
@@ -102,6 +110,10 @@ export function CharacterSheetPage() {
       setSheet(storedSheet.data as SheetWithSlots)
     }
   }, [storedSheet, sheet])
+
+  useEffect(() => {
+    updateSavingStatus('idle')
+  }, [id])
 
   useEffect(() => {
     if (!hasSheet) return
@@ -134,6 +146,7 @@ export function CharacterSheetPage() {
   function handleUpdate(updated: SheetWithSlots) {
     if (!id || !uid) return
     setSheet(updated)
+    updateSavingStatus('saving')
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
@@ -313,7 +326,7 @@ export function CharacterSheetPage() {
   }
 
   return (
-    <main className={styles.page}>
+    <main className={styles.page} data-saving-status={savingStatus}>
       <Link className={styles.backLink} to="/">← Voltar</Link>
 
       <CharacterHeader

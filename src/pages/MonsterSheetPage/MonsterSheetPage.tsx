@@ -12,6 +12,7 @@ import { saveMonsterSheet } from '../../store/monsterSheetStore'
 import { recordOpened } from '../../utils/recentlyOpened'
 import { useAuth } from '../../context/AuthContext'
 import { useMonsterSheet } from '../../hooks/useMonsterSheet'
+import type { SavingStatus } from '../../types/savingStatus'
 import type { MonsterSheet } from '../../types/system/dnd/monsterSheet'
 import styles from './MonsterSheetPage.module.css'
 
@@ -107,6 +108,7 @@ export function MonsterSheetPage() {
   const location = useLocation()
   const { monster: storedMonster, notFound, error } = useMonsterSheet(uid, id ?? null)
   const [sheet, setSheet] = useState<MonsterSheet | null>(null)
+  const [savingStatus, setSavingStatus] = useState<SavingStatus>('idle')
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isEditing, setIsEditing] = useState(false)
   const [isAtBottom, setIsAtBottom] = useState(false)
@@ -114,6 +116,12 @@ export function MonsterSheetPage() {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasSheet = sheet !== null
+
+  function updateSavingStatus(nextStatus: SavingStatus) {
+    setSavingStatus((currentStatus) =>
+      currentStatus === nextStatus ? currentStatus : nextStatus
+    )
+  }
 
   // Registra abertura da ficha para a lista de recentes
   useEffect(() => {
@@ -126,6 +134,10 @@ export function MonsterSheetPage() {
       setSheet(storedMonster.data)
     }
   }, [storedMonster, sheet])
+
+  useEffect(() => {
+    updateSavingStatus('idle')
+  }, [id])
 
   useEffect(() => {
     if (!hasSheet) return
@@ -171,6 +183,7 @@ export function MonsterSheetPage() {
 
     const updatedSheet = mergeDeepPatch(sheet, patch)
     setSheet(updatedSheet)
+    updateSavingStatus('saving')
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
@@ -287,7 +300,7 @@ export function MonsterSheetPage() {
   const activePanelId = TAB_PANEL_IDS[activeTab]
 
   return (
-    <main className={styles.page}>
+    <main className={styles.page} data-saving-status={savingStatus}>
       <Link className={styles.backLink} to="/">← Voltar</Link>
 
       <div ref={tabBarRef} className={styles.tabBarShell}>
