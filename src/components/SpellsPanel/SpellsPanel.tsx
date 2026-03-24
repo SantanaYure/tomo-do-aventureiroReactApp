@@ -130,38 +130,40 @@ export function SpellsPanel({
       <h2 className={panelStyles.panelTitle}>Magias</h2>
 
       <div className={styles.spellHeader}>
-        <div className={styles.spellStat}>
-          <span className={styles.spellStatLabel}>Atributo-chave</span>
-          {isEditMode ? (
-            <select
-              className={styles.spellAbilitySelect}
-              value={character.spellcastingAbility}
-              onChange={(event) =>
-                setSpellcastingAbility(event.target.value as SpellcastingAbility)
-              }
-            >
-              <option value="">— Atributo —</option>
-              {SPELLCASTING_OPTIONS.filter(Boolean).map((attribute) => (
-                <option key={attribute} value={attribute}>
-                  {attribute}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <span className={styles.spellStatValue}>{character.spellcastingAbility || '—'}</span>
-          )}
+        <div className={styles.spellHeaderTop}>
+          <div className={styles.spellStat}>
+            <span className={styles.spellStatLabel}>Atributo-chave</span>
+            {isEditMode ? (
+              <select
+                className={styles.spellAbilitySelect}
+                value={character.spellcastingAbility}
+                onChange={(event) =>
+                  setSpellcastingAbility(event.target.value as SpellcastingAbility)
+                }
+              >
+                <option value="">— Atributo —</option>
+                {SPELLCASTING_OPTIONS.filter(Boolean).map((attribute) => (
+                  <option key={attribute} value={attribute}>
+                    {attribute}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className={styles.spellStatValue}>{character.spellcastingAbility || '—'}</span>
+            )}
+          </div>
+
+          <div className={styles.spellStat}>
+            <span className={styles.spellStatLabel}>Ataque com magia</span>
+            <span className={styles.spellStatValue}>
+              {spellAttackBonus === null ? '—' : formatModifier(spellAttackBonus)}
+            </span>
+          </div>
         </div>
 
-        <div className={styles.spellStat}>
-          <span className={styles.spellStatLabel}>Ataque com magia</span>
-          <span className={styles.spellStatValue}>
-            {spellAttackBonus === null ? '—' : formatModifier(spellAttackBonus)}
-          </span>
-        </div>
-
-        <div className={styles.spellStat}>
+        <div className={styles.spellStatDc}>
           <span className={styles.spellStatLabel}>CD das magias</span>
-          <span className={styles.spellStatValue}>
+          <span className={styles.spellStatValueLg}>
             {spellSaveDc === null ? '—' : spellSaveDc}
           </span>
         </div>
