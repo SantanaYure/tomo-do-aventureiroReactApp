@@ -241,7 +241,7 @@ export function RegisterPage() {
             />
             <span>
               Eu aceito os{' '}
-              <a href="#" className={styles.termsLink}>Termos de Uso e Política de Privacidade</a>
+              <Link to="/privacidade" target="_blank" rel="noopener noreferrer" className={styles.termsLink}>Termos de Uso e Política de Privacidade</Link>
             </span>
           </label>
 

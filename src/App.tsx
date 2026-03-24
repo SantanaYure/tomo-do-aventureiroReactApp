@@ -5,6 +5,7 @@ import { NewCharacterPage } from './pages/NewCharacterPage/NewCharacterPage'
 import { LoginPage } from './pages/LoginPage/LoginPage'
 import { RegisterPage } from './pages/RegisterPage/RegisterPage'
 import { EmailVerificationPage } from './pages/EmailVerificationPage/EmailVerificationPage'
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage/PrivacyPolicyPage'
 import { MonsterSheetPage } from './pages/MonsterSheetPage/MonsterSheetPage'
 import { NewMonsterPage } from './pages/NewMonsterPage/NewMonsterPage'
 import { NotFound } from './pages/NotFound/NotFound'
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/cadastro" element={<RegisterPage />} />
         <Route path="/verificar-email" element={<EmailVerificationPage />} />
+        <Route path="/privacidade" element={<PrivacyPolicyPage />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="/" element={<Home />} />
