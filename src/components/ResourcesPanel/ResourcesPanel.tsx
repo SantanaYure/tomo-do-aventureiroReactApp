@@ -237,7 +237,7 @@ export function ResourcesPanel({
                       aria-label={`Excluir recurso ${resource.name?.trim() || `#${index + 1}`}`}
                       title="Excluir recurso"
                     >
-                      ✕
+                      ×
                     </button>
                   </div>
 
