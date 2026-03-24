@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   createCharacterSheet,
@@ -35,6 +35,8 @@ type PendingDelete = {
 
 type SheetFilterType = 'all' | 'character' | 'monster' | 'npc'
 
+type SortOrder = 'recent' | 'alpha' | 'class' | 'level-asc' | 'level-desc' | 'race' | 'custom'
+
 const MAX_JSON_BYTES = 2 * 1024 * 1024
 
 function SheetSkeleton({ count = 3 }: { count?: number }) {
@@ -65,6 +67,7 @@ interface SheetSectionProps<T> {
   onImport: () => void
   renderItem: (item: T) => React.ReactNode
   emptyMessage: string
+  extraHeader?: ReactNode
 }
 
 function SheetSection<T>({
@@ -76,6 +79,7 @@ function SheetSection<T>({
   onImport,
   renderItem,
   emptyMessage,
+  extraHeader,
 }: SheetSectionProps<T>) {
   return (
     <section className={styles.collectionSection}>
@@ -85,6 +89,7 @@ function SheetSection<T>({
           {importLabel}
         </button>
       </div>
+      {extraHeader}
       {loading ? (
         <SheetSkeleton count={skeletonCount} />
       ) : items.length > 0 ? (
@@ -100,9 +105,27 @@ interface CharacterSheetItemProps {
   sheet: StoredCharacterSheet
   onExport: () => void
   onDelete: () => void
+  isDraggable?: boolean
+  isDragging?: boolean
+  isDragOver?: boolean
+  onDragStart?: () => void
+  onDragOver?: (e: React.DragEvent) => void
+  onDrop?: () => void
+  onDragEnd?: () => void
 }
 
-function CharacterSheetItem({ sheet, onExport, onDelete }: CharacterSheetItemProps) {
+function CharacterSheetItem({
+  sheet,
+  onExport,
+  onDelete,
+  isDraggable,
+  isDragging,
+  isDragOver,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+}: CharacterSheetItemProps) {
   const name = sheet.data.character.name || '(sem nome)'
   const race = sheet.data.character.race
   const totalLevel = sheet.data.character.classes.reduce((sum, c) => sum + c.level, 0)
@@ -112,8 +135,28 @@ function CharacterSheetItem({ sheet, onExport, onDelete }: CharacterSheetItemPro
     .join(' · ')
   const meta = [race, classNames].filter(Boolean).join(' · ') || (totalLevel > 0 ? `Nível ${totalLevel}` : null)
 
+  const liClasses = [
+    styles.sheetItem,
+    isDragging ? styles.sheetItemDragging : '',
+    isDragOver ? styles.sheetItemDragOver : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
-    <li className={styles.sheetItem}>
+    <li
+      className={liClasses}
+      draggable={isDraggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+    >
+      {isDraggable && (
+        <span className={styles.dragHandle} aria-hidden="true">
+          ⠿
+        </span>
+      )}
       <div className={styles.sheetInfo}>
         <Link to={`/ficha/${sheet.id}`} className={styles.sheetLink}>
           {name}
@@ -140,7 +183,6 @@ interface MonsterSheetItemProps {
 
 function MonsterSheetItem({ sheet, onExport, onDelete }: MonsterSheetItemProps) {
   const name = sheet.data.details.name || '(sem nome)'
-  const kindLabel = sheet.data.details.kind === 'npc' ? 'NPC' : 'Monstro'
 
   return (
     <li className={styles.sheetItem}>
@@ -148,7 +190,6 @@ function MonsterSheetItem({ sheet, onExport, onDelete }: MonsterSheetItemProps) 
         <Link to={`/monstro/${sheet.id}`} className={styles.sheetLink}>
           {name}
         </Link>
-        <span className={styles.sheetMeta}>{kindLabel}</span>
       </div>
       <div className={styles.sheetActions}>
         <button type="button" className={styles.exportButton} onClick={onExport}>
@@ -176,6 +217,27 @@ function getCharacterClassNames(sheet: StoredCharacterSheet): string[] {
     .filter(Boolean)
 }
 
+function parseChallengeRating(cr: string): number {
+  const trimmed = cr.trim()
+  if (!trimmed) return -1
+  if (trimmed.includes('/')) {
+    const [num, den] = trimmed.split('/')
+    const parsed = Number(num) / Number(den)
+    return isNaN(parsed) ? -1 : parsed
+  }
+  const parsed = Number(trimmed)
+  return isNaN(parsed) ? -1 : parsed
+}
+
+const SORT_CHIPS: { label: string; value: SortOrder }[] = [
+  { label: 'Recentes', value: 'recent' },
+  { label: 'A–Z', value: 'alpha' },
+  { label: 'Classe', value: 'class' },
+  { label: 'Nível ↑', value: 'level-asc' },
+  { label: 'Nível ↓', value: 'level-desc' },
+  { label: 'Raça', value: 'race' },
+]
+
 export function CharactersPage() {
   const { uid } = useAuth()
   const navigate = useNavigate()
@@ -194,6 +256,12 @@ export function CharactersPage() {
   const [levelFilter, setLevelFilter] = useState('all')
   const [classFilter, setClassFilter] = useState('all')
   const [raceFilter, setRaceFilter] = useState('all')
+  const [ndFilter, setNdFilter] = useState('all')
+
+  const [sortOrder, setSortOrder] = useState<SortOrder>('recent')
+  const [customOrder, setCustomOrder] = useState<string[]>([])
+  const [dragSourceId, setDragSourceId] = useState<string | null>(null)
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
 
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
@@ -201,6 +269,25 @@ export function CharactersPage() {
   const monsterFileInputRef = useRef<HTMLInputElement>(null)
 
   const isSearchMode = searchTerm.trim().length > 0
+
+  useEffect(() => {
+    if (!uid) return
+    try {
+      const stored = localStorage.getItem(`tomo-char-order-${uid}`)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) setCustomOrder(parsed)
+      }
+    } catch {}
+  }, [uid])
+
+  function saveCustomOrder(newOrder: string[]) {
+    if (!uid) return
+    setCustomOrder(newOrder)
+    try {
+      localStorage.setItem(`tomo-char-order-${uid}`, JSON.stringify(newOrder))
+    } catch {}
+  }
 
   const baseSheets = isSearchMode ? searchChars : sheets
   const baseAllMonsters = isSearchMode ? searchMonsters : monsters
@@ -249,16 +336,68 @@ export function CharactersPage() {
     [baseSheets, classFilter, levelFilter, raceFilter, typeFilter],
   )
 
+  const sortedSheets = useMemo(() => {
+    if (sortOrder === 'custom' && customOrder.length > 0) {
+      const orderMap = new Map(customOrder.map((id, i) => [id, i]))
+      return [...displayedSheets].sort((a, b) => {
+        const ai = orderMap.has(a.id) ? (orderMap.get(a.id) as number) : Number.MAX_SAFE_INTEGER
+        const bi = orderMap.has(b.id) ? (orderMap.get(b.id) as number) : Number.MAX_SAFE_INTEGER
+        return ai - bi
+      })
+    }
+    if (sortOrder === 'alpha') {
+      return [...displayedSheets].sort((a, b) =>
+        (a.data.character.name || '').localeCompare(b.data.character.name || '', 'pt-BR'),
+      )
+    }
+    if (sortOrder === 'class') {
+      return [...displayedSheets].sort((a, b) =>
+        (getCharacterClassNames(a)[0] || '').localeCompare(getCharacterClassNames(b)[0] || '', 'pt-BR'),
+      )
+    }
+    if (sortOrder === 'level-desc') {
+      return [...displayedSheets].sort((a, b) => getCharacterTotalLevel(b) - getCharacterTotalLevel(a))
+    }
+    if (sortOrder === 'level-asc') {
+      return [...displayedSheets].sort((a, b) => getCharacterTotalLevel(a) - getCharacterTotalLevel(b))
+    }
+    if (sortOrder === 'race') {
+      return [...displayedSheets].sort((a, b) =>
+        a.data.character.race.localeCompare(b.data.character.race, 'pt-BR'),
+      )
+    }
+    return displayedSheets
+  }, [displayedSheets, sortOrder, customOrder])
+
+  // Usa a lista completa (não filtrada por busca) para as opções de ND
+  const ndOptions = useMemo(() => {
+    const values = Array.from(
+      new Set(
+        monsters
+          .map((m) => m.data.traits.challengeRating.trim())
+          .filter(Boolean),
+      ),
+    )
+    return values.sort((a, b) => parseChallengeRating(a) - parseChallengeRating(b))
+  }, [monsters])
+
+  // Filtra por ND; a visibilidade por tipo é controlada via showMonsterSection/showNpcSection
   const displayedAllMonsters = useMemo(
     () => baseAllMonsters.filter((monster) => {
-      if (typeFilter === 'all') return true
-      return monster.data.details.kind === typeFilter
+      if (ndFilter !== 'all' && monster.data.traits.challengeRating.trim() !== ndFilter) return false
+      return true
     }),
-    [baseAllMonsters, typeFilter],
+    [baseAllMonsters, ndFilter],
   )
 
-  const displayedMonsters = displayedAllMonsters.filter((m) => m.data.details.kind !== 'npc')
-  const displayedNpcs = displayedAllMonsters.filter((m) => m.data.details.kind === 'npc')
+  const displayedMonsters = useMemo(
+    () => displayedAllMonsters.filter((m) => m.data.details.kind !== 'npc'),
+    [displayedAllMonsters],
+  )
+  const displayedNpcs = useMemo(
+    () => displayedAllMonsters.filter((m) => m.data.details.kind === 'npc'),
+    [displayedAllMonsters],
+  )
 
   const loadingSheets = isSearchMode ? isSearching : isLoadingSheets
   const loadingMonsters = isSearchMode ? isSearching : isLoadingMonsters
@@ -266,7 +405,52 @@ export function CharactersPage() {
   const loadError = sheetsError ?? monstersError
 
   const hasActiveFilters =
-    typeFilter !== 'all' || levelFilter !== 'all' || classFilter !== 'all' || raceFilter !== 'all'
+    typeFilter !== 'all' || levelFilter !== 'all' || classFilter !== 'all' || raceFilter !== 'all' || ndFilter !== 'all'
+
+  // Visibilidade das seções por tipo e por resultado de busca/filtro
+  const isFiltered = isSearchMode || hasActiveFilters
+  const showCharSection = typeFilter === 'all' || typeFilter === 'character'
+  const showMonsterSection =
+    (typeFilter === 'all' || typeFilter === 'monster') &&
+    (!isFiltered || loadingMonsters || displayedMonsters.length > 0)
+  const showNpcSection =
+    (typeFilter === 'all' || typeFilter === 'npc') &&
+    (!isFiltered || loadingMonsters || displayedNpcs.length > 0)
+
+  function handleCharacterDragStart(id: string) {
+    setDragSourceId(id)
+  }
+
+  function handleCharacterDragOver(id: string, e: React.DragEvent) {
+    e.preventDefault()
+    setDragOverId(id)
+  }
+
+  function handleCharacterDrop(targetId: string) {
+    if (!dragSourceId || dragSourceId === targetId) {
+      setDragSourceId(null)
+      setDragOverId(null)
+      return
+    }
+    const currentIds = sortedSheets.map((s) => s.id)
+    const fromIdx = currentIds.indexOf(dragSourceId)
+    const toIdx = currentIds.indexOf(targetId)
+    if (fromIdx === -1 || toIdx === -1) return
+
+    const newOrder = [...currentIds]
+    newOrder.splice(fromIdx, 1)
+    newOrder.splice(toIdx, 0, dragSourceId)
+
+    setSortOrder('custom')
+    saveCustomOrder(newOrder)
+    setDragSourceId(null)
+    setDragOverId(null)
+  }
+
+  function handleCharacterDragEnd() {
+    setDragSourceId(null)
+    setDragOverId(null)
+  }
 
   async function handleCreateCharacter() {
     if (!uid || isCreatingCharacter) return
@@ -401,7 +585,32 @@ export function CharactersPage() {
     setLevelFilter('all')
     setClassFilter('all')
     setRaceFilter('all')
+    setNdFilter('all')
   }
+
+  const sortBar = (
+    <div className={styles.sortBar}>
+      {customOrder.length > 0 && (
+        <button
+          type="button"
+          className={`${styles.sortChip} ${sortOrder === 'custom' ? styles.sortChipActive : ''}`}
+          onClick={() => setSortOrder('custom')}
+        >
+          Personalizado
+        </button>
+      )}
+      {SORT_CHIPS.map((chip) => (
+        <button
+          key={chip.value}
+          type="button"
+          className={`${styles.sortChip} ${sortOrder === chip.value ? styles.sortChipActive : ''}`}
+          onClick={() => setSortOrder(chip.value)}
+        >
+          {chip.label}
+        </button>
+      ))}
+    </div>
+  )
 
   if (loadError) {
     return (
@@ -530,6 +739,18 @@ export function CharactersPage() {
               ))}
             </select>
           </label>
+
+          <label className={styles.filterField}>
+            <span>ND</span>
+            <select value={ndFilter} onChange={(event) => setNdFilter(event.target.value)}>
+              <option value="all">Todos</option>
+              {ndOptions.map((nd) => (
+                <option key={nd} value={nd}>
+                  {nd}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         {hasActiveFilters && (
@@ -550,41 +771,73 @@ export function CharactersPage() {
         )}
       </header>
 
-      <SheetSection
-        title="Personagens"
-        items={displayedSheets}
-        loading={loadingSheets}
-        skeletonCount={skeletonCount}
-        importLabel="↑ Importar personagem"
-        onImport={() => handleImportClick('character')}
-        renderItem={(sheet) => (
-          <CharacterSheetItem
-            key={sheet.id}
-            sheet={sheet}
-            onExport={() => handleExportSheet(sheet)}
-            onDelete={() => requestDeleteSheet(sheet.id, sheet.data.character.name)}
-          />
-        )}
-        emptyMessage={isSearchMode || hasActiveFilters ? 'Nenhuma ficha encontrada.' : 'Nenhum personagem encontrado.'}
-      />
+      {showCharSection && (
+        <SheetSection
+          title="Personagens"
+          items={sortedSheets}
+          loading={loadingSheets}
+          skeletonCount={skeletonCount}
+          importLabel="↑ Importar personagem"
+          onImport={() => handleImportClick('character')}
+          extraHeader={sortBar}
+          renderItem={(sheet) => (
+            <CharacterSheetItem
+              key={sheet.id}
+              sheet={sheet}
+              onExport={() => handleExportSheet(sheet)}
+              onDelete={() => requestDeleteSheet(sheet.id, sheet.data.character.name)}
+              isDraggable={!isSearchMode}
+              isDragging={dragSourceId === sheet.id}
+              isDragOver={dragOverId === sheet.id}
+              onDragStart={!isSearchMode ? () => handleCharacterDragStart(sheet.id) : undefined}
+              onDragOver={!isSearchMode ? (e) => handleCharacterDragOver(sheet.id, e) : undefined}
+              onDrop={!isSearchMode ? () => handleCharacterDrop(sheet.id) : undefined}
+              onDragEnd={!isSearchMode ? handleCharacterDragEnd : undefined}
+            />
+          )}
+          emptyMessage={isFiltered ? 'Nenhuma ficha encontrada.' : 'Nenhum personagem encontrado.'}
+        />
+      )}
 
-      <SheetSection
-        title="Monstros & NPCs"
-        items={[...displayedMonsters, ...displayedNpcs]}
-        loading={loadingMonsters}
-        skeletonCount={skeletonCount}
-        importLabel="↑ Importar Monstro/NPC"
-        onImport={() => handleImportClick('monster')}
-        renderItem={(monster) => (
-          <MonsterSheetItem
-            key={monster.id}
-            sheet={monster}
-            onExport={() => handleExportMonster(monster)}
-            onDelete={() => requestDeleteMonster(monster.id, monster.data.details.name)}
-          />
-        )}
-        emptyMessage={isSearchMode || hasActiveFilters ? 'Nenhum monstro ou NPC encontrado.' : 'Nenhum monstro ou NPC encontrado.'}
-      />
+      {showMonsterSection && (
+        <SheetSection
+          title="Monstros"
+          items={displayedMonsters}
+          loading={loadingMonsters}
+          skeletonCount={skeletonCount}
+          importLabel="↑ Importar Monstro/NPC"
+          onImport={() => handleImportClick('monster')}
+          renderItem={(monster) => (
+            <MonsterSheetItem
+              key={monster.id}
+              sheet={monster}
+              onExport={() => handleExportMonster(monster)}
+              onDelete={() => requestDeleteMonster(monster.id, monster.data.details.name)}
+            />
+          )}
+          emptyMessage="Nenhum monstro encontrado."
+        />
+      )}
+
+      {showNpcSection && (
+        <SheetSection
+          title="NPCs"
+          items={displayedNpcs}
+          loading={loadingMonsters}
+          skeletonCount={skeletonCount}
+          importLabel="↑ Importar Monstro/NPC"
+          onImport={() => handleImportClick('monster')}
+          renderItem={(npc) => (
+            <MonsterSheetItem
+              key={npc.id}
+              sheet={npc}
+              onExport={() => handleExportMonster(npc)}
+              onDelete={() => requestDeleteMonster(npc.id, npc.data.details.name)}
+            />
+          )}
+          emptyMessage="Nenhum NPC encontrado."
+        />
+      )}
 
       {importFeedback && (
         <p
