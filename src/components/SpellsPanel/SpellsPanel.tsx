@@ -130,38 +130,40 @@ export function SpellsPanel({
       <h2 className={panelStyles.panelTitle}>Magias</h2>
 
       <div className={styles.spellHeader}>
-        <div className={styles.spellStat}>
-          <span className={styles.spellStatLabel}>Atributo-chave</span>
-          {isEditMode ? (
-            <select
-              className={styles.spellAbilitySelect}
-              value={character.spellcastingAbility}
-              onChange={(event) =>
-                setSpellcastingAbility(event.target.value as SpellcastingAbility)
-              }
-            >
-              <option value="">— Atributo —</option>
-              {SPELLCASTING_OPTIONS.filter(Boolean).map((attribute) => (
-                <option key={attribute} value={attribute}>
-                  {attribute}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <span className={styles.spellStatValue}>{character.spellcastingAbility || '—'}</span>
-          )}
+        <div className={styles.spellHeaderTop}>
+          <div className={styles.spellStat}>
+            <span className={styles.spellStatLabel}>Atributo-chave</span>
+            {isEditMode ? (
+              <select
+                className={styles.spellAbilitySelect}
+                value={character.spellcastingAbility}
+                onChange={(event) =>
+                  setSpellcastingAbility(event.target.value as SpellcastingAbility)
+                }
+              >
+                <option value="">— Atributo —</option>
+                {SPELLCASTING_OPTIONS.filter(Boolean).map((attribute) => (
+                  <option key={attribute} value={attribute}>
+                    {attribute}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className={styles.spellStatValue}>{character.spellcastingAbility || '—'}</span>
+            )}
+          </div>
+
+          <div className={styles.spellStat}>
+            <span className={styles.spellStatLabel}>Ataque com magia</span>
+            <span className={styles.spellStatValue}>
+              {spellAttackBonus === null ? '—' : formatModifier(spellAttackBonus)}
+            </span>
+          </div>
         </div>
 
-        <div className={styles.spellStat}>
-          <span className={styles.spellStatLabel}>Ataque com magia</span>
-          <span className={styles.spellStatValue}>
-            {spellAttackBonus === null ? '—' : formatModifier(spellAttackBonus)}
-          </span>
-        </div>
-
-        <div className={styles.spellStat}>
+        <div className={styles.spellStatDc}>
           <span className={styles.spellStatLabel}>CD das magias</span>
-          <span className={styles.spellStatValue}>
+          <span className={styles.spellStatValueLg}>
             {spellSaveDc === null ? '—' : spellSaveDc}
           </span>
         </div>
@@ -186,16 +188,15 @@ export function SpellsPanel({
               <span className={styles.levelCount}>{levelSpells.length} magia{levelSpells.length !== 1 ? 's' : ''}</span>
               {level > 0 && (
                 isEditMode ? (
-                  <label onClick={(e) => e.stopPropagation()}>
-                    Slots máx
-                    <input
-                      className={styles.slotInput}
-                      type="number"
-                      min={0}
-                      value={slots.max}
-                      onChange={(e) => setSlot(level, 'max', Number(e.target.value))}
-                    />
-                  </label>
+                  <input
+                    className={styles.slotInput}
+                    type="number"
+                    min={0}
+                    placeholder="Slots Máximos"
+                    value={slots.max || ''}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setSlot(level, 'max', Number(e.target.value))}
+                  />
                 ) : slots.max > 0 ? (
                   <div className={styles.slotCounter} onClick={(e) => e.stopPropagation()}>
                     <button className={styles.slotBtn} onClick={() => setSlot(level, 'current', slots.current - 1)}>−</button>
@@ -212,47 +213,86 @@ export function SpellsPanel({
                   const globalIndex = spells.indexOf(spell)
                   return (
                     <div key={globalIndex} className={styles.spellRow}>
-                      <span className={styles.spellPrepared} onClick={() => setSpell(globalIndex, { prepared: !spell.prepared })}>
-                        {spell.prepared ? '★' : '☆'}
-                      </span>
-                      <span className={styles.spellConc}>{spell.concentration ? 'C' : ''}</span>
                       {isEditMode ? (
                         <>
-                          <input className={styles.spellNameInput} type="text" value={spell.name ?? ''} placeholder="Nome da magia" onChange={(e) => setSpell(globalIndex, { name: e.target.value })} />
-                          <input
-                            className={styles.castingTimeInput}
-                            type="text"
-                            value={spell.castingTime ?? ''}
-                            placeholder="Tempo"
-                            onChange={(e) => setSpell(globalIndex, { castingTime: e.target.value })}
+                          {/* Linha 1: preparada + nome + remover */}
+                          <div className={styles.spellEditRow}>
+                            <span
+                              className={styles.spellPrepared}
+                              onClick={() => setSpell(globalIndex, { prepared: !spell.prepared })}
+                            >
+                              {spell.prepared ? '★' : '☆'}
+                            </span>
+                            <input
+                              className={styles.spellNameInput}
+                              type="text"
+                              value={spell.name ?? ''}
+                              placeholder="Nome da magia"
+                              onChange={(e) => setSpell(globalIndex, { name: e.target.value })}
+                            />
+                            <button className={panelStyles.removeButton} onClick={() => removeSpell(globalIndex)}>✕</button>
+                          </div>
+
+                          {/* Linha 2: tempo + escola */}
+                          <div className={styles.spellEditRow}>
+                            <input
+                              className={styles.castingTimeInput}
+                              type="text"
+                              value={spell.castingTime ?? ''}
+                              placeholder="Tempo"
+                              onChange={(e) => setSpell(globalIndex, { castingTime: e.target.value })}
+                            />
+                            <select
+                              className={styles.spellSchoolSelect}
+                              value={spell.school ?? ''}
+                              onChange={(e) => setSpell(globalIndex, { school: e.target.value })}
+                            >
+                              <option value="">— Escola —</option>
+                              {SCHOOLS.map((s) => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                          </div>
+
+                          {/* Linha 3: alcance + duração + concentração */}
+                          <div className={styles.spellEditRow}>
+                            <input
+                              className={styles.rangeInput}
+                              type="text"
+                              value={spell.range ?? ''}
+                              placeholder="Alcance"
+                              onChange={(e) => setSpell(globalIndex, { range: e.target.value })}
+                            />
+                            <input
+                              className={styles.durationInput}
+                              type="text"
+                              value={spell.duration ?? ''}
+                              placeholder="Duração"
+                              onChange={(e) => setSpell(globalIndex, { duration: e.target.value })}
+                            />
+                            <label className={styles.spellConcLabel}>
+                              Conc.
+                              <input
+                                type="checkbox"
+                                checked={!!spell.concentration}
+                                onChange={(e) => setSpell(globalIndex, { concentration: e.target.checked })}
+                              />
+                            </label>
+                          </div>
+
+                          {/* Linha 4: descrição */}
+                          <textarea
+                            className={styles.spellDescription}
+                            value={spell.description ?? ''}
+                            placeholder="Descrição da magia"
+                            rows={2}
+                            onChange={(e) => setSpell(globalIndex, { description: e.target.value })}
                           />
-                          <select className={styles.spellSchoolSelect} value={spell.school ?? ''} onChange={(e) => setSpell(globalIndex, { school: e.target.value })}>
-                            <option value="">— Escola —</option>
-                            {SCHOOLS.map((s) => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                          <input
-                            className={styles.rangeInput}
-                            type="text"
-                            value={spell.range ?? ''}
-                            placeholder="Alcance"
-                            onChange={(e) => setSpell(globalIndex, { range: e.target.value })}
-                          />
-                          <input
-                            className={styles.durationInput}
-                            type="text"
-                            value={spell.duration ?? ''}
-                            placeholder="Duração"
-                            onChange={(e) => setSpell(globalIndex, { duration: e.target.value })}
-                          />
-                          <label>
-                            Conc.
-                            <input type="checkbox" checked={!!spell.concentration} onChange={(e) => setSpell(globalIndex, { concentration: e.target.checked })} />
-                          </label>
-                          <button className={panelStyles.removeButton} onClick={() => removeSpell(globalIndex)}>✕</button>
-                          <textarea className={styles.spellDescription} value={spell.description ?? ''} placeholder="Descrição da magia" rows={2} onChange={(e) => setSpell(globalIndex, { description: e.target.value })} />
                         </>
                       ) : (
                         <>
+                          <span className={styles.spellPrepared} onClick={() => setSpell(globalIndex, { prepared: !spell.prepared })}>
+                            {spell.prepared ? '★' : '☆'}
+                          </span>
+                          <span className={styles.spellConc}>{spell.concentration ? 'C' : ''}</span>
                           <span className={styles.spellName}>{spell.name || '—'}</span>
                           {spell.school && <span className={styles.spellSchool}>{spell.school}</span>}
                           <span className={styles.spellMetaText}>{spell.castingTime}</span>

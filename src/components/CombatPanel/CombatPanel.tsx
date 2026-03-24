@@ -391,73 +391,75 @@ export function CombatPanel({
               )}
             </div>
 
-            <div className={styles.hpBlock}>
-              <span className={styles.hpBlockLabel}>Atual</span>
+            <div className={styles.hpCenterGroup}>
+              <div className={styles.hpBlock}>
+                <span className={styles.hpBlockLabel}>Atual</span>
 
-              <div className={styles.stepper}>
-                <button
-                  type="button"
-                  className={styles.stepperButton}
-                  aria-label="Reduzir HP atual"
-                  onClick={() => setHpCurrent(displayedCurrentHp - 1)}
-                >
-                  −
-                </button>
+                <div className={styles.stepper}>
+                  <button
+                    type="button"
+                    className={styles.stepperButton}
+                    aria-label="Reduzir HP atual"
+                    onClick={() => setHpCurrent(displayedCurrentHp - 1)}
+                  >
+                    −
+                  </button>
 
-                <input
-                  className={`${panelStyles.compactInput} ${styles.hpInput}`}
-                  type="number"
-                  min={0}
-                  max={effectiveHpMax}
-                  value={displayedCurrentHp}
-                  onChange={(e) => setHpCurrent(Number(e.target.value))}
-                />
+                  <input
+                    className={`${panelStyles.compactInput} ${styles.hpInput}`}
+                    type="number"
+                    min={0}
+                    max={effectiveHpMax}
+                    value={displayedCurrentHp}
+                    onChange={(e) => setHpCurrent(Number(e.target.value))}
+                  />
 
-                <button
-                  type="button"
-                  className={styles.stepperButton}
-                  aria-label="Aumentar HP atual"
-                  onClick={() => setHpCurrent(displayedCurrentHp + 1)}
-                >
-                  +
-                </button>
+                  <button
+                    type="button"
+                    className={styles.stepperButton}
+                    aria-label="Aumentar HP atual"
+                    onClick={() => setHpCurrent(displayedCurrentHp + 1)}
+                  >
+                    +
+                  </button>
+                </div>
+
+                <span className={styles.hpMaxAuto}>Limite: {effectiveHpMax}</span>
               </div>
 
-              <span className={styles.hpMaxAuto}>Limite: {effectiveHpMax}</span>
-            </div>
+              <div className={styles.hpBlock}>
+                <span className={styles.hpBlockLabel}>Temporário</span>
 
-            <div className={styles.hpBlock}>
-              <span className={styles.hpBlockLabel}>Temporário</span>
+                <div className={styles.stepper}>
+                  <button
+                    type="button"
+                    className={styles.stepperButton}
+                    aria-label="Reduzir HP temporário"
+                    onClick={() => set('hpTemp', Math.max(0, quickTempHp - 1))}
+                  >
+                    −
+                  </button>
 
-              <div className={styles.stepper}>
-                <button
-                  type="button"
-                  className={styles.stepperButton}
-                  aria-label="Reduzir HP temporário"
-                  onClick={() => set('hpTemp', Math.max(0, quickTempHp - 1))}
-                >
-                  −
-                </button>
+                  <input
+                    className={`${panelStyles.compactInput} ${styles.hpInput}`}
+                    type="number"
+                    min={0}
+                    value={quickTempHp}
+                    onChange={(e) => set('hpTemp', normalizeNonNegativeInt(Number(e.target.value)))}
+                  />
 
-                <input
-                  className={`${panelStyles.compactInput} ${styles.hpInput}`}
-                  type="number"
-                  min={0}
-                  value={quickTempHp}
-                  onChange={(e) => set('hpTemp', normalizeNonNegativeInt(Number(e.target.value)))}
-                />
+                  <button
+                    type="button"
+                    className={styles.stepperButton}
+                    aria-label="Aumentar HP temporário"
+                    onClick={() => set('hpTemp', quickTempHp + 1)}
+                  >
+                    +
+                  </button>
+                </div>
 
-                <button
-                  type="button"
-                  className={styles.stepperButton}
-                  aria-label="Aumentar HP temporário"
-                  onClick={() => set('hpTemp', quickTempHp + 1)}
-                >
-                  +
-                </button>
+                <span className={styles.hpMaxAuto}>Absorve dano antes do HP atual</span>
               </div>
-
-              <span className={styles.hpMaxAuto}>Absorve dano antes do HP atual</span>
             </div>
           </div>
         ) : (
@@ -536,7 +538,7 @@ export function CombatPanel({
                   className={styles.btnTemp}
                   onClick={() => applyAction('temp')}
                 >
-                  Temp
+                  Vida Temporária
                 </button>
               </div>
             </div>

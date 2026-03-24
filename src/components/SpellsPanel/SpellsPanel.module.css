@@ -2,7 +2,12 @@
 
 .spellHeader {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.spellHeaderTop {
+  display: flex;
   gap: var(--space-3);
   flex-wrap: wrap;
 }
@@ -10,8 +15,22 @@
 .spellStat {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--space-1);
+  flex: 1;
   min-width: 9rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 252, 245, 0.72);
+}
+
+.spellStatDc {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
@@ -32,9 +51,15 @@
   font-weight: 700;
 }
 
+.spellStatValueLg {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+}
+
 .spellAbilitySelect {
-  min-width: 10rem;
-  width: auto;
+  width: 100%;
+  max-width: 100%;
   background: rgba(255, 251, 241, 0.8);
   border: 1px solid var(--border-dark);
 }
@@ -57,11 +82,12 @@
   flex-wrap: wrap;
   background: none;
   border: none;
-  padding: 0;
+  padding: var(--space-2) var(--space-1);
   cursor: pointer;
   text-align: left;
   font: inherit;
   color: inherit;
+  width: 100%;
 }
 
 .chevron {
@@ -134,11 +160,35 @@
   background: rgba(255, 252, 245, 0.72);
 }
 
+/* No modo de edição o card vira coluna */
+.spellRow:has(.spellEditRow) {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.spellEditRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.spellConcLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 .spellPrepared {
   font-weight: 700;
   color: var(--accent);
   cursor: pointer;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .spellConc {
@@ -149,25 +199,29 @@
 }
 
 .spellNameInput {
-  flex: 1 1 10rem;
-  min-width: 8rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .castingTimeInput {
-  width: 7rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .rangeInput {
-  width: 5rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .durationInput {
-  width: 6rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .spellSchoolSelect {
+  flex: 1;
+  min-width: 0;
   width: auto;
-  min-width: 8rem;
 }
 
 .spellName {
@@ -185,7 +239,8 @@
 }
 
 .spellDescription {
-  flex-basis: 100%;
+  width: 100%;
+  box-sizing: border-box;
   min-height: 3.5rem;
   resize: vertical;
 }

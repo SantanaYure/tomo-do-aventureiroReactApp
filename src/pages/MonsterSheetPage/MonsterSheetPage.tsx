@@ -320,9 +320,6 @@ export function MonsterSheetPage() {
             </button>
           ))}
         </nav>
-        <span className={styles.tabScrollHint} aria-hidden="true">
-          ↔ Deslize para ver mais seções
-        </span>
       </div>
 
       <div

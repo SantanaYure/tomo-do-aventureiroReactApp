@@ -179,10 +179,12 @@ export function MonsterFeaturesPanel({
 
                                     <button
                                         type="button"
-                                        className={panelStyles.removeButton}
+                                        className={styles.removeButton}
                                         onClick={() => removeFeature(index)}
+                                        aria-label={`Excluir habilidade ${feature.name || `#${index + 1}`}`}
+                                        title="Excluir habilidade"
                                     >
-                                        Remover
+                                        ✕
                                     </button>
                                 </div>
 
