@@ -404,7 +404,7 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
         details: {
             name: normalizeString(details.name),
             kind: isOneOf(details.kind, MONSTER_KINDS) ? details.kind : 'monster',
-            avatar: normalizeString(details.avatar),
+            avatar: isValidAvatarDataUrl(details.avatar) ? (details.avatar as string) : '',
             species: normalizeString(details.species),
             size: isOneOf(details.size, CREATURE_SIZES) ? details.size : '',
             alignment: normalizeString(details.alignment),
@@ -671,6 +671,37 @@ export function exportMonsterSheetAsJSON(id: string): string | null {
     return JSON.stringify(entry, null, 2)
 }
 
+function isValidAvatarDataUrl(value: unknown): boolean {
+    if (typeof value !== 'string') return false
+    if (value === '') return true
+
+    return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(value)
+}
+
+function isValidMonsterSheetPayload(data: unknown): boolean {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        return false
+    }
+
+    const candidate = data as Record<string, unknown>
+
+    if (!candidate.details || typeof candidate.details !== 'object') return false
+    if (!candidate.stats || typeof candidate.stats !== 'object') return false
+    if (!candidate.traits || typeof candidate.traits !== 'object') return false
+    if (!Array.isArray(candidate.features)) return false
+    if (!Array.isArray(candidate.actions)) return false
+
+    const details = candidate.details as Record<string, unknown>
+    if (typeof details.name !== 'string') return false
+    if (details.kind !== 'monster' && details.kind !== 'npc') return false
+
+    const stats = candidate.stats as Record<string, unknown>
+    if (typeof stats.maxHp !== 'number') return false
+    if (typeof stats.ac !== 'number') return false
+
+    return true
+}
+
 export function importMonsterSheetFromJSON(json: string): MonsterImportResult {
     const result: MonsterImportResult = { imported: 0, skipped: 0, errors: 0 }
 
@@ -685,6 +716,11 @@ export function importMonsterSheetFromJSON(json: string): MonsterImportResult {
     const payload = extractImportedMonsterSheetPayload(parsed)
 
     if (!payload) {
+        result.errors = 1
+        return result
+    }
+
+    if (!isValidMonsterSheetPayload(payload.data)) {
         result.errors = 1
         return result
     }

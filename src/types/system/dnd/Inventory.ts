@@ -9,7 +9,6 @@ export interface InventoryItem {
   description?: string
   weight?: number
   equipped?: boolean
-  [key: string]: unknown
 }
 
 export type Inventory = InventoryItem[]

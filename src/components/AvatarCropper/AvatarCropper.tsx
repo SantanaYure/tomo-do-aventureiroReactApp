@@ -101,6 +101,13 @@ export function AvatarCropper({
 
     try {
       const base64 = await getCroppedImage(rawImage, croppedAreaPixels, quality)
+
+      const MAX_AVATAR_BYTES = 400 * 1024
+      if (base64.length > MAX_AVATAR_BYTES) {
+        window.alert('A imagem ficou grande demais após o recorte. Tente usar uma foto menor ou ajustar o zoom.')
+        return
+      }
+
       onSave(base64)
     } finally {
       setIsSaving(false)

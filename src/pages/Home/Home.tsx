@@ -23,10 +23,19 @@ type ImportFeedback = {
   result: CharacterImportResult | MonsterImportResult
 }
 
+type PendingDelete = {
+  type: 'character' | 'monster'
+  id: string
+  name: string
+}
+
+const MAX_JSON_BYTES = 2 * 1024 * 1024
+
 export function Home() {
   const [sheets, setSheets] = useState<StoredCharacterSheet[]>([])
   const [monsters, setMonsters] = useState<StoredMonsterSheet[]>([])
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const characterFileInputRef = useRef<HTMLInputElement>(null)
   const monsterFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -35,16 +44,30 @@ export function Home() {
     setMonsters(listMonsterSheets())
   }, [])
 
-  function handleDeleteSheet(id: string) {
-    if (!confirm('Excluir esta ficha permanentemente?')) return
-    deleteCharacterSheet(id)
-    setSheets((prev) => prev.filter((s) => s.id !== id))
+  function requestDeleteSheet(id: string, name: string) {
+    setPendingDelete({ type: 'character', id, name })
   }
 
-  function handleDeleteMonster(id: string) {
-    if (!confirm('Excluir este monstro ou NPC permanentemente?')) return
-    deleteMonster(id)
-    setMonsters((prev) => prev.filter((monster) => monster.id !== id))
+  function requestDeleteMonster(id: string, name: string) {
+    setPendingDelete({ type: 'monster', id, name })
+  }
+
+  function confirmDelete() {
+    if (!pendingDelete) return
+
+    if (pendingDelete.type === 'character') {
+      deleteCharacterSheet(pendingDelete.id)
+      setSheets((prev) => prev.filter((s) => s.id !== pendingDelete.id))
+    } else {
+      deleteMonster(pendingDelete.id)
+      setMonsters((prev) => prev.filter((m) => m.id !== pendingDelete.id))
+    }
+
+    setPendingDelete(null)
+  }
+
+  function cancelDelete() {
+    setPendingDelete(null)
   }
 
   function normalizeFileName(rawName: string, fallbackId: string, prefix: string): string {
@@ -118,6 +141,15 @@ export function Home() {
     const file = event.target.files?.[0]
     if (!file) return
 
+    if (file.size > MAX_JSON_BYTES) {
+      setImportFeedback({
+        scope: 'character',
+        result: { imported: 0, skipped: 0, errors: 1 },
+      })
+      event.target.value = ''
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = (loadEvent) => {
       const json = loadEvent.target?.result as string
@@ -135,6 +167,15 @@ export function Home() {
   function handleMonsterImportFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
+
+    if (file.size > MAX_JSON_BYTES) {
+      setImportFeedback({
+        scope: 'monster',
+        result: { imported: 0, skipped: 0, errors: 1 },
+      })
+      event.target.value = ''
+      return
+    }
 
     const reader = new FileReader()
     reader.onload = (loadEvent) => {
@@ -222,7 +263,7 @@ export function Home() {
                       <button
                         type="button"
                         className={styles.deleteButton}
-                        onClick={() => handleDeleteSheet(sheet.id)}
+                        onClick={() => requestDeleteSheet(sheet.id, sheet.data.character.name)}
                       >
                         Excluir
                       </button>
@@ -256,7 +297,7 @@ export function Home() {
                       <button
                         type="button"
                         className={styles.deleteButton}
-                        onClick={() => handleDeleteMonster(monster.id)}
+                        onClick={() => requestDeleteMonster(monster.id, monster.data.details.name)}
                       >
                         Excluir
                       </button>
@@ -290,7 +331,7 @@ export function Home() {
                       <button
                         type="button"
                         className={styles.deleteButton}
-                        onClick={() => handleDeleteMonster(npc.id)}
+                        onClick={() => requestDeleteMonster(npc.id, npc.data.details.name)}
                       >
                         Excluir
                       </button>
@@ -313,6 +354,29 @@ export function Home() {
         }>
           {feedbackMessage(importFeedback)}
         </p>
+      )}
+
+      {pendingDelete && (
+        <div className={styles.dialogOverlay}>
+          <div
+            className={styles.dialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-dialog-title"
+          >
+            <p id="delete-dialog-title" className={styles.dialogTitle}>
+              Excluir "{pendingDelete.name || '(sem nome)'}" permanentemente?
+            </p>
+            <div className={styles.dialogActions}>
+              <button type="button" className={styles.deleteButton} onClick={confirmDelete}>
+                Confirmar exclusão
+              </button>
+              <button type="button" className={styles.secondaryButton} onClick={cancelDelete}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   )

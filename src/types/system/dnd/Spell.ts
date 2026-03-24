@@ -13,5 +13,4 @@ export interface Spell {
   concentration?: boolean
   prepared?: boolean
   description?: string
-  [key: string]: unknown
 }

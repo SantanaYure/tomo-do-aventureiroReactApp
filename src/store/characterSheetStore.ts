@@ -278,10 +278,9 @@ function normalizeCharacter(character: Character | LegacyCharacter | undefined):
   return {
     ...defaultCharacter,
     ...characterData,
-    avatar:
-      typeof characterData.avatar === 'string'
-        ? characterData.avatar
-        : defaultCharacter.avatar,
+    avatar: isValidAvatarDataUrl(characterData.avatar)
+      ? (characterData.avatar as string)
+      : defaultCharacter.avatar,
     backstory:
       typeof characterData.backstory === 'string'
         ? characterData.backstory
@@ -441,7 +440,7 @@ function writeStore(store: CharacterSheetStoreMap): void {
 }
 
 function createCharacterSheetId(): string {
-  return `sheet-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  return `sheet-${globalThis.crypto.randomUUID()}`
 }
 
 function normalizeId(id: string): string {
@@ -593,6 +592,37 @@ export function exportCharacterSheetAsJSON(id: string): string | null {
   return JSON.stringify(entry, null, 2)
 }
 
+function isValidAvatarDataUrl(value: unknown): boolean {
+  if (typeof value !== 'string') return false
+  if (value === '') return true
+
+  return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(value)
+}
+
+function isValidCharacterSheetPayload(data: unknown): boolean {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return false
+  }
+
+  const candidate = data as Record<string, unknown>
+
+  if (typeof candidate.isEditMode !== 'boolean') return false
+  if (!candidate.character || typeof candidate.character !== 'object') return false
+  if (!Array.isArray(candidate.resources)) return false
+  if (!Array.isArray(candidate.inventory)) return false
+  if (!Array.isArray(candidate.spells)) return false
+  if (!Array.isArray(candidate.attacks)) return false
+
+  const character = candidate.character as Record<string, unknown>
+
+  if (typeof character.name !== 'string') return false
+  if (typeof character.race !== 'string') return false
+  if (!Array.isArray(character.attributes)) return false
+  if (!Array.isArray(character.classes)) return false
+
+  return true
+}
+
 export function importCharacterSheetFromJSON(json: string): ImportResult {
   const result: ImportResult = { imported: 0, skipped: 0, errors: 0 }
 
@@ -607,6 +637,11 @@ export function importCharacterSheetFromJSON(json: string): ImportResult {
   const payload = extractImportedCharacterSheetPayload(parsed)
 
   if (!payload) {
+    result.errors = 1
+    return result
+  }
+
+  if (!isValidCharacterSheetPayload(payload.data)) {
     result.errors = 1
     return result
   }

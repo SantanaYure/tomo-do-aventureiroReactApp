@@ -20,5 +20,4 @@ export interface Attack {
   damageType?: string
   range?: string
   notes?: string
-  [key: string]: unknown
 }

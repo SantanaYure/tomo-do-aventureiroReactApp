@@ -25,5 +25,4 @@ export interface Resource {
   origin?: ResourceOrigin
   customOrigin?: string
   allowCustomOrigin?: boolean
-  [key: string]: unknown
 }
