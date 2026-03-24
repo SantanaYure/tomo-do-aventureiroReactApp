@@ -13,7 +13,6 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Home', icon: '⌂', exact: true },
-  { to: '/ficha/nova', label: 'Nova Ficha', icon: '✦' },
   { to: '/fichas', label: 'Personagens', icon: '⚔' },
 ]
 

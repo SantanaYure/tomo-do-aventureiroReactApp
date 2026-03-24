@@ -1,6 +1,7 @@
 import { useState, useRef, type ChangeEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
+  createCharacterSheet,
   deleteCharacterSheet,
   exportCharacterSheetAsJSON,
   importCharacterSheetFromJSON,
@@ -8,6 +9,7 @@ import {
   type ImportResult as CharacterImportResult,
 } from '../../store/characterSheetStore'
 import {
+  createMonsterSheet,
   deleteMonsterSheet as deleteMonster,
   exportMonsterSheetAsJSON,
   importMonsterSheetFromJSON,
@@ -170,10 +172,15 @@ function MonsterSheetItem({ sheet, onExport, onDelete }: MonsterSheetItemProps) 
 
 export function CharactersPage() {
   const { uid } = useAuth()
+  const navigate = useNavigate()
 
   // ── Listas completas (tempo-real via onSnapshot) ─────────────────────────
   const { sheets, isLoading: isLoadingSheets, error: sheetsError } = useCharacterSheets(uid)
   const { monsters, isLoading: isLoadingMonsters, error: monstersError } = useMonsterSheets(uid)
+
+  // ── Estado de criação ────────────────────────────────────────────────────
+  const [isCreatingCharacter, setIsCreatingCharacter] = useState(false)
+  const [isCreatingMonster, setIsCreatingMonster] = useState(false)
 
   // ── Busca ────────────────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState('')
@@ -202,6 +209,34 @@ export function CharactersPage() {
 
   // ── Erros de carregamento inicial ────────────────────────────────────────
   const loadError = sheetsError ?? monstersError
+
+  // ── Criação ─────────────────────────────────────────────────────────────
+
+  async function handleCreateCharacter() {
+    if (!uid || isCreatingCharacter) return
+    setIsCreatingCharacter(true)
+    try {
+      const stored = await createCharacterSheet(uid)
+      navigate(`/ficha/${stored.id}`)
+    } catch (err) {
+      console.error('Erro ao criar personagem:', err)
+      setIsCreatingCharacter(false)
+    }
+  }
+
+  async function handleCreateMonster() {
+    if (!uid || isCreatingMonster) return
+    setIsCreatingMonster(true)
+    try {
+      const stored = await createMonsterSheet(uid)
+      navigate(`/monstro/${stored.id}`, {
+        state: { startEditing: true },
+      })
+    } catch (err) {
+      console.error('Erro ao criar monstro/NPC:', err)
+      setIsCreatingMonster(false)
+    }
+  }
 
   // ── Delete ──────────────────────────────────────────────────────────────
 
@@ -348,6 +383,31 @@ export function CharactersPage() {
         className={styles.hiddenInput}
         onChange={handleMonsterImportFileChange}
       />
+
+      {/* ── Page top ── */}
+      <header className={styles.pageTop}>
+        <div className={styles.pageTitleRow}>
+          <h1 className={styles.pageTitle}>Personagens</h1>
+          <div className={styles.createActions}>
+            <button
+              type="button"
+              className={styles.createPrimary}
+              onClick={handleCreateCharacter}
+              disabled={isCreatingCharacter}
+            >
+              {isCreatingCharacter ? 'Criando...' : '+ Novo Personagem'}
+            </button>
+            <button
+              type="button"
+              className={styles.createSecondary}
+              onClick={handleCreateMonster}
+              disabled={isCreatingMonster}
+            >
+              {isCreatingMonster ? 'Criando...' : '+ Monstro / NPC'}
+            </button>
+          </div>
+        </div>
+      </header>
 
       {/* ── Search ── */}
       <header className={styles.pageHeader}>

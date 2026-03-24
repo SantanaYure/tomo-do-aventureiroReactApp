@@ -111,7 +111,7 @@ function EmptyRecent() {
     <div className={styles.emptyRecent}>
       <span className={styles.emptyIcon} aria-hidden="true">📜</span>
       <p className={styles.emptyText}>Nenhuma ficha criada ainda.</p>
-      <Link to="/ficha/nova" className={styles.emptyLink}>
+      <Link to="/fichas" className={styles.emptyLink}>
         Criar primeira ficha
       </Link>
     </div>
@@ -197,18 +197,6 @@ export function Home() {
           loading={isLoading}
           href="/fichas"
         />
-      </section>
-
-      {/* Ações rápidas */}
-      <section className={styles.actions} aria-label="Ações rápidas">
-        <Link to="/ficha/nova" className={styles.primaryAction}>
-          <span aria-hidden="true">✦</span>
-          Nova Ficha
-        </Link>
-        <Link to="/fichas" className={styles.secondaryAction}>
-          <span aria-hidden="true">⚔</span>
-          Ver Personagens
-        </Link>
       </section>
 
       {/* Fichas recentes */}

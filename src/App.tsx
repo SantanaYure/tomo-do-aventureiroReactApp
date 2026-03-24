@@ -1,7 +1,6 @@
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
 import { Home } from './pages/Home/Home'
 import { CharacterSheetPage } from './pages/CharacterSheetPage/CharacterSheetPage'
-import { NewCharacterPage } from './pages/NewCharacterPage/NewCharacterPage'
 import { LoginPage } from './pages/LoginPage/LoginPage'
 import { RegisterPage } from './pages/RegisterPage/RegisterPage'
 import { EmailVerificationPage } from './pages/EmailVerificationPage/EmailVerificationPage'
@@ -37,7 +36,7 @@ export default function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<Home />} />
             <Route path="/fichas" element={<CharactersPage />} />
-            <Route path="/ficha/nova" element={<NewCharacterPage />} />
+            <Route path="/ficha/nova" element={<Navigate to="/fichas" replace />} />
             <Route path="/ficha/:id" element={<CharacterSheetPage />} />
             <Route path="/monstro/novo" element={<NewMonsterPage />} />
             <Route path="/monstro/:id" element={<MonsterSheetPage />} />
