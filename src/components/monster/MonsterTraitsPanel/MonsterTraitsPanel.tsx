@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type {
   ConditionType,
   DamageType,
@@ -72,6 +73,10 @@ function formatLines(values: string[]): string {
   return values.join('\n')
 }
 
+function areLinesEqual(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index])
+}
+
 function hasTextItems(values: string[]): boolean {
   return values.some((value) => value.trim().length > 0)
 }
@@ -124,10 +129,31 @@ export function MonsterTraitsPanel({
   onChange,
 }: MonsterComponentProps) {
   const { traits } = sheet
+  const [savingThrowsDraft, setSavingThrowsDraft] = useState(formatLines(sheet.traits.savingThrows))
+  const [skillsDraft, setSkillsDraft] = useState(formatLines(sheet.traits.skills))
+  const [languagesDraft, setLanguagesDraft] = useState(formatLines(sheet.traits.languages))
 
   function updateTraits(patch: DeepPartial<MonsterSheet['traits']>) {
     onChange({ traits: patch })
   }
+
+  useEffect(() => {
+    if (!areLinesEqual(traits.savingThrows, parseLines(savingThrowsDraft))) {
+      setSavingThrowsDraft(formatLines(traits.savingThrows))
+    }
+  }, [savingThrowsDraft, traits.savingThrows])
+
+  useEffect(() => {
+    if (!areLinesEqual(traits.skills, parseLines(skillsDraft))) {
+      setSkillsDraft(formatLines(traits.skills))
+    }
+  }, [skillsDraft, traits.skills])
+
+  useEffect(() => {
+    if (!areLinesEqual(traits.languages, parseLines(languagesDraft))) {
+      setLanguagesDraft(formatLines(traits.languages))
+    }
+  }, [languagesDraft, traits.languages])
 
   function toggleDamageList(key: 'resistances' | 'immunities', value: DamageType) {
     const currentList = traits[key]
@@ -167,10 +193,12 @@ export function MonsterTraitsPanel({
             <label className={styles.field}>
               Testes de Resistência
               <textarea
-                value={formatLines(traits.savingThrows)}
-                onChange={(event) =>
-                  updateTraits({ savingThrows: parseLines(event.target.value) })
-                }
+                value={savingThrowsDraft}
+                onChange={(event) => {
+                  const nextValue = event.target.value
+                  setSavingThrowsDraft(nextValue)
+                  updateTraits({ savingThrows: parseLines(nextValue) })
+                }}
                 placeholder="Um por linha. Ex.: Força +5"
               />
             </label>
@@ -178,8 +206,12 @@ export function MonsterTraitsPanel({
             <label className={styles.field}>
               Perícias
               <textarea
-                value={formatLines(traits.skills)}
-                onChange={(event) => updateTraits({ skills: parseLines(event.target.value) })}
+                value={skillsDraft}
+                onChange={(event) => {
+                  const nextValue = event.target.value
+                  setSkillsDraft(nextValue)
+                  updateTraits({ skills: parseLines(nextValue) })
+                }}
                 placeholder="Uma por linha. Ex.: Percepção +5"
               />
             </label>
@@ -187,10 +219,12 @@ export function MonsterTraitsPanel({
             <label className={styles.field}>
               Idiomas
               <textarea
-                value={formatLines(traits.languages)}
-                onChange={(event) =>
-                  updateTraits({ languages: parseLines(event.target.value) })
-                }
+                value={languagesDraft}
+                onChange={(event) => {
+                  const nextValue = event.target.value
+                  setLanguagesDraft(nextValue)
+                  updateTraits({ languages: parseLines(nextValue) })
+                }}
                 placeholder="Uma por linha. Ex.: Comum, Dracônico"
               />
             </label>
