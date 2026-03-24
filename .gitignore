@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 
 .claude
+
+# Variáveis de ambiente (nunca commitar credenciais)
+.env
+.env.local
+.env.*.local
