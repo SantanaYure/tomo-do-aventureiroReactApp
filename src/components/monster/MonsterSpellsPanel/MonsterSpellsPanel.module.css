@@ -1,15 +1,13 @@
 .spellHeader {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
 }
 
 .spellStat {
-    display: flex;
-    flex-direction: column;
+    display: grid;
     gap: var(--space-1);
-    min-width: 9rem;
+    min-width: 0;
     padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
@@ -30,15 +28,10 @@
     font-weight: 700;
 }
 
-.spellAbilitySelect {
-    min-width: 10rem;
-    width: auto;
-    background: rgba(255, 251, 241, 0.8);
-    border: 1px solid var(--border-dark);
-}
-
+.spellAbilitySelect,
 .profInput {
-    width: 5rem;
+    width: 100%;
+    min-width: 0;
 }
 
 .levelSection {
@@ -51,10 +44,11 @@
 }
 
 .levelHeader {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     gap: var(--space-2);
-    flex-wrap: wrap;
+    width: 100%;
     background: none;
     border: none;
     padding: 0;
@@ -79,20 +73,25 @@
 }
 
 .levelCount {
+    grid-column: 2;
     color: var(--ink-muted);
     font-size: var(--text-sm);
-    margin-left: auto;
+}
+
+.slotInput,
+.slotCounter {
+    grid-column: 1 / -1;
 }
 
 .slotInput {
-    width: 4rem;
+    width: 100%;
+    max-width: 12rem;
 }
 
 .slotCounter {
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
-    margin-left: var(--space-2);
 }
 
 .slotBtn {
@@ -109,9 +108,9 @@
 }
 
 .slotNumbers {
-    font-weight: 700;
     min-width: 3rem;
     text-align: center;
+    font-weight: 700;
 }
 
 .levelBody {
@@ -120,48 +119,41 @@
 }
 
 .spellRow {
-    display: flex;
-    align-items: center;
+    display: grid;
     gap: var(--space-2);
-    flex-wrap: wrap;
     padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
     background: rgba(255, 252, 245, 0.72);
 }
 
-.spellRow:has(.spellEditRow) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-2);
-}
-
-.spellEditRow {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-}
-
-.spellMetaRow,
-.spellDetailsRow {
+.spellTopRow {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
+    gap: var(--space-2);
 }
 
-.spellMetaRow::after {
-    content: '';
-    width: 3.75rem;
+.spellPrimaryGrid,
+.spellSecondaryGrid {
+    display: grid;
+    gap: var(--space-2);
 }
 
-.spellConcLabel {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    font-size: var(--text-xs);
-    color: var(--ink-muted);
-    white-space: nowrap;
-    cursor: pointer;
+.spellPrimaryGrid {
+    grid-template-columns: 1fr 1fr;
+}
+
+.materialsInput {
+    grid-column: 1 / -1;
+}
+
+.spellSecondaryGrid {
+    grid-template-columns: 1fr 1fr;
+}
+
+.spellSecondaryGrid .spellConcLabel {
+    grid-column: 1 / -1;
 }
 
 .spellPrepared {
@@ -169,7 +161,59 @@
     color: var(--accent);
     cursor: pointer;
     user-select: none;
-    flex-shrink: 0;
+    justify-self: center;
+}
+
+.removeButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: start;
+    padding: 3px;
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.removeButton:hover {
+    color: rgba(122, 30, 30, 0.92);
+}
+
+.removeButton:focus-visible {
+    outline: 2px solid rgba(122, 30, 30, 0.28);
+    outline-offset: 2px;
+}
+
+.spellNameInput,
+.castingTimeInput,
+.rangeInput,
+.durationInput,
+.spellSchoolSelect,
+.materialsInput {
+    width: 100%;
+    min-width: 0;
+}
+
+.spellConcLabel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: 0.72rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 251, 241, 0.72);
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.spellConcLabel input {
+    margin: 0;
 }
 
 .spellConc {
@@ -177,19 +221,6 @@
     font-size: var(--text-xs);
     color: var(--ink-muted);
     min-width: 1rem;
-}
-
-.spellNameInput,
-.castingTimeInput,
-.rangeInput,
-.durationInput,
-.spellSchoolSelect {
-    flex: 1;
-    min-width: 0;
-}
-
-.spellSchoolSelect {
-    width: auto;
 }
 
 .spellName {
@@ -209,29 +240,55 @@
 .spellDescription {
     width: 100%;
     box-sizing: border-box;
-    min-height: 3.5rem;
+    min-height: 5.25rem;
     resize: vertical;
 }
 
 .spellDescriptionRead {
-    flex-basis: 100%;
     margin: var(--space-1) 0 0;
     color: var(--ink-muted);
     font-size: var(--text-sm);
     white-space: pre-wrap;
 }
 
-@media (max-width: 720px) {
-    .spellRow {
-        gap: var(--space-1);
+@media (min-width: 768px) {
+    .spellHeader {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
-    .spellMetaRow,
-    .spellDetailsRow {
-        grid-template-columns: 1fr;
+    .levelHeader {
+        grid-template-columns: auto auto minmax(0, 1fr) auto;
     }
 
-    .spellMetaRow::after {
-        display: none;
+    .levelCount {
+        grid-column: auto;
+        justify-self: end;
+    }
+
+    .slotInput,
+    .slotCounter {
+        grid-column: auto;
+        justify-self: end;
+    }
+
+    .slotInput {
+        width: 10rem;
+    }
+
+    .spellPrimaryGrid {
+        grid-template-columns: minmax(0, 1.45fr) minmax(8rem, 0.7fr) minmax(10rem, 0.85fr) minmax(0, 1fr);
+    }
+
+    .materialsInput {
+        grid-column: auto;
+    }
+
+    .spellSecondaryGrid {
+        grid-template-columns: minmax(9rem, 1fr) minmax(9rem, 1fr) auto;
+        align-items: center;
+    }
+
+    .spellSecondaryGrid .spellConcLabel {
+        grid-column: auto;
     }
 }

@@ -59,6 +59,17 @@ function createSpell(): Spell {
     }
 }
 
+function parseMaterialComponents(value: string): string[] {
+    return value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+}
+
+function formatMaterialComponents(components: string[] | undefined): string {
+    return (components ?? []).join(', ')
+}
+
 export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterComponentProps) {
     const [expandedLevels, setExpandedLevels] = useState<Set<number>>(new Set([0]))
     const { spells } = sheet
@@ -110,14 +121,31 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
     function setSlot(level: number, field: 'current' | 'max', value: number) {
         const previous = spells.slots[level] ?? { current: 0, max: 0 }
         const next = { ...previous, [field]: Math.max(0, value) }
-        if (field === 'current') next.current = Math.min(next.current, next.max)
+
+        if (field === 'current') {
+            next.current = Math.min(next.current, next.max)
+        }
+
         updateSpells({ slots: { ...spells.slots, [level]: next } })
     }
 
-    const spellsByLevel = SPELL_LEVELS.reduce<Record<number, Spell[]>>((accumulator, level) => {
-        accumulator[level] = spells.items.filter((spell) => (spell.level ?? 0) === level)
-        return accumulator
-    }, {})
+    const spellsByLevel = SPELL_LEVELS.reduce<Record<number, Array<{ spell: Spell; index: number }>>>(
+        (accumulator, level) => {
+            accumulator[level] = spells.items.reduce<Array<{ spell: Spell; index: number }>>(
+                (entries, spell, index) => {
+                    if ((spell.level ?? 0) === level) {
+                        entries.push({ spell, index })
+                    }
+
+                    return entries
+                },
+                [],
+            )
+
+            return accumulator
+        },
+        {},
+    )
 
     const usedLevels = isEditing
         ? SPELL_LEVELS
@@ -158,7 +186,7 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
                 </div>
 
                 <div className={styles.spellStat}>
-                    <span className={styles.spellStatLabel}>Bônus de proficiência</span>
+                    <span className={styles.spellStatLabel}>Proficiência</span>
                     {isEditing ? (
                         <input
                             type="number"
@@ -216,20 +244,20 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
                             <span className={styles.levelCount}>
                                 {levelSpells.length} magia{levelSpells.length !== 1 ? 's' : ''}
                             </span>
+
                             {level > 0 && (
                                 isEditing ? (
-                                    <label onClick={(event) => event.stopPropagation()}>
-                                        Slots máx
-                                        <input
-                                            className={styles.slotInput}
-                                            type="number"
-                                            min={0}
-                                            value={slots.max}
-                                            onChange={(event) =>
-                                                setSlot(level, 'max', Number(event.target.value))
-                                            }
-                                        />
-                                    </label>
+                                    <input
+                                        className={styles.slotInput}
+                                        type="number"
+                                        min={0}
+                                        placeholder="Slots Máximos"
+                                        value={slots.max || ''}
+                                        onClick={(event) => event.stopPropagation()}
+                                        onChange={(event) =>
+                                            setSlot(level, 'max', Number(event.target.value))
+                                        }
+                                    />
                                 ) : slots.max > 0 ? (
                                     <div
                                         className={styles.slotCounter}
@@ -259,20 +287,15 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
 
                         {expanded && (
                             <div className={styles.levelBody}>
-                                {levelSpells.map((spell) => {
-                                    const globalIndex = spells.items.indexOf(spell)
-
-                                    return (
-                                    <div key={globalIndex} className={styles.spellRow}>
+                                {levelSpells.map(({ spell, index }) => (
+                                    <div key={index} className={styles.spellRow}>
                                         {isEditing ? (
                                             <>
-                                                <div className={`${styles.spellEditRow} ${styles.spellMetaRow}`}>
+                                                <div className={styles.spellTopRow}>
                                                     <span
                                                         className={styles.spellPrepared}
                                                         onClick={() =>
-                                                            setSpell(globalIndex, {
-                                                                prepared: !spell.prepared,
-                                                            })
+                                                            setSpell(index, { prepared: !spell.prepared })
                                                         }
                                                     >
                                                         {spell.prepared ? '★' : '☆'}
@@ -283,39 +306,35 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
                                                         value={spell.name ?? ''}
                                                         placeholder="Nome da magia"
                                                         onChange={(event) =>
-                                                            setSpell(globalIndex, {
-                                                                name: event.target.value,
-                                                            })
+                                                            setSpell(index, { name: event.target.value })
                                                         }
                                                     />
                                                     <button
                                                         type="button"
-                                                        className={panelStyles.removeButton}
-                                                        onClick={() => removeSpell(globalIndex)}
+                                                        className={styles.removeButton}
+                                                        onClick={() => removeSpell(index)}
+                                                        aria-label={`Excluir magia ${spell.name || `#${index + 1}`}`}
+                                                        title="Excluir magia"
                                                     >
                                                         ✕
                                                     </button>
                                                 </div>
 
-                                                <div className={`${styles.spellEditRow} ${styles.spellDetailsRow}`}>
+                                                <div className={styles.spellPrimaryGrid}>
                                                     <input
                                                         className={styles.castingTimeInput}
                                                         type="text"
                                                         value={spell.castingTime ?? ''}
                                                         placeholder="Tempo"
                                                         onChange={(event) =>
-                                                            setSpell(globalIndex, {
-                                                                castingTime: event.target.value,
-                                                            })
+                                                            setSpell(index, { castingTime: event.target.value })
                                                         }
                                                     />
                                                     <select
                                                         className={styles.spellSchoolSelect}
                                                         value={spell.school ?? ''}
                                                         onChange={(event) =>
-                                                            setSpell(globalIndex, {
-                                                                school: event.target.value,
-                                                            })
+                                                            setSpell(index, { school: event.target.value })
                                                         }
                                                     >
                                                         <option value="">— Escola —</option>
@@ -325,18 +344,27 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
                                                             </option>
                                                         ))}
                                                     </select>
+                                                    <input
+                                                        className={styles.materialsInput}
+                                                        type="text"
+                                                        value={formatMaterialComponents(spell.components)}
+                                                        placeholder="Componentes materiais"
+                                                        onChange={(event) =>
+                                                            setSpell(index, {
+                                                                components: parseMaterialComponents(event.target.value),
+                                                            })
+                                                        }
+                                                    />
                                                 </div>
 
-                                                <div className={styles.spellEditRow}>
+                                                <div className={styles.spellSecondaryGrid}>
                                                     <input
                                                         className={styles.rangeInput}
                                                         type="text"
                                                         value={spell.range ?? ''}
                                                         placeholder="Alcance"
                                                         onChange={(event) =>
-                                                            setSpell(globalIndex, {
-                                                                range: event.target.value,
-                                                            })
+                                                            setSpell(index, { range: event.target.value })
                                                         }
                                                     />
                                                     <input
@@ -345,18 +373,16 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
                                                         value={spell.duration ?? ''}
                                                         placeholder="Duração"
                                                         onChange={(event) =>
-                                                            setSpell(globalIndex, {
-                                                                duration: event.target.value,
-                                                            })
+                                                            setSpell(index, { duration: event.target.value })
                                                         }
                                                     />
                                                     <label className={styles.spellConcLabel}>
-                                                        Conc.
+                                                        <span>Concentração</span>
                                                         <input
                                                             type="checkbox"
                                                             checked={!!spell.concentration}
                                                             onChange={(event) =>
-                                                                setSpell(globalIndex, {
+                                                                setSpell(index, {
                                                                     concentration: event.target.checked,
                                                                 })
                                                             }
@@ -368,11 +394,9 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
                                                     className={styles.spellDescription}
                                                     value={spell.description ?? ''}
                                                     placeholder="Descrição da magia"
-                                                    rows={2}
+                                                    rows={3}
                                                     onChange={(event) =>
-                                                        setSpell(globalIndex, {
-                                                            description: event.target.value,
-                                                        })
+                                                        setSpell(index, { description: event.target.value })
                                                     }
                                                 />
                                             </>
@@ -381,7 +405,7 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
                                                 <span
                                                     className={styles.spellPrepared}
                                                     onClick={() =>
-                                                        setSpell(globalIndex, { prepared: !spell.prepared })
+                                                        setSpell(index, { prepared: !spell.prepared })
                                                     }
                                                 >
                                                     {spell.prepared ? '★' : '☆'}
@@ -398,6 +422,11 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
                                                 </span>
                                                 <span className={styles.spellMetaText}>{spell.range}</span>
                                                 <span className={styles.spellMetaText}>{spell.duration}</span>
+                                                {spell.components && spell.components.length > 0 && (
+                                                    <span className={styles.spellMetaText}>
+                                                        Materiais: {formatMaterialComponents(spell.components)}
+                                                    </span>
+                                                )}
                                                 {spell.description && (
                                                     <p className={styles.spellDescriptionRead}>
                                                         {spell.description}
@@ -406,8 +435,7 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
                                             </>
                                         )}
                                     </div>
-                                    )
-                                })}
+                                ))}
 
                                 {isEditing && (
                                     <button
