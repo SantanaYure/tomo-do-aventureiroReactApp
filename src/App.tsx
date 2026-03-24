@@ -8,6 +8,7 @@ import { EmailVerificationPage } from './pages/EmailVerificationPage/EmailVerifi
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage/PrivacyPolicyPage'
 import { MonsterSheetPage } from './pages/MonsterSheetPage/MonsterSheetPage'
 import { NewMonsterPage } from './pages/NewMonsterPage/NewMonsterPage'
+import { CharactersPage } from './pages/CharactersPage/CharactersPage'
 import { NotFound } from './pages/NotFound/NotFound'
 import { ProtectedRoute } from './components/ProtectedRoute/ProtectedRoute'
 import { Sidebar } from './components/Sidebar/Sidebar'
@@ -35,6 +36,7 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="/" element={<Home />} />
+            <Route path="/fichas" element={<CharactersPage />} />
             <Route path="/ficha/nova" element={<NewCharacterPage />} />
             <Route path="/ficha/:id" element={<CharacterSheetPage />} />
             <Route path="/monstro/novo" element={<NewMonsterPage />} />
