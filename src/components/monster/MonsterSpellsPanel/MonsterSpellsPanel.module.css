@@ -41,8 +41,6 @@
     width: 5rem;
 }
 
-/* ── Level sections ── */
-
 .levelSection {
     display: grid;
     gap: var(--space-3);
@@ -86,8 +84,6 @@
     margin-left: auto;
 }
 
-/* ── Slot controls ── */
-
 .slotInput {
     width: 4rem;
 }
@@ -118,8 +114,6 @@
     text-align: center;
 }
 
-/* ── Spell rows ── */
-
 .levelBody {
     display: grid;
     gap: var(--space-2);
@@ -136,11 +130,46 @@
     background: rgba(255, 252, 245, 0.72);
 }
 
+.spellRow:has(.spellEditRow) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+}
+
+.spellEditRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.spellMetaRow,
+.spellDetailsRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: center;
+}
+
+.spellMetaRow::after {
+    content: '';
+    width: 3.75rem;
+}
+
+.spellConcLabel {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--text-xs);
+    color: var(--ink-muted);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
 .spellPrepared {
     font-weight: 700;
     color: var(--accent);
     cursor: pointer;
     user-select: none;
+    flex-shrink: 0;
 }
 
 .spellConc {
@@ -150,26 +179,17 @@
     min-width: 1rem;
 }
 
-.spellNameInput {
-    flex: 1 1 10rem;
-    min-width: 8rem;
-}
-
-.castingTimeInput {
-    width: 7rem;
-}
-
-.rangeInput {
-    width: 5rem;
-}
-
-.durationInput {
-    width: 6rem;
+.spellNameInput,
+.castingTimeInput,
+.rangeInput,
+.durationInput,
+.spellSchoolSelect {
+    flex: 1;
+    min-width: 0;
 }
 
 .spellSchoolSelect {
     width: auto;
-    min-width: 8rem;
 }
 
 .spellName {
@@ -187,7 +207,8 @@
 }
 
 .spellDescription {
-    flex-basis: 100%;
+    width: 100%;
+    box-sizing: border-box;
     min-height: 3.5rem;
     resize: vertical;
 }
@@ -203,5 +224,14 @@
 @media (max-width: 720px) {
     .spellRow {
         gap: var(--space-1);
+    }
+
+    .spellMetaRow,
+    .spellDetailsRow {
+        grid-template-columns: 1fr;
+    }
+
+    .spellMetaRow::after {
+        display: none;
     }
 }
