@@ -63,11 +63,6 @@
   gap: var(--space-2);
 }
 
-.cardHeaderRow {
-  display: flex;
-  justify-content: flex-end;
-  min-height: 2rem;
-}
 
 .editRow {
   display: flex;

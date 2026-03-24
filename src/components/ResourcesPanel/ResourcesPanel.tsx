@@ -229,18 +229,7 @@ export function ResourcesPanel({
             <div key={resourceId} className={styles.resourceCard}>
               {isEditMode ? (
                 <div className={styles.editStack}>
-                  <div className={styles.cardHeaderRow}>
-                    <button
-                      type="button"
-                      className={styles.removeAction}
-                      onClick={() => removeResource(index)}
-                      aria-label={`Excluir recurso ${resource.name?.trim() || `#${index + 1}`}`}
-                      title="Excluir recurso"
-                    >
-                      ×
-                    </button>
-                  </div>
-
+                  {/* Linha 1: Nome | Nível | Duração | Ação */}
                   <div className={styles.editRow}>
                     <input
                       className={styles.resourceNameInput}
@@ -273,6 +262,7 @@ export function ResourcesPanel({
                     />
                   </div>
 
+                  {/* Linha 2: Alcance | Recuperação | Origem personalizada | Origem | ✕ */}
                   <div className={styles.editRow}>
                     <input
                       className={styles.editFieldMd}
@@ -324,6 +314,15 @@ export function ResourcesPanel({
                         ))}
                       </select>
                     )}
+                    <button
+                      type="button"
+                      className={styles.removeAction}
+                      onClick={() => removeResource(index)}
+                      aria-label={`Excluir recurso ${resource.name?.trim() || `#${index + 1}`}`}
+                      title="Excluir recurso"
+                    >
+                      ✕
+                    </button>
                   </div>
 
                   <textarea
