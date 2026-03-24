@@ -536,7 +536,7 @@ export function CombatPanel({
                   className={styles.btnTemp}
                   onClick={() => applyAction('temp')}
                 >
-                  Temp
+                  Vida Temporária
                 </button>
               </div>
             </div>
