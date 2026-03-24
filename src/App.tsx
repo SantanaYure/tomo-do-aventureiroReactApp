@@ -3,6 +3,8 @@ import { Home } from './pages/Home/Home'
 import { CharacterSheetPage } from './pages/CharacterSheetPage/CharacterSheetPage'
 import { NewCharacterPage } from './pages/NewCharacterPage/NewCharacterPage'
 import { LoginPage } from './pages/LoginPage/LoginPage'
+import { RegisterPage } from './pages/RegisterPage/RegisterPage'
+import { EmailVerificationPage } from './pages/EmailVerificationPage/EmailVerificationPage'
 import { MonsterSheetPage } from './pages/MonsterSheetPage/MonsterSheetPage'
 import { NewMonsterPage } from './pages/NewMonsterPage/NewMonsterPage'
 import { NotFound } from './pages/NotFound/NotFound'
@@ -23,6 +25,8 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/cadastro" element={<RegisterPage />} />
+        <Route path="/verificar-email" element={<EmailVerificationPage />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="/" element={<Home />} />

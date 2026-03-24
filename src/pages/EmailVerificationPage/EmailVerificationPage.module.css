@@ -1,0 +1,208 @@
+.page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-4);
+}
+
+.card {
+  width: 100%;
+  max-width: 26rem;
+  display: grid;
+  gap: var(--space-5);
+  background: linear-gradient(180deg, rgba(255, 249, 235, 0.97), rgba(241, 227, 189, 0.93));
+  border: 3px double var(--border-dark);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  padding: var(--space-6);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: calc(var(--radius-md) - 6px);
+  pointer-events: none;
+}
+
+.card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.iconWrapper {
+  text-align: center;
+}
+
+.icon {
+  font-size: 3rem;
+  display: inline-block;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* ── Cabeçalho ── */
+.header {
+  text-align: center;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  color: var(--ink);
+  letter-spacing: 0.04em;
+}
+
+.subtitle {
+  font-size: var(--text-base);
+  color: var(--ink-muted);
+  line-height: 1.6;
+}
+
+.email {
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.hint {
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+  font-style: italic;
+  line-height: 1.6;
+}
+
+/* ── Feedback ── */
+.feedbackSuccess {
+  font-size: var(--text-sm);
+  color: #1a5c1a;
+  padding: var(--space-2) var(--space-3);
+  background: rgba(26, 92, 26, 0.08);
+  border: 1px solid rgba(26, 92, 26, 0.25);
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.feedbackError {
+  font-size: var(--text-sm);
+  color: var(--accent);
+  padding: var(--space-2) var(--space-3);
+  background: var(--accent-faint);
+  border: 1px solid rgba(122, 30, 30, 0.2);
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* ── Ações ── */
+.actions {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.primaryButton {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(180deg, rgba(122, 30, 30, 0.88), rgba(90, 18, 18, 0.96));
+  border: 1px solid rgba(122, 30, 30, 0.55);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: rgba(255, 245, 220, 0.96);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(140, 40, 40, 0.92), rgba(105, 22, 22, 0.98));
+}
+
+.primaryButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.secondaryButton {
+  width: 100%;
+  padding: var(--space-2) var(--space-4);
+  background: linear-gradient(180deg, rgba(255, 249, 235, 0.98), rgba(239, 225, 188, 0.94));
+  border: 2px double var(--border-dark);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.secondaryButton:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(255, 248, 229, 1), rgba(232, 214, 164, 0.97));
+}
+
+.secondaryButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-light);
+}
+
+.dividerText {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  white-space: nowrap;
+  font-style: italic;
+}
+
+.signOutButton {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.signOutButton:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-faint);
+}
+
+/* ── Rodapé ── */
+.footer {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  text-align: center;
+  font-style: italic;
+}
