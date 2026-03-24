@@ -37,7 +37,7 @@ type SheetFilterType = 'all' | 'character' | 'monster' | 'npc'
 
 type SortOrder = 'recent' | 'alpha' | 'class' | 'level-asc' | 'level-desc' | 'race' | 'custom'
 
-type MonsterSortOrder = 'recent' | 'alpha' | 'nd-asc' | 'nd-desc'
+type MonsterSortOrder = 'recent' | 'alpha' | 'nd-asc' | 'nd-desc' | 'custom'
 
 const MAX_JSON_BYTES = 2 * 1024 * 1024
 
@@ -181,13 +181,51 @@ interface MonsterSheetItemProps {
   sheet: StoredMonsterSheet
   onExport: () => void
   onDelete: () => void
+  isDraggable?: boolean
+  isDragging?: boolean
+  isDragOver?: boolean
+  onDragStart?: () => void
+  onDragOver?: (e: React.DragEvent) => void
+  onDrop?: () => void
+  onDragEnd?: () => void
 }
 
-function MonsterSheetItem({ sheet, onExport, onDelete }: MonsterSheetItemProps) {
+function MonsterSheetItem({
+  sheet,
+  onExport,
+  onDelete,
+  isDraggable,
+  isDragging,
+  isDragOver,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+}: MonsterSheetItemProps) {
   const name = sheet.data.details.name || '(sem nome)'
 
+  const liClasses = [
+    styles.sheetItem,
+    isDragging ? styles.sheetItemDragging : '',
+    isDragOver ? styles.sheetItemDragOver : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
-    <li className={styles.sheetItem}>
+    <li
+      className={liClasses}
+      draggable={isDraggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+    >
+      {isDraggable && (
+        <span className={styles.dragHandle} aria-hidden="true">
+          ⠿
+        </span>
+      )}
       <div className={styles.sheetInfo}>
         <Link to={`/monstro/${sheet.id}`} className={styles.sheetLink}>
           {name}
@@ -247,6 +285,41 @@ const MONSTER_SORT_CHIPS: { label: string; value: MonsterSortOrder }[] = [
   { label: 'ND ↓', value: 'nd-desc' },
 ]
 
+function applyMonsterSort(
+  list: StoredMonsterSheet[],
+  order: MonsterSortOrder,
+  customOrder: string[],
+): StoredMonsterSheet[] {
+  if (order === 'custom' && customOrder.length > 0) {
+    const orderMap = new Map(customOrder.map((id, i) => [id, i]))
+    return [...list].sort((a, b) => {
+      const ai = orderMap.has(a.id) ? (orderMap.get(a.id) as number) : Number.MAX_SAFE_INTEGER
+      const bi = orderMap.has(b.id) ? (orderMap.get(b.id) as number) : Number.MAX_SAFE_INTEGER
+      return ai - bi
+    })
+  }
+  if (order === 'alpha') {
+    return [...list].sort((a, b) =>
+      (a.data.details.name || '').localeCompare(b.data.details.name || '', 'pt-BR'),
+    )
+  }
+  if (order === 'nd-asc') {
+    return [...list].sort(
+      (a, b) =>
+        parseChallengeRating(a.data.traits.challengeRating) -
+        parseChallengeRating(b.data.traits.challengeRating),
+    )
+  }
+  if (order === 'nd-desc') {
+    return [...list].sort(
+      (a, b) =>
+        parseChallengeRating(b.data.traits.challengeRating) -
+        parseChallengeRating(a.data.traits.challengeRating),
+    )
+  }
+  return list // 'recent' — já ordenado pelo Firestore
+}
+
 export function CharactersPage() {
   const { uid } = useAuth()
   const navigate = useNavigate()
@@ -273,6 +346,14 @@ export function CharactersPage() {
   const [dragOverId, setDragOverId] = useState<string | null>(null)
 
   const [monsterSortOrder, setMonsterSortOrder] = useState<MonsterSortOrder>('recent')
+  const [customMonsterOrder, setCustomMonsterOrder] = useState<string[]>([])
+  const [monsterDragSourceId, setMonsterDragSourceId] = useState<string | null>(null)
+  const [monsterDragOverId, setMonsterDragOverId] = useState<string | null>(null)
+
+  const [npcSortOrder, setNpcSortOrder] = useState<MonsterSortOrder>('recent')
+  const [customNpcOrder, setCustomNpcOrder] = useState<string[]>([])
+  const [npcDragSourceId, setNpcDragSourceId] = useState<string | null>(null)
+  const [npcDragOverId, setNpcDragOverId] = useState<string | null>(null)
 
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
@@ -283,21 +364,36 @@ export function CharactersPage() {
 
   useEffect(() => {
     if (!uid) return
-    try {
-      const stored = localStorage.getItem(`tomo-char-order-${uid}`)
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        if (Array.isArray(parsed)) setCustomOrder(parsed)
-      }
-    } catch {}
+    const load = (key: string, setter: (v: string[]) => void) => {
+      try {
+        const stored = localStorage.getItem(key)
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed)) setter(parsed)
+        }
+      } catch {}
+    }
+    load(`tomo-char-order-${uid}`, setCustomOrder)
+    load(`tomo-monster-order-${uid}`, setCustomMonsterOrder)
+    load(`tomo-npc-order-${uid}`, setCustomNpcOrder)
   }, [uid])
 
   function saveCustomOrder(newOrder: string[]) {
     if (!uid) return
     setCustomOrder(newOrder)
-    try {
-      localStorage.setItem(`tomo-char-order-${uid}`, JSON.stringify(newOrder))
-    } catch {}
+    try { localStorage.setItem(`tomo-char-order-${uid}`, JSON.stringify(newOrder)) } catch {}
+  }
+
+  function saveCustomMonsterOrder(newOrder: string[]) {
+    if (!uid) return
+    setCustomMonsterOrder(newOrder)
+    try { localStorage.setItem(`tomo-monster-order-${uid}`, JSON.stringify(newOrder)) } catch {}
+  }
+
+  function saveCustomNpcOrder(newOrder: string[]) {
+    if (!uid) return
+    setCustomNpcOrder(newOrder)
+    try { localStorage.setItem(`tomo-npc-order-${uid}`, JSON.stringify(newOrder)) } catch {}
   }
 
   const baseSheets = isSearchMode ? searchChars : sheets
@@ -410,36 +506,13 @@ export function CharactersPage() {
     [displayedAllMonsters],
   )
 
-  function applyMonsterSort(list: StoredMonsterSheet[]): StoredMonsterSheet[] {
-    if (monsterSortOrder === 'alpha') {
-      return [...list].sort((a, b) =>
-        (a.data.details.name || '').localeCompare(b.data.details.name || '', 'pt-BR'),
-      )
-    }
-    if (monsterSortOrder === 'nd-asc') {
-      return [...list].sort(
-        (a, b) =>
-          parseChallengeRating(a.data.traits.challengeRating) -
-          parseChallengeRating(b.data.traits.challengeRating),
-      )
-    }
-    if (monsterSortOrder === 'nd-desc') {
-      return [...list].sort(
-        (a, b) =>
-          parseChallengeRating(b.data.traits.challengeRating) -
-          parseChallengeRating(a.data.traits.challengeRating),
-      )
-    }
-    return list // 'recent' — já ordenado pelo Firestore
-  }
-
   const sortedMonsters = useMemo(
-    () => applyMonsterSort(displayedMonsters),
-    [displayedMonsters, monsterSortOrder], // eslint-disable-line react-hooks/exhaustive-deps
+    () => applyMonsterSort(displayedMonsters, monsterSortOrder, customMonsterOrder),
+    [displayedMonsters, monsterSortOrder, customMonsterOrder],
   )
   const sortedNpcs = useMemo(
-    () => applyMonsterSort(displayedNpcs),
-    [displayedNpcs, monsterSortOrder], // eslint-disable-line react-hooks/exhaustive-deps
+    () => applyMonsterSort(displayedNpcs, npcSortOrder, customNpcOrder),
+    [displayedNpcs, npcSortOrder, customNpcOrder],
   )
 
   const loadingSheets = isSearchMode ? isSearching : isLoadingSheets
@@ -493,6 +566,76 @@ export function CharactersPage() {
   function handleCharacterDragEnd() {
     setDragSourceId(null)
     setDragOverId(null)
+  }
+
+  function handleMonsterDragStart(id: string) {
+    setMonsterDragSourceId(id)
+  }
+
+  function handleMonsterDragOver(id: string, e: React.DragEvent) {
+    e.preventDefault()
+    setMonsterDragOverId(id)
+  }
+
+  function handleMonsterDrop(targetId: string) {
+    if (!monsterDragSourceId || monsterDragSourceId === targetId) {
+      setMonsterDragSourceId(null)
+      setMonsterDragOverId(null)
+      return
+    }
+    const currentIds = sortedMonsters.map((m) => m.id)
+    const fromIdx = currentIds.indexOf(monsterDragSourceId)
+    const toIdx = currentIds.indexOf(targetId)
+    if (fromIdx === -1 || toIdx === -1) return
+
+    const newOrder = [...currentIds]
+    newOrder.splice(fromIdx, 1)
+    newOrder.splice(toIdx, 0, monsterDragSourceId)
+
+    setMonsterSortOrder('custom')
+    saveCustomMonsterOrder(newOrder)
+    setMonsterDragSourceId(null)
+    setMonsterDragOverId(null)
+  }
+
+  function handleMonsterDragEnd() {
+    setMonsterDragSourceId(null)
+    setMonsterDragOverId(null)
+  }
+
+  function handleNpcDragStart(id: string) {
+    setNpcDragSourceId(id)
+  }
+
+  function handleNpcDragOver(id: string, e: React.DragEvent) {
+    e.preventDefault()
+    setNpcDragOverId(id)
+  }
+
+  function handleNpcDrop(targetId: string) {
+    if (!npcDragSourceId || npcDragSourceId === targetId) {
+      setNpcDragSourceId(null)
+      setNpcDragOverId(null)
+      return
+    }
+    const currentIds = sortedNpcs.map((n) => n.id)
+    const fromIdx = currentIds.indexOf(npcDragSourceId)
+    const toIdx = currentIds.indexOf(targetId)
+    if (fromIdx === -1 || toIdx === -1) return
+
+    const newOrder = [...currentIds]
+    newOrder.splice(fromIdx, 1)
+    newOrder.splice(toIdx, 0, npcDragSourceId)
+
+    setNpcSortOrder('custom')
+    saveCustomNpcOrder(newOrder)
+    setNpcDragSourceId(null)
+    setNpcDragOverId(null)
+  }
+
+  function handleNpcDragEnd() {
+    setNpcDragSourceId(null)
+    setNpcDragOverId(null)
   }
 
   async function handleCreateCharacter() {
@@ -657,12 +800,45 @@ export function CharactersPage() {
 
   const monsterSortBar = (
     <div className={styles.sortBar}>
+      {customMonsterOrder.length > 0 && (
+        <button
+          type="button"
+          className={`${styles.sortChip} ${monsterSortOrder === 'custom' ? styles.sortChipActive : ''}`}
+          onClick={() => setMonsterSortOrder('custom')}
+        >
+          Personalizado
+        </button>
+      )}
       {MONSTER_SORT_CHIPS.map((chip) => (
         <button
           key={chip.value}
           type="button"
           className={`${styles.sortChip} ${monsterSortOrder === chip.value ? styles.sortChipActive : ''}`}
           onClick={() => setMonsterSortOrder(chip.value)}
+        >
+          {chip.label}
+        </button>
+      ))}
+    </div>
+  )
+
+  const npcSortBar = (
+    <div className={styles.sortBar}>
+      {customNpcOrder.length > 0 && (
+        <button
+          type="button"
+          className={`${styles.sortChip} ${npcSortOrder === 'custom' ? styles.sortChipActive : ''}`}
+          onClick={() => setNpcSortOrder('custom')}
+        >
+          Personalizado
+        </button>
+      )}
+      {MONSTER_SORT_CHIPS.map((chip) => (
+        <button
+          key={chip.value}
+          type="button"
+          className={`${styles.sortChip} ${npcSortOrder === chip.value ? styles.sortChipActive : ''}`}
+          onClick={() => setNpcSortOrder(chip.value)}
         >
           {chip.label}
         </button>
@@ -872,6 +1048,13 @@ export function CharactersPage() {
               sheet={monster}
               onExport={() => handleExportMonster(monster)}
               onDelete={() => requestDeleteMonster(monster.id, monster.data.details.name)}
+              isDraggable={!isSearchMode}
+              isDragging={monsterDragSourceId === monster.id}
+              isDragOver={monsterDragOverId === monster.id}
+              onDragStart={!isSearchMode ? () => handleMonsterDragStart(monster.id) : undefined}
+              onDragOver={!isSearchMode ? (e) => handleMonsterDragOver(monster.id, e) : undefined}
+              onDrop={!isSearchMode ? () => handleMonsterDrop(monster.id) : undefined}
+              onDragEnd={!isSearchMode ? handleMonsterDragEnd : undefined}
             />
           )}
           emptyMessage="Nenhum monstro encontrado."
@@ -886,13 +1069,20 @@ export function CharactersPage() {
           skeletonCount={skeletonCount}
           importLabel="↑ Importar Monstro/NPC"
           onImport={() => handleImportClick('monster')}
-          extraHeader={monsterSortBar}
+          extraHeader={npcSortBar}
           renderItem={(npc) => (
             <MonsterSheetItem
               key={npc.id}
               sheet={npc}
               onExport={() => handleExportMonster(npc)}
               onDelete={() => requestDeleteMonster(npc.id, npc.data.details.name)}
+              isDraggable={!isSearchMode}
+              isDragging={npcDragSourceId === npc.id}
+              isDragOver={npcDragOverId === npc.id}
+              onDragStart={!isSearchMode ? () => handleNpcDragStart(npc.id) : undefined}
+              onDragOver={!isSearchMode ? (e) => handleNpcDragOver(npc.id, e) : undefined}
+              onDrop={!isSearchMode ? () => handleNpcDrop(npc.id) : undefined}
+              onDragEnd={!isSearchMode ? handleNpcDragEnd : undefined}
             />
           )}
           emptyMessage="Nenhum NPC encontrado."
