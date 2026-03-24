@@ -104,7 +104,7 @@ export function MonsterSheetPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
-  const { monster: storedMonster, status } = useMonsterSheet(uid, id ?? null)
+  const { monster: storedMonster, notFound, error } = useMonsterSheet(uid, id ?? null)
   const [sheet, setSheet] = useState<MonsterSheet | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isEditing, setIsEditing] = useState(false)
@@ -192,7 +192,20 @@ export function MonsterSheetPage() {
     })
   }
 
-  if (status === 'not-found') {
+  if (error) {
+    return (
+      <main className={styles.page}>
+        <section className={styles.notFound}>
+          <Link className={styles.backLink} to="/">← Voltar</Link>
+          <h1>Erro ao carregar ficha</h1>
+          <p>Não foi possível carregar os dados. Verifique sua conexão.</p>
+          <button onClick={() => window.location.reload()}>Tentar novamente</button>
+        </section>
+      </main>
+    )
+  }
+
+  if (notFound) {
     return (
       <main className={styles.page}>
         <section className={styles.notFound}>

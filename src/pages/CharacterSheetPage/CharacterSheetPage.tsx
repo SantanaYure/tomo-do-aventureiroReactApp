@@ -81,7 +81,7 @@ export function CharacterSheetPage() {
   const { uid } = useAuth()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { sheet: storedSheet, status } = useCharacterSheet(uid, id ?? null)
+  const { sheet: storedSheet, notFound, error } = useCharacterSheet(uid, id ?? null)
   const [sheet, setSheet] = useState<SheetWithSlots | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isAtBottom, setIsAtBottom] = useState(false)
@@ -156,7 +156,20 @@ export function CharacterSheetPage() {
     })
   }
 
-  if (status === 'not-found') {
+  if (error) {
+    return (
+      <main className={styles.page}>
+        <section className={styles.notFound}>
+          <Link className={styles.backLink} to="/">← Voltar</Link>
+          <h1>Erro ao carregar ficha</h1>
+          <p>Não foi possível carregar os dados. Verifique sua conexão.</p>
+          <button onClick={() => window.location.reload()}>Tentar novamente</button>
+        </section>
+      </main>
+    )
+  }
+
+  if (notFound) {
     return (
       <main className={styles.page}>
         <section className={styles.notFound}>
