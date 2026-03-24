@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { PrivacyPolicyModal } from '../../components/PrivacyPolicyModal/PrivacyPolicyModal'
 import styles from './RegisterPage.module.css'
 
 interface PasswordChecks {
@@ -69,6 +70,7 @@ export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -241,7 +243,13 @@ export function RegisterPage() {
             />
             <span>
               Eu aceito os{' '}
-              <Link to="/privacidade" target="_blank" rel="noopener noreferrer" className={styles.termsLink}>Termos de Uso e Política de Privacidade</Link>
+              <button
+                type="button"
+                className={styles.termsLink}
+                onClick={() => setIsPolicyModalOpen(true)}
+              >
+                Termos de Uso e Política de Privacidade
+              </button>
             </span>
           </label>
 
@@ -275,6 +283,13 @@ export function RegisterPage() {
       <footer className={styles.footer}>
         © 2025 Tomo do Aventureiro — Todos os direitos reservados
       </footer>
+
+      {isPolicyModalOpen && (
+        <PrivacyPolicyModal
+          onAccept={() => setTermsAccepted(true)}
+          onClose={() => setIsPolicyModalOpen(false)}
+        />
+      )}
     </div>
   )
 }
