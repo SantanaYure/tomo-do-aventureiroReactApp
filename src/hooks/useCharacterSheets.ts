@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
+import { collection, doc, onSnapshot, orderBy, query, writeBatch } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import {
   normalizeCharacterSheet,
@@ -42,6 +42,21 @@ export function useCharacterSheets(uid: string | null): {
             updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
           }
         })
+
+        // Migra documentos sem name_lower (criados antes da Etapa 1)
+        const needsMigration = snapshot.docs.filter((d) => typeof d.data().name_lower !== 'string')
+        if (needsMigration.length > 0) {
+          const batch = writeBatch(db)
+          needsMigration.forEach((d) => {
+            const raw = d.data()
+            const name = normalizeCharacterSheet(raw.data ?? {}).character.name
+            batch.update(doc(db, 'users', uid, 'characterSheets', d.id), {
+              name_lower: name.trim().toLocaleLowerCase('pt-BR'),
+            })
+          })
+          batch.commit().catch(() => {/* silent — não bloqueia UI */})
+        }
+
         setSheets(results)
         setIsLoading(false)
       },
