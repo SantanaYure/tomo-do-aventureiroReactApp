@@ -169,7 +169,7 @@ export function CharactersPage() {
   const { uid } = useAuth()
   const { sheets, isLoading: isLoadingSheets, error: sheetsError } = useCharacterSheets(uid)
   const { monsters, isLoading: isLoadingMonsters, error: monstersError } = useMonsterSheets(uid)
-  const [search, setSearch] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const characterFileInputRef = useRef<HTMLInputElement>(null)
@@ -179,7 +179,7 @@ export function CharactersPage() {
 
   // ── Search filtering ────────────────────────────────────────────────────────
 
-  const term = search.trim().toLowerCase()
+  const term = searchTerm.trim().toLowerCase()
 
   const filteredSheets = term
     ? sheets.filter((s) => s.data.character.name.toLowerCase().includes(term))
@@ -254,6 +254,10 @@ export function CharactersPage() {
     setImportFeedback(null)
     if (scope === 'character') characterFileInputRef.current?.click()
     else monsterFileInputRef.current?.click()
+  }
+
+  function handleSearchTermChange(event: ChangeEvent<HTMLInputElement>) {
+    setSearchTerm(event.target.value)
   }
 
   function handleCharacterImportFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -346,15 +350,15 @@ export function CharactersPage() {
             type="search"
             className={styles.searchInput}
             placeholder="Buscar por nome..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchTerm}
+            onChange={handleSearchTermChange}
             aria-label="Buscar fichas"
           />
-          {search && (
+          {searchTerm && (
             <button
               type="button"
               className={styles.clearSearch}
-              onClick={() => setSearch('')}
+              onClick={() => setSearchTerm('')}
               aria-label="Limpar busca"
             >
               ✕
