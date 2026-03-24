@@ -163,6 +163,14 @@
   text-align: center;
 }
 
+.hpCenterGroup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
 .hpManager {
   display: flex;
   flex-direction: column;
@@ -402,6 +410,8 @@
 
 .bonusActions {
   margin-top: var(--space-1);
+  display: flex;
+  justify-content: center;
 }
 
 /* ── Death Saves ── */
@@ -536,11 +546,15 @@
 
 @media (max-width: 720px) {
   .statsRow,
-  .hpRow,
   .deathRow,
-  .hitDiceRow,
   .inspirationRow {
     align-items: flex-start;
+  }
+
+  .hpRow,
+  .hitDiceRow {
+    align-items: center;
+    justify-content: center;
   }
 
   .statBox {
@@ -549,7 +563,7 @@
 
   .hitDiceControls {
     width: 100%;
-    justify-content: space-between;
+    justify-content: center;
   }
 }
 
