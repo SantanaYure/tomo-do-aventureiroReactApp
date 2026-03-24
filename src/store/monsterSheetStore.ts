@@ -473,6 +473,27 @@ function normalizeId(id: string): string {
     return normalizedId
 }
 
+function normalizeSearchName(value: string): string {
+    return value.trim().toLocaleLowerCase('pt-BR')
+}
+
+function createMonsterSheetPayload(
+    data: MonsterSheet,
+    timestamp: string,
+    createdAt = timestamp,
+    id?: string,
+) {
+    const normalizedData = normalizeMonsterSheet(data)
+
+    return {
+        ...(id ? { id } : {}),
+        data: normalizedData,
+        name_lower: normalizeSearchName(normalizedData.details.name),
+        createdAt,
+        updatedAt: timestamp,
+    }
+}
+
 // ── Import validation ─────────────────────────────────────────────────────────
 
 type ImportedMonsterSheetPayload = {
@@ -553,11 +574,7 @@ function isValidMonsterSheetPayload(data: unknown): boolean {
 export async function createMonsterSheet(uid: string): Promise<StoredMonsterSheet> {
     const data = normalizeMonsterSheet(createDefaultMonsterSheet())
     const timestamp = new Date().toISOString()
-    const payload = {
-        data,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-    }
+    const payload = createMonsterSheetPayload(data, timestamp)
     const ref = await addDoc(getCollectionRef(uid), payload)
     return { id: ref.id, ...payload }
 }
@@ -576,10 +593,7 @@ export async function saveMonsterSheet(
             : new Date().toISOString()
 
     await setDoc(docRef, {
-        id: normalizedId,
-        data: normalizeMonsterSheet(data),
-        createdAt,
-        updatedAt: new Date().toISOString(),
+        ...createMonsterSheetPayload(data, new Date().toISOString(), createdAt, normalizedId),
     })
 }
 
@@ -628,12 +642,15 @@ export async function importMonsterSheetFromJSON(
         }
 
         const timestamp = new Date().toISOString()
-        await setDoc(docRef, {
-            id: normalizedId,
-            data: normalizeMonsterSheet(payload.data),
-            createdAt: payload.createdAt ?? timestamp,
-            updatedAt: timestamp,
-        })
+        await setDoc(
+            docRef,
+            createMonsterSheetPayload(
+                payload.data,
+                timestamp,
+                payload.createdAt ?? timestamp,
+                normalizedId,
+            ),
+        )
 
         result.imported = 1
     } catch {
