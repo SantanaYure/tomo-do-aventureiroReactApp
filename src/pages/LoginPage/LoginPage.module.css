@@ -1,0 +1,400 @@
+/* ── Layout ── */
+.page {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  min-height: 100dvh;
+  width: 100%;
+}
+
+/* ── Branding (coluna esquerda) ── */
+.branding {
+  background: linear-gradient(160deg, #1a0c06 0%, #2e1408 45%, #3a1c0a 100%);
+  display: flex;
+  align-items: center;
+  padding: var(--space-12) var(--space-8);
+  position: relative;
+  overflow: hidden;
+}
+
+.branding::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.brandingInner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: var(--space-5);
+  max-width: 34rem;
+}
+
+.brandIcon {
+  font-size: 3rem;
+  display: block;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+}
+
+.brandTitle {
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 3vw, 2.6rem);
+  color: #f0e6c8;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.brandSubtitle {
+  font-family: var(--font-body);
+  font-size: var(--text-lg);
+  color: rgba(240, 230, 200, 0.65);
+  line-height: 1.65;
+}
+
+.featureList {
+  display: grid;
+  gap: var(--space-4);
+  list-style: none;
+}
+
+.featureItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.featureSymbol {
+  font-size: 1.4rem;
+  width: 2.6rem;
+  height: 2.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(196, 144, 58, 0.12);
+  border: 1px solid rgba(196, 144, 58, 0.28);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.featureName {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  color: #c4903a;
+  letter-spacing: 0.03em;
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.featureDesc {
+  font-size: var(--text-sm);
+  color: rgba(240, 230, 200, 0.55);
+  line-height: 1.55;
+}
+
+.tagline {
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  color: rgba(196, 144, 58, 0.6);
+  letter-spacing: 0.08em;
+  text-align: center;
+  border-top: 1px solid rgba(196, 144, 58, 0.18);
+  padding-top: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+/* ── Formulário (coluna direita) ── */
+.formSide {
+  background: var(--parchment-light);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-8) var(--space-5);
+}
+
+.formCard {
+  width: 100%;
+  max-width: 26rem;
+  display: grid;
+  gap: var(--space-5);
+  background: linear-gradient(180deg, rgba(255, 249, 235, 0.97), rgba(241, 227, 189, 0.93));
+  border: 3px double var(--border-dark);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  padding: var(--space-6);
+  position: relative;
+  overflow: hidden;
+}
+
+.formCard::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: calc(var(--radius-md) - 6px);
+  pointer-events: none;
+}
+
+.formCard > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Cabeçalho do card ── */
+.cardHeader {
+  text-align: center;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.cardIcon {
+  font-size: 2.2rem;
+  display: block;
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  color: var(--ink);
+  letter-spacing: 0.04em;
+}
+
+.cardSubtitle {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+
+/* ── Campos do formulário ── */
+.form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.fieldGroup {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.label {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  letter-spacing: 0.03em;
+}
+
+.input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--ink);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(122, 30, 30, 0.12);
+  outline: none;
+}
+
+.passwordWrapper {
+  position: relative;
+}
+
+.inputWithEye {
+  padding-right: 2.75rem;
+}
+
+.eyeButton {
+  position: absolute;
+  right: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+  padding: var(--space-1);
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.eyeButton:hover {
+  color: var(--accent);
+  background: none;
+}
+
+.checkboxLabel {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.checkboxLabel input {
+  width: auto;
+}
+
+/* ── Feedback ── */
+.errorMsg {
+  font-size: var(--text-sm);
+  color: var(--accent);
+  padding: var(--space-2) var(--space-3);
+  background: var(--accent-faint);
+  border: 1px solid rgba(122, 30, 30, 0.2);
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
+}
+
+.successBox {
+  font-size: var(--text-sm);
+  color: #1a5c1a;
+  padding: var(--space-3);
+  background: rgba(26, 92, 26, 0.08);
+  border: 1px solid rgba(26, 92, 26, 0.25);
+  border-radius: var(--radius-sm);
+  line-height: 1.65;
+}
+
+.resetHint {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  line-height: 1.65;
+}
+
+/* ── Botões ── */
+.primaryButton {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(180deg, rgba(122, 30, 30, 0.88), rgba(90, 18, 18, 0.96));
+  border: 1px solid rgba(122, 30, 30, 0.55);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: rgba(255, 245, 220, 0.96);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(140, 40, 40, 0.92), rgba(105, 22, 22, 0.98));
+}
+
+.primaryButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-light);
+}
+
+.dividerText {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  white-space: nowrap;
+  font-style: italic;
+}
+
+.googleButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: linear-gradient(180deg, rgba(255, 249, 235, 0.98), rgba(239, 225, 188, 0.94));
+  border: 2px double var(--border-dark);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.googleButton:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(255, 248, 229, 1), rgba(232, 214, 164, 0.97));
+  border-color: var(--border-dark);
+}
+
+.googleButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Links ── */
+.authLinks {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.textLink {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 0;
+  text-align: center;
+}
+
+.textLink:hover {
+  color: var(--accent-light);
+  background: none;
+}
+
+/* ── Rodapé ── */
+.footer {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  text-align: center;
+  font-style: italic;
+}
+
+/* ── Responsivo ── */
+@media (max-width: 780px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+
+  .branding {
+    display: none;
+  }
+
+  .formSide {
+    min-height: 100dvh;
+    padding: var(--space-6) var(--space-4);
+  }
+}

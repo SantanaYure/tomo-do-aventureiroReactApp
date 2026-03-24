@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef, type ChangeEvent } from 'react'
+import { useState, useRef, type ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  listCharacterSheets,
   deleteCharacterSheet,
   exportCharacterSheetAsJSON,
   importCharacterSheetFromJSON,
@@ -9,13 +8,15 @@ import {
   type ImportResult as CharacterImportResult,
 } from '../../store/characterSheetStore'
 import {
-  listMonsterSheets,
   deleteMonsterSheet as deleteMonster,
   exportMonsterSheetAsJSON,
   importMonsterSheetFromJSON,
   type MonsterImportResult,
   type StoredMonsterSheet,
 } from '../../store/monsterSheetStore'
+import { useAuth } from '../../context/AuthContext'
+import { useCharacterSheets } from '../../hooks/useCharacterSheets'
+import { useMonsterSheets } from '../../hooks/useMonsterSheets'
 import styles from './Home.module.css'
 
 type ImportFeedback = {
@@ -23,28 +24,45 @@ type ImportFeedback = {
   result: CharacterImportResult | MonsterImportResult
 }
 
+type PendingDelete = {
+  type: 'character' | 'monster'
+  id: string
+  name: string
+}
+
+const MAX_JSON_BYTES = 2 * 1024 * 1024
+
 export function Home() {
-  const [sheets, setSheets] = useState<StoredCharacterSheet[]>([])
-  const [monsters, setMonsters] = useState<StoredMonsterSheet[]>([])
+  const { uid } = useAuth()
+  const sheets = useCharacterSheets(uid)
+  const monsters = useMonsterSheets(uid)
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const characterFileInputRef = useRef<HTMLInputElement>(null)
   const monsterFileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    setSheets(listCharacterSheets())
-    setMonsters(listMonsterSheets())
-  }, [])
-
-  function handleDeleteSheet(id: string) {
-    if (!confirm('Excluir esta ficha permanentemente?')) return
-    deleteCharacterSheet(id)
-    setSheets((prev) => prev.filter((s) => s.id !== id))
+  function requestDeleteSheet(id: string, name: string) {
+    setPendingDelete({ type: 'character', id, name })
   }
 
-  function handleDeleteMonster(id: string) {
-    if (!confirm('Excluir este monstro ou NPC permanentemente?')) return
-    deleteMonster(id)
-    setMonsters((prev) => prev.filter((monster) => monster.id !== id))
+  function requestDeleteMonster(id: string, name: string) {
+    setPendingDelete({ type: 'monster', id, name })
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete || !uid) return
+
+    if (pendingDelete.type === 'character') {
+      await deleteCharacterSheet(uid, pendingDelete.id)
+    } else {
+      await deleteMonster(uid, pendingDelete.id)
+    }
+
+    setPendingDelete(null)
+  }
+
+  function cancelDelete() {
+    setPendingDelete(null)
   }
 
   function normalizeFileName(rawName: string, fallbackId: string, prefix: string): string {
@@ -85,22 +103,12 @@ export function Home() {
   }
 
   function handleExportSheet(sheet: StoredCharacterSheet) {
-    const json = exportCharacterSheetAsJSON(sheet.id)
-
-    if (!json) {
-      return
-    }
-
+    const json = exportCharacterSheetAsJSON(sheet)
     downloadJsonFile(json, createSheetFileName(sheet))
   }
 
   function handleExportMonster(monster: StoredMonsterSheet) {
-    const json = exportMonsterSheetAsJSON(monster.id)
-
-    if (!json) {
-      return
-    }
-
+    const json = exportMonsterSheetAsJSON(monster)
     downloadJsonFile(json, createMonsterFileName(monster))
   }
 
@@ -118,14 +126,22 @@ export function Home() {
     const file = event.target.files?.[0]
     if (!file) return
 
+    if (file.size > MAX_JSON_BYTES) {
+      setImportFeedback({
+        scope: 'character',
+        result: { imported: 0, skipped: 0, errors: 1 },
+      })
+      event.target.value = ''
+      return
+    }
+
+    if (!uid) return
+
     const reader = new FileReader()
-    reader.onload = (loadEvent) => {
+    reader.onload = async (loadEvent) => {
       const json = loadEvent.target?.result as string
-      const result = importCharacterSheetFromJSON(json)
+      const result = await importCharacterSheetFromJSON(uid, json)
       setImportFeedback({ scope: 'character', result })
-      if (result.imported > 0) {
-        setSheets(listCharacterSheets())
-      }
     }
     reader.readAsText(file)
 
@@ -136,14 +152,22 @@ export function Home() {
     const file = event.target.files?.[0]
     if (!file) return
 
+    if (file.size > MAX_JSON_BYTES) {
+      setImportFeedback({
+        scope: 'monster',
+        result: { imported: 0, skipped: 0, errors: 1 },
+      })
+      event.target.value = ''
+      return
+    }
+
+    if (!uid) return
+
     const reader = new FileReader()
-    reader.onload = (loadEvent) => {
+    reader.onload = async (loadEvent) => {
       const json = loadEvent.target?.result as string
-      const result = importMonsterSheetFromJSON(json)
+      const result = await importMonsterSheetFromJSON(uid, json)
       setImportFeedback({ scope: 'monster', result })
-      if (result.imported > 0) {
-        setMonsters(listMonsterSheets())
-      }
     }
     reader.readAsText(file)
 
@@ -179,7 +203,7 @@ export function Home() {
           ↑ Importar personagem
         </button>
         <button type="button" className={styles.secondaryButton} onClick={handleMonsterImportClick}>
-          ↑ Importar monstro
+          ↑ Importar Monstro/NPC
         </button>
         <input
           ref={characterFileInputRef}
@@ -222,7 +246,7 @@ export function Home() {
                       <button
                         type="button"
                         className={styles.deleteButton}
-                        onClick={() => handleDeleteSheet(sheet.id)}
+                        onClick={() => requestDeleteSheet(sheet.id, sheet.data.character.name)}
                       >
                         Excluir
                       </button>
@@ -256,7 +280,7 @@ export function Home() {
                       <button
                         type="button"
                         className={styles.deleteButton}
-                        onClick={() => handleDeleteMonster(monster.id)}
+                        onClick={() => requestDeleteMonster(monster.id, monster.data.details.name)}
                       >
                         Excluir
                       </button>
@@ -290,7 +314,7 @@ export function Home() {
                       <button
                         type="button"
                         className={styles.deleteButton}
-                        onClick={() => handleDeleteMonster(npc.id)}
+                        onClick={() => requestDeleteMonster(npc.id, npc.data.details.name)}
                       >
                         Excluir
                       </button>
@@ -313,6 +337,29 @@ export function Home() {
         }>
           {feedbackMessage(importFeedback)}
         </p>
+      )}
+
+      {pendingDelete && (
+        <div className={styles.dialogOverlay}>
+          <div
+            className={styles.dialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-dialog-title"
+          >
+            <p id="delete-dialog-title" className={styles.dialogTitle}>
+              Excluir "{pendingDelete.name || '(sem nome)'}" permanentemente?
+            </p>
+            <div className={styles.dialogActions}>
+              <button type="button" className={styles.deleteButton} onClick={confirmDelete}>
+                Confirmar exclusão
+              </button>
+              <button type="button" className={styles.secondaryButton} onClick={cancelDelete}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   )

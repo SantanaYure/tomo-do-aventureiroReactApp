@@ -1,21 +1,44 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 import { Home } from './pages/Home/Home'
 import { CharacterSheetPage } from './pages/CharacterSheetPage/CharacterSheetPage'
 import { NewCharacterPage } from './pages/NewCharacterPage/NewCharacterPage'
+import { LoginPage } from './pages/LoginPage/LoginPage'
+import { RegisterPage } from './pages/RegisterPage/RegisterPage'
+import { EmailVerificationPage } from './pages/EmailVerificationPage/EmailVerificationPage'
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage/PrivacyPolicyPage'
 import { MonsterSheetPage } from './pages/MonsterSheetPage/MonsterSheetPage'
 import { NewMonsterPage } from './pages/NewMonsterPage/NewMonsterPage'
 import { NotFound } from './pages/NotFound/NotFound'
+import { Header } from './components/Header/Header'
+import { ProtectedRoute } from './components/ProtectedRoute/ProtectedRoute'
+
+function AppLayout() {
+  return (
+    <>
+      <Header />
+      <Outlet />
+    </>
+  )
+}
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/ficha/nova" element={<NewCharacterPage />} />
-        <Route path="/ficha/:id" element={<CharacterSheetPage />} />
-        <Route path="/monstro/novo" element={<NewMonsterPage />} />
-        <Route path="/monstro/:id" element={<MonsterSheetPage />} />
-        <Route path="*" element={<NotFound />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/cadastro" element={<RegisterPage />} />
+        <Route path="/verificar-email" element={<EmailVerificationPage />} />
+        <Route path="/privacidade" element={<PrivacyPolicyPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/ficha/nova" element={<NewCharacterPage />} />
+            <Route path="/ficha/:id" element={<CharacterSheetPage />} />
+            <Route path="/monstro/novo" element={<NewMonsterPage />} />
+            <Route path="/monstro/:id" element={<MonsterSheetPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        </Route>
       </Routes>
     </BrowserRouter>
   )

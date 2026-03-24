@@ -1,35 +1,28 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  createDefaultMonsterSheet,
-  getMonsterSheet,
-  saveMonsterSheet,
-} from '../../store/monsterSheetStore'
+import { createMonsterSheet } from '../../store/monsterSheetStore'
+import { useAuth } from '../../context/AuthContext'
 import styles from './NewMonsterPage.module.css'
 
-const PENDING_MONSTER_CREATION_KEY = 'tomo:pending-new-monster-id'
-
 export function NewMonsterPage() {
+  const { uid } = useAuth()
   const navigate = useNavigate()
+  const creatingRef = useRef(false)
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
+    if (!uid || creatingRef.current) return
 
-    const pendingId = window.sessionStorage.getItem(PENDING_MONSTER_CREATION_KEY)
-    const monsterId = pendingId ?? globalThis.crypto.randomUUID()
+    creatingRef.current = true
 
-    if (!pendingId && !getMonsterSheet(monsterId)) {
-      window.sessionStorage.setItem(PENDING_MONSTER_CREATION_KEY, monsterId)
-      saveMonsterSheet(monsterId, createDefaultMonsterSheet())
-    }
-
-    navigate(`/monstro/${monsterId}`, {
-      replace: true,
-      state: { startEditing: true, clearPendingCreation: true },
-    })
-  }, [navigate])
+    createMonsterSheet(uid)
+      .then((stored) => {
+        navigate(`/monstro/${stored.id}`, {
+          replace: true,
+          state: { startEditing: true },
+        })
+      })
+      .catch(console.error)
+  }, [navigate, uid])
 
   return (
     <main className={styles.page}>
