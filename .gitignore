@@ -24,6 +24,7 @@ dist-ssr
 *.sw?
 
 .claude
+TOMO.md
 
 # Variáveis de ambiente (nunca commitar credenciais)
 .env
