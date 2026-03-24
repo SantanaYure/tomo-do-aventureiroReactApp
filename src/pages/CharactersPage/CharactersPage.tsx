@@ -37,6 +37,8 @@ type SheetFilterType = 'all' | 'character' | 'monster' | 'npc'
 
 type SortOrder = 'recent' | 'alpha' | 'class' | 'level-asc' | 'level-desc' | 'race' | 'custom'
 
+type MonsterSortOrder = 'recent' | 'alpha' | 'nd-asc' | 'nd-desc'
+
 const MAX_JSON_BYTES = 2 * 1024 * 1024
 
 function SheetSkeleton({ count = 3 }: { count?: number }) {
@@ -238,6 +240,13 @@ const SORT_CHIPS: { label: string; value: SortOrder }[] = [
   { label: 'Raça', value: 'race' },
 ]
 
+const MONSTER_SORT_CHIPS: { label: string; value: MonsterSortOrder }[] = [
+  { label: 'Recentes', value: 'recent' },
+  { label: 'A–Z', value: 'alpha' },
+  { label: 'ND ↑', value: 'nd-asc' },
+  { label: 'ND ↓', value: 'nd-desc' },
+]
+
 export function CharactersPage() {
   const { uid } = useAuth()
   const navigate = useNavigate()
@@ -262,6 +271,8 @@ export function CharactersPage() {
   const [customOrder, setCustomOrder] = useState<string[]>([])
   const [dragSourceId, setDragSourceId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
+
+  const [monsterSortOrder, setMonsterSortOrder] = useState<MonsterSortOrder>('recent')
 
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
@@ -397,6 +408,38 @@ export function CharactersPage() {
   const displayedNpcs = useMemo(
     () => displayedAllMonsters.filter((m) => m.data.details.kind === 'npc'),
     [displayedAllMonsters],
+  )
+
+  function applyMonsterSort(list: StoredMonsterSheet[]): StoredMonsterSheet[] {
+    if (monsterSortOrder === 'alpha') {
+      return [...list].sort((a, b) =>
+        (a.data.details.name || '').localeCompare(b.data.details.name || '', 'pt-BR'),
+      )
+    }
+    if (monsterSortOrder === 'nd-asc') {
+      return [...list].sort(
+        (a, b) =>
+          parseChallengeRating(a.data.traits.challengeRating) -
+          parseChallengeRating(b.data.traits.challengeRating),
+      )
+    }
+    if (monsterSortOrder === 'nd-desc') {
+      return [...list].sort(
+        (a, b) =>
+          parseChallengeRating(b.data.traits.challengeRating) -
+          parseChallengeRating(a.data.traits.challengeRating),
+      )
+    }
+    return list // 'recent' — já ordenado pelo Firestore
+  }
+
+  const sortedMonsters = useMemo(
+    () => applyMonsterSort(displayedMonsters),
+    [displayedMonsters, monsterSortOrder], // eslint-disable-line react-hooks/exhaustive-deps
+  )
+  const sortedNpcs = useMemo(
+    () => applyMonsterSort(displayedNpcs),
+    [displayedNpcs, monsterSortOrder], // eslint-disable-line react-hooks/exhaustive-deps
   )
 
   const loadingSheets = isSearchMode ? isSearching : isLoadingSheets
@@ -612,6 +655,21 @@ export function CharactersPage() {
     </div>
   )
 
+  const monsterSortBar = (
+    <div className={styles.sortBar}>
+      {MONSTER_SORT_CHIPS.map((chip) => (
+        <button
+          key={chip.value}
+          type="button"
+          className={`${styles.sortChip} ${monsterSortOrder === chip.value ? styles.sortChipActive : ''}`}
+          onClick={() => setMonsterSortOrder(chip.value)}
+        >
+          {chip.label}
+        </button>
+      ))}
+    </div>
+  )
+
   if (loadError) {
     return (
       <main className={styles.page}>
@@ -802,11 +860,12 @@ export function CharactersPage() {
       {showMonsterSection && (
         <SheetSection
           title="Monstros"
-          items={displayedMonsters}
+          items={sortedMonsters}
           loading={loadingMonsters}
           skeletonCount={skeletonCount}
           importLabel="↑ Importar Monstro/NPC"
           onImport={() => handleImportClick('monster')}
+          extraHeader={monsterSortBar}
           renderItem={(monster) => (
             <MonsterSheetItem
               key={monster.id}
@@ -822,11 +881,12 @@ export function CharactersPage() {
       {showNpcSection && (
         <SheetSection
           title="NPCs"
-          items={displayedNpcs}
+          items={sortedNpcs}
           loading={loadingMonsters}
           skeletonCount={skeletonCount}
           importLabel="↑ Importar Monstro/NPC"
           onImport={() => handleImportClick('monster')}
+          extraHeader={monsterSortBar}
           renderItem={(npc) => (
             <MonsterSheetItem
               key={npc.id}
