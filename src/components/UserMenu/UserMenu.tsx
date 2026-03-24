@@ -2,12 +2,10 @@ import { signOut } from 'firebase/auth'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { auth } from '../../services/firebase'
-import { clearCharacterSheetStore } from '../../store/characterSheetStore'
-import { clearMonsterSheetStore } from '../../store/monsterSheetStore'
 import styles from './UserMenu.module.css'
 
 export function UserMenu() {
-  const { user, uid } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
 
   if (!user) return null
@@ -17,12 +15,6 @@ export function UserMenu() {
   async function handleLogout() {
     try {
       await signOut(auth)
-
-      if (uid) {
-        clearCharacterSheetStore(uid)
-        clearMonsterSheetStore(uid)
-      }
-
       navigate('/login')
     } catch (error) {
       console.error('Falha ao fazer logout:', error)

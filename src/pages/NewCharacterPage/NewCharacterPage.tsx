@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { createCharacterSheet } from '../../store/characterSheetStore'
 import { useAuth } from '../../context/AuthContext'
@@ -6,11 +7,17 @@ import styles from './NewCharacterPage.module.css'
 export function NewCharacterPage() {
   const { uid } = useAuth()
   const navigate = useNavigate()
+  const [isCreating, setIsCreating] = useState(false)
 
-  function handleCreateCharacter() {
-    if (!uid) return
-    const stored = createCharacterSheet(uid)
-    navigate(`/ficha/${stored.id}`)
+  async function handleCreateCharacter() {
+    if (!uid || isCreating) return
+    setIsCreating(true)
+    try {
+      const stored = await createCharacterSheet(uid)
+      navigate(`/ficha/${stored.id}`)
+    } finally {
+      setIsCreating(false)
+    }
   }
 
   function handleCreateMonster() {
@@ -28,8 +35,8 @@ export function NewCharacterPage() {
           <p className={styles.description}>
             Cria uma ficha em branco de personagem para preencher atributos, recursos, inventário e magias.
           </p>
-          <button className={styles.submitBtn} onClick={handleCreateCharacter}>
-            Criar Personagem
+          <button className={styles.submitBtn} onClick={handleCreateCharacter} disabled={isCreating}>
+            {isCreating ? 'Criando...' : 'Criar Personagem'}
           </button>
         </section>
 

@@ -1,3 +1,11 @@
+import {
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  deleteDoc,
+  addDoc,
+} from 'firebase/firestore'
 import type {
   Attack,
   AttunementItem,
@@ -16,9 +24,7 @@ import {
   createDefaultCharacterSheet,
   defaultCharacterSheet,
 } from './defaultCharacterSheet'
-import { getScopedKey } from './storageKeys'
-
-const CHARACTER_SHEETS_BASE_KEY = 'tomo-do-aventureiro:character-sheets'
+import { db } from '../services/firebase'
 
 export interface StoredCharacterSheet {
   id: string
@@ -27,7 +33,11 @@ export interface StoredCharacterSheet {
   updatedAt: string
 }
 
-type CharacterSheetStoreMap = Record<string, StoredCharacterSheet>
+export interface ImportResult {
+  imported: number
+  skipped: number
+  errors: number
+}
 
 type LegacyCharacter = Character & {
   attunements?: string[]
@@ -37,23 +47,17 @@ type LegacyCharacter = Character & {
   backstoryPersonality?: string
 }
 
-let inMemoryStore: CharacterSheetStoreMap = {}
+// ── Firestore helpers ────────────────────────────────────────────────────────
 
-function cloneData<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T
+function getCollectionRef(uid: string) {
+  return collection(db, 'users', uid, 'characterSheets')
 }
 
-function getStorage(): Storage | null {
-  try {
-    if ('localStorage' in globalThis) {
-      return globalThis.localStorage
-    }
-  } catch {
-    return null
-  }
-
-  return null
+function getDocRef(uid: string, id: string) {
+  return doc(db, 'users', uid, 'characterSheets', id)
 }
+
+// ── Normalization ────────────────────────────────────────────────────────────
 
 function createDefaultAttunementItem(name = ''): AttunementItem {
   return {
@@ -78,17 +82,18 @@ function createDefaultAttack(): Attack {
 }
 
 function normalizeAttackAttributeKey(value: unknown): Attack['attributeKey'] {
-  if (value === 'str' || value === 'dex' || value === 'con' || value === 'int' || value === 'wis' || value === 'cha' || value === 'manual') {
+  if (
+    value === 'str' || value === 'dex' || value === 'con' ||
+    value === 'int' || value === 'wis' || value === 'cha' || value === 'manual'
+  ) {
     return value
   }
-
   if (value === 'Força') return 'str'
   if (value === 'Destreza') return 'dex'
   if (value === 'Constituição') return 'con'
   if (value === 'Inteligência') return 'int'
   if (value === 'Sabedoria') return 'wis'
   if (value === 'Carisma') return 'cha'
-
   return 'manual'
 }
 
@@ -150,22 +155,13 @@ function isResourceOrigin(value: unknown): value is ResourceOrigin {
 }
 
 function normalizeLegacyResourceOrigin(value: unknown): ResourceOrigin | undefined {
-  if (isResourceOrigin(value)) {
-    return value
-  }
-
-  if (value === 'lineage') {
-    return 'species'
-  }
-
+  if (isResourceOrigin(value)) return value
+  if (value === 'lineage') return 'species'
   return undefined
 }
 
 function normalizeLegacyResourceOriginLabel(value: string): string {
-  if (value === 'divine') {
-    return 'Divino'
-  }
-
+  if (value === 'divine') return 'Divino'
   return value
 }
 
@@ -205,8 +201,7 @@ function normalizeResource(resource: Resource | undefined): Resource {
     ...defaultResource,
     ...nextResource,
     name: typeof nextResource.name === 'string' ? nextResource.name : '',
-    description:
-      typeof nextResource.description === 'string' ? nextResource.description : '',
+    description: typeof nextResource.description === 'string' ? nextResource.description : '',
     duration: typeof nextResource.duration === 'string' ? nextResource.duration : '',
     level:
       typeof nextResource.level === 'number' && Number.isFinite(nextResource.level)
@@ -232,11 +227,12 @@ function normalizeResource(resource: Resource | undefined): Resource {
 function isValidAvatarDataUrl(value: unknown): boolean {
   if (typeof value !== 'string') return false
   if (value === '') return true
-
   return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(value)
 }
 
-function normalizeCharacter(character: Character | LegacyCharacter | undefined): Character {
+function normalizeCharacterInternal(
+  character: Character | LegacyCharacter | undefined,
+): Character {
   const defaultCharacter = createDefaultCharacterSheet().character
   const nextCharacter = (character ?? defaultCharacter) as LegacyCharacter
   const {
@@ -264,6 +260,7 @@ function normalizeCharacter(character: Character | LegacyCharacter | undefined):
         description: typeof item.description === 'string' ? item.description : '',
       }))
     : legacyAttunements.map((itemName: string) => createDefaultAttunementItem(itemName))
+
   const rawWeaponProficiencies = Array.isArray(characterData.weaponProficiencies)
     ? characterData.weaponProficiencies.filter(
         (item): item is string => typeof item === 'string',
@@ -275,10 +272,7 @@ function normalizeCharacter(character: Character | LegacyCharacter | undefined):
   )
   const normalizedWeaponMasteries = Array.isArray(characterData.weaponMasteries)
     ? characterData.weaponMasteries.reduce<string[]>((acc, item) => {
-        if (typeof item !== 'string') {
-          return acc
-        }
-
+        if (typeof item !== 'string') return acc
         return addUniqueTextEntry(acc, item)
       }, [])
     : defaultCharacter.weaponMasteries
@@ -368,14 +362,14 @@ function normalizeCharacter(character: Character | LegacyCharacter | undefined):
   }
 }
 
-function normalizeCharacterSheet<T extends CharacterSheet>(value: T): T {
+export function normalizeCharacterSheet<T extends CharacterSheet>(value: T): T {
   const defaultSheet = createDefaultCharacterSheet() as T
-  const nextValue = cloneData(value)
+  const nextValue = JSON.parse(JSON.stringify(value)) as T
 
   return {
     ...defaultSheet,
     ...nextValue,
-    character: normalizeCharacter(nextValue.character),
+    character: normalizeCharacterInternal(nextValue.character),
     resources: Array.isArray(nextValue.resources)
       ? nextValue.resources.map((resource) => normalizeResource(resource))
       : defaultSheet.resources,
@@ -395,182 +389,15 @@ function normalizeCharacterSheet<T extends CharacterSheet>(value: T): T {
   }
 }
 
-function readStore(storageKey: string): CharacterSheetStoreMap {
-  const storage = getStorage()
-
-  if (!storage) {
-    return cloneData(inMemoryStore)
-  }
-
-  const rawValue = storage.getItem(storageKey)
-
-  if (!rawValue) {
-    return {}
-  }
-
-  try {
-    const parsedValue = JSON.parse(rawValue) as CharacterSheetStoreMap
-    const normalizedValue = Object.fromEntries(
-      Object.entries(parsedValue).map(([key, entry]) => [
-        key,
-        {
-          ...entry,
-          data: normalizeCharacterSheet(entry.data),
-        },
-      ]),
-    ) as CharacterSheetStoreMap
-
-    inMemoryStore = cloneData(normalizedValue)
-
-    if (JSON.stringify(parsedValue) !== JSON.stringify(normalizedValue)) {
-      writeStore(normalizedValue, storageKey)
-    }
-
-    return normalizedValue
-  } catch {
-    storage.removeItem(storageKey)
-    inMemoryStore = {}
-    return {}
-  }
-}
-
-function writeStore(store: CharacterSheetStoreMap, storageKey: string): void {
-  const snapshot = cloneData(store)
-  inMemoryStore = snapshot
-
-  const storage = getStorage()
-
-  if (!storage) {
-    return
-  }
-
-  storage.setItem(storageKey, JSON.stringify(snapshot))
-}
-
-function createCharacterSheetId(): string {
-  return `sheet-${globalThis.crypto.randomUUID()}`
-}
+// ── ID helpers ───────────────────────────────────────────────────────────────
 
 function normalizeId(id: string): string {
   const normalizedId = id.trim()
-
-  if (!normalizedId) {
-    throw new Error('Character sheet id is required.')
-  }
-
+  if (!normalizedId) throw new Error('Character sheet id is required.')
   return normalizedId
 }
 
-export interface StoredCharacterSheet {
-  id: string
-  data: CharacterSheet
-  createdAt: string
-  updatedAt: string
-}
-
-export interface ImportResult {
-  imported: number
-  skipped: number
-  errors: number
-}
-
-export function listCharacterSheets(uid: string): StoredCharacterSheet[] {
-  const storageKey = getScopedKey(CHARACTER_SHEETS_BASE_KEY, uid)
-  return Object.values(readStore(storageKey))
-    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-    .map((entry) => cloneData(entry))
-}
-
-export function getCharacterSheet(uid: string, id: string): StoredCharacterSheet | null {
-  const storageKey = getScopedKey(CHARACTER_SHEETS_BASE_KEY, uid)
-  const storedCharacterSheet = readStore(storageKey)[normalizeId(id)]
-
-  return storedCharacterSheet ? cloneData(storedCharacterSheet) : null
-}
-
-export function createCharacterSheet(
-  uid: string,
-  initialValue: CharacterSheet = createDefaultCharacterSheet(),
-): StoredCharacterSheet {
-  const storageKey = getScopedKey(CHARACTER_SHEETS_BASE_KEY, uid)
-  const store = readStore(storageKey)
-  const id = createCharacterSheetId()
-  const timestamp = new Date().toISOString()
-  const normalizedSheet = normalizeCharacterSheet(initialValue)
-
-  const entry: StoredCharacterSheet = {
-    id,
-    data: cloneData(normalizedSheet),
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  }
-
-  store[id] = entry
-  writeStore(store, storageKey)
-
-  return cloneData(entry)
-}
-
-export function saveCharacterSheet(
-  uid: string,
-  id: string,
-  characterSheet: CharacterSheet,
-): StoredCharacterSheet {
-  const storageKey = getScopedKey(CHARACTER_SHEETS_BASE_KEY, uid)
-  const store = readStore(storageKey)
-  const normalizedId = normalizeId(id)
-  const currentEntry = store[normalizedId]
-  const timestamp = new Date().toISOString()
-  const normalizedSheet = normalizeCharacterSheet(characterSheet)
-
-  const nextEntry: StoredCharacterSheet = {
-    id: normalizedId,
-    data: cloneData(normalizedSheet),
-    createdAt: currentEntry?.createdAt ?? timestamp,
-    updatedAt: timestamp,
-  }
-
-  store[normalizedId] = nextEntry
-  writeStore(store, storageKey)
-
-  return cloneData(nextEntry)
-}
-
-export function deleteCharacterSheet(uid: string, id: string): boolean {
-  const storageKey = getScopedKey(CHARACTER_SHEETS_BASE_KEY, uid)
-  const store = readStore(storageKey)
-  const normalizedId = normalizeId(id)
-
-  if (!store[normalizedId]) {
-    return false
-  }
-
-  delete store[normalizedId]
-  writeStore(store, storageKey)
-
-  return true
-}
-
-export function createAndStoreCharacterSheet(uid: string): StoredCharacterSheet {
-  return createCharacterSheet(uid, defaultCharacterSheet)
-}
-
-export function exportCharacterSheetAsJSON(uid: string, id: string): string | null {
-  const entry = getCharacterSheet(uid, id)
-
-  if (!entry) {
-    return null
-  }
-
-  return JSON.stringify(entry, null, 2)
-}
-
-export function clearCharacterSheetStore(uid: string): void {
-  const storageKey = getScopedKey(CHARACTER_SHEETS_BASE_KEY, uid)
-  const storage = getStorage()
-  if (storage) storage.removeItem(storageKey)
-  inMemoryStore = {}
-}
+// ── Import validation ─────────────────────────────────────────────────────────
 
 type ImportedCharacterSheetPayload = {
   id: string
@@ -581,9 +408,7 @@ type ImportedCharacterSheetPayload = {
 function extractImportedCharacterSheetPayload(
   parsed: unknown,
 ): ImportedCharacterSheetPayload | null {
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return null
-  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
 
   const entry = parsed as Record<string, unknown>
 
@@ -596,22 +421,13 @@ function extractImportedCharacterSheetPayload(
   }
 
   const entries = Object.entries(entry)
-
-  if (entries.length !== 1) {
-    return null
-  }
+  if (entries.length !== 1) return null
 
   const [key, value] = entries[0]
-
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return null
-  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
 
   const nestedEntry = value as Record<string, unknown>
-
-  if (!nestedEntry.data || typeof nestedEntry.data !== 'object') {
-    return null
-  }
+  if (!nestedEntry.data || typeof nestedEntry.data !== 'object') return null
 
   return {
     id: typeof nestedEntry.id === 'string' ? nestedEntry.id : key,
@@ -622,9 +438,7 @@ function extractImportedCharacterSheetPayload(
 }
 
 function isValidCharacterSheetPayload(data: unknown): boolean {
-  if (!data || typeof data !== 'object' || Array.isArray(data)) {
-    return false
-  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false
 
   const candidate = data as Record<string, unknown>
 
@@ -645,7 +459,56 @@ function isValidCharacterSheetPayload(data: unknown): boolean {
   return true
 }
 
-export function importCharacterSheetFromJSON(uid: string, json: string): ImportResult {
+// ── Public API ────────────────────────────────────────────────────────────────
+
+export async function createCharacterSheet(
+  uid: string,
+  initialValue?: CharacterSheet,
+): Promise<StoredCharacterSheet> {
+  const data = normalizeCharacterSheet(initialValue ?? createDefaultCharacterSheet())
+  const timestamp = new Date().toISOString()
+  const payload = {
+    data,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }
+  const ref = await addDoc(getCollectionRef(uid), payload)
+  return { id: ref.id, ...payload }
+}
+
+export async function saveCharacterSheet(
+  uid: string,
+  id: string,
+  sheet: CharacterSheet,
+): Promise<void> {
+  const normalizedId = normalizeId(id)
+  const docRef = getDocRef(uid, normalizedId)
+  const existing = await getDoc(docRef)
+  const createdAt =
+    existing.exists()
+      ? (existing.data().createdAt as string | undefined) ?? new Date().toISOString()
+      : new Date().toISOString()
+
+  await setDoc(docRef, {
+    id: normalizedId,
+    data: normalizeCharacterSheet(sheet),
+    createdAt,
+    updatedAt: new Date().toISOString(),
+  })
+}
+
+export async function deleteCharacterSheet(uid: string, id: string): Promise<void> {
+  await deleteDoc(getDocRef(uid, normalizeId(id)))
+}
+
+export function exportCharacterSheetAsJSON(sheet: StoredCharacterSheet): string {
+  return JSON.stringify(sheet, null, 2)
+}
+
+export async function importCharacterSheetFromJSON(
+  uid: string,
+  json: string,
+): Promise<ImportResult> {
   const result: ImportResult = { imported: 0, skipped: 0, errors: 0 }
 
   let parsed: unknown
@@ -668,30 +531,31 @@ export function importCharacterSheetFromJSON(uid: string, json: string): ImportR
     return result
   }
 
-  const storageKey = getScopedKey(CHARACTER_SHEETS_BASE_KEY, uid)
-  const store = readStore(storageKey)
-
   try {
     const normalizedId = normalizeId(payload.id)
+    const docRef = getDocRef(uid, normalizedId)
+    const existing = await getDoc(docRef)
 
-    if (store[normalizedId]) {
+    if (existing.exists()) {
       result.skipped = 1
       return result
     }
 
     const timestamp = new Date().toISOString()
-    store[normalizedId] = {
+    await setDoc(docRef, {
       id: normalizedId,
       data: normalizeCharacterSheet(payload.data),
       createdAt: payload.createdAt ?? timestamp,
       updatedAt: timestamp,
-    }
+    })
 
     result.imported = 1
-    writeStore(store, storageKey)
   } catch {
     result.errors = 1
   }
 
   return result
 }
+
+// keep defaultCharacterSheet available for callers that need it
+export { defaultCharacterSheet }

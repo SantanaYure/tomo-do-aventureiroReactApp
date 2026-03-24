@@ -1,3 +1,11 @@
+import {
+    collection,
+    doc,
+    setDoc,
+    getDoc,
+    deleteDoc,
+    addDoc,
+} from 'firebase/firestore'
 import type {
     AttackType,
     ConditionType,
@@ -7,18 +15,15 @@ import type {
     MonsterAction,
     MonsterFeature,
     MonsterKind,
-    MonsterMovement,
     MonsterSheet,
     RechargeType,
     Spell,
     SpellcastingAbility,
     StoredMonsterSheet,
 } from '../types/system/dnd/monsterSheet'
-import { getScopedKey } from './storageKeys'
+import { db } from '../services/firebase'
 
 export type { StoredMonsterSheet } from '../types/system/dnd/monsterSheet'
-
-const MONSTER_SHEETS_BASE_KEY = 'tomo-monsters'
 
 export interface MonsterImportResult {
     imported: number
@@ -26,7 +31,17 @@ export interface MonsterImportResult {
     errors: number
 }
 
-type MonsterSheetStoreMap = Record<string, StoredMonsterSheet>
+// ── Firestore helpers ────────────────────────────────────────────────────────
+
+function getCollectionRef(uid: string) {
+    return collection(db, 'users', uid, 'monsterSheets')
+}
+
+function getDocRef(uid: string, id: string) {
+    return doc(db, 'users', uid, 'monsterSheets', id)
+}
+
+// ── Normalization ────────────────────────────────────────────────────────────
 
 const MONSTER_KINDS: readonly MonsterKind[] = ['monster', 'npc']
 
@@ -95,24 +110,6 @@ const RECHARGE_TYPES: readonly RechargeType[] = [
     'day',
 ]
 
-let inMemoryStore: MonsterSheetStoreMap = {}
-
-function cloneData<T>(value: T): T {
-    return JSON.parse(JSON.stringify(value)) as T
-}
-
-function getStorage(): Storage | null {
-    try {
-        if ('localStorage' in globalThis) {
-            return globalThis.localStorage
-        }
-    } catch {
-        return null
-    }
-
-    return null
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
@@ -167,12 +164,8 @@ function createDefaultMonsterMovement(
     id = '',
     source = '',
     distance = 0,
-): MonsterMovement {
-    return {
-        id,
-        source,
-        distance,
-    }
+) {
+    return { id, source, distance }
 }
 
 function createDefaultMonsterAction(id = ''): MonsterAction {
@@ -232,7 +225,7 @@ function normalizeMonsterFeature(value: unknown, fallbackId: string): MonsterFea
     }
 }
 
-function normalizeMonsterMovement(value: unknown, fallbackId: string): MonsterMovement {
+function normalizeMonsterMovement(value: unknown, fallbackId: string) {
     const defaultMovement = createDefaultMonsterMovement(fallbackId)
     const nextValue = isRecord(value) ? value : defaultMovement
 
@@ -493,154 +486,15 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
     }
 }
 
-function normalizeStoredMonsterSheet(
-    id: string,
-    value: unknown,
-    timestamp: string,
-): StoredMonsterSheet {
-    const nextValue = isRecord(value) ? value : {}
-
-    return {
-        id: normalizeString(nextValue.id, id),
-        data: normalizeMonsterSheet(nextValue.data),
-        createdAt: normalizeString(nextValue.createdAt, timestamp),
-        updatedAt: normalizeString(nextValue.updatedAt, timestamp),
-    }
-}
-
-function readStore(storageKey: string): MonsterSheetStoreMap {
-    const storage = getStorage()
-
-    if (!storage) {
-        return cloneData(inMemoryStore)
-    }
-
-    const rawValue = storage.getItem(storageKey)
-
-    if (!rawValue) {
-        return {}
-    }
-
-    try {
-        const parsedValue = JSON.parse(rawValue)
-
-        if (!isRecord(parsedValue)) {
-            throw new Error('Invalid monster sheet store payload.')
-        }
-
-        const timestamp = new Date().toISOString()
-        const normalizedValue = Object.fromEntries(
-            Object.entries(parsedValue).map(([key, entry]) => [
-                key,
-                normalizeStoredMonsterSheet(key, entry, timestamp),
-            ]),
-        ) as MonsterSheetStoreMap
-
-        inMemoryStore = cloneData(normalizedValue)
-
-        if (JSON.stringify(parsedValue) !== JSON.stringify(normalizedValue)) {
-            writeStore(normalizedValue, storageKey)
-        }
-
-        return normalizedValue
-    } catch {
-        storage.removeItem(storageKey)
-        inMemoryStore = {}
-        return {}
-    }
-}
-
-function writeStore(store: MonsterSheetStoreMap, storageKey: string): void {
-    const snapshot = cloneData(store)
-    inMemoryStore = snapshot
-
-    const storage = getStorage()
-
-    if (!storage) {
-        return
-    }
-
-    storage.setItem(storageKey, JSON.stringify(snapshot))
-}
+// ── ID helpers ───────────────────────────────────────────────────────────────
 
 function normalizeId(id: string): string {
     const normalizedId = id.trim()
-
-    if (!normalizedId) {
-        throw new Error('Monster sheet id is required.')
-    }
-
+    if (!normalizedId) throw new Error('Monster sheet id is required.')
     return normalizedId
 }
 
-export function listMonsterSheets(uid: string): StoredMonsterSheet[] {
-    const storageKey = getScopedKey(MONSTER_SHEETS_BASE_KEY, uid)
-    return Object.values(readStore(storageKey))
-        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-        .map((entry) => cloneData(entry))
-}
-
-export function getMonsterSheet(uid: string, id: string): StoredMonsterSheet | null {
-    const storageKey = getScopedKey(MONSTER_SHEETS_BASE_KEY, uid)
-    const storedMonsterSheet = readStore(storageKey)[normalizeId(id)]
-
-    return storedMonsterSheet ? cloneData(storedMonsterSheet) : null
-}
-
-export function saveMonsterSheet(
-    uid: string,
-    id: string,
-    data: MonsterSheet,
-): StoredMonsterSheet {
-    const storageKey = getScopedKey(MONSTER_SHEETS_BASE_KEY, uid)
-    const store = readStore(storageKey)
-    const normalizedId = normalizeId(id)
-    const currentEntry = store[normalizedId]
-    const timestamp = new Date().toISOString()
-    const normalizedSheet = normalizeMonsterSheet(data)
-
-    const nextEntry: StoredMonsterSheet = {
-        id: normalizedId,
-        data: cloneData(normalizedSheet),
-        createdAt: currentEntry?.createdAt ?? timestamp,
-        updatedAt: timestamp,
-    }
-
-    store[normalizedId] = nextEntry
-    writeStore(store, storageKey)
-
-    return cloneData(nextEntry)
-}
-
-export function deleteMonsterSheet(uid: string, id: string): void {
-    const storageKey = getScopedKey(MONSTER_SHEETS_BASE_KEY, uid)
-    const store = readStore(storageKey)
-    const normalizedId = normalizeId(id)
-
-    if (!store[normalizedId]) {
-        return
-    }
-
-    delete store[normalizedId]
-    writeStore(store, storageKey)
-}
-
-export function exportMonsterSheetAsJSON(uid: string, id: string): string | null {
-    const entry = getMonsterSheet(uid, id)
-
-    if (!entry) {
-        return null
-    }
-
-    return JSON.stringify(entry, null, 2)
-}
-
-export function clearMonsterSheetStore(uid: string): void {
-    const storageKey = getScopedKey(MONSTER_SHEETS_BASE_KEY, uid)
-    const storage = getStorage()
-    if (storage) storage.removeItem(storageKey)
-    inMemoryStore = {}
-}
+// ── Import validation ─────────────────────────────────────────────────────────
 
 type ImportedMonsterSheetPayload = {
     id: string
@@ -715,7 +569,53 @@ function isValidMonsterSheetPayload(data: unknown): boolean {
     return true
 }
 
-export function importMonsterSheetFromJSON(uid: string, json: string): MonsterImportResult {
+// ── Public API ────────────────────────────────────────────────────────────────
+
+export async function createMonsterSheet(uid: string): Promise<StoredMonsterSheet> {
+    const data = normalizeMonsterSheet(createDefaultMonsterSheet())
+    const timestamp = new Date().toISOString()
+    const payload = {
+        data,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+    }
+    const ref = await addDoc(getCollectionRef(uid), payload)
+    return { id: ref.id, ...payload }
+}
+
+export async function saveMonsterSheet(
+    uid: string,
+    id: string,
+    data: MonsterSheet,
+): Promise<void> {
+    const normalizedId = normalizeId(id)
+    const docRef = getDocRef(uid, normalizedId)
+    const existing = await getDoc(docRef)
+    const createdAt =
+        existing.exists()
+            ? (existing.data().createdAt as string | undefined) ?? new Date().toISOString()
+            : new Date().toISOString()
+
+    await setDoc(docRef, {
+        id: normalizedId,
+        data: normalizeMonsterSheet(data),
+        createdAt,
+        updatedAt: new Date().toISOString(),
+    })
+}
+
+export async function deleteMonsterSheet(uid: string, id: string): Promise<void> {
+    await deleteDoc(getDocRef(uid, normalizeId(id)))
+}
+
+export function exportMonsterSheetAsJSON(monster: StoredMonsterSheet): string {
+    return JSON.stringify(monster, null, 2)
+}
+
+export async function importMonsterSheetFromJSON(
+    uid: string,
+    json: string,
+): Promise<MonsterImportResult> {
     const result: MonsterImportResult = { imported: 0, skipped: 0, errors: 0 }
 
     let parsed: unknown
@@ -738,27 +638,25 @@ export function importMonsterSheetFromJSON(uid: string, json: string): MonsterIm
         return result
     }
 
-    const storageKey = getScopedKey(MONSTER_SHEETS_BASE_KEY, uid)
-    const store = readStore(storageKey)
-
     try {
         const normalizedId = normalizeId(payload.id)
+        const docRef = getDocRef(uid, normalizedId)
+        const existing = await getDoc(docRef)
 
-        if (store[normalizedId]) {
+        if (existing.exists()) {
             result.skipped = 1
             return result
         }
 
         const timestamp = new Date().toISOString()
-        store[normalizedId] = {
+        await setDoc(docRef, {
             id: normalizedId,
             data: normalizeMonsterSheet(payload.data),
             createdAt: payload.createdAt ?? timestamp,
             updatedAt: timestamp,
-        }
+        })
 
         result.imported = 1
-        writeStore(store, storageKey)
     } catch {
         result.errors = 1
     }

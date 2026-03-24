@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef, type ChangeEvent } from 'react'
+import { useState, useRef, type ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  listCharacterSheets,
   deleteCharacterSheet,
   exportCharacterSheetAsJSON,
   importCharacterSheetFromJSON,
@@ -9,7 +8,6 @@ import {
   type ImportResult as CharacterImportResult,
 } from '../../store/characterSheetStore'
 import {
-  listMonsterSheets,
   deleteMonsterSheet as deleteMonster,
   exportMonsterSheetAsJSON,
   importMonsterSheetFromJSON,
@@ -17,6 +15,8 @@ import {
   type StoredMonsterSheet,
 } from '../../store/monsterSheetStore'
 import { useAuth } from '../../context/AuthContext'
+import { useCharacterSheets } from '../../hooks/useCharacterSheets'
+import { useMonsterSheets } from '../../hooks/useMonsterSheets'
 import styles from './Home.module.css'
 
 type ImportFeedback = {
@@ -34,18 +34,12 @@ const MAX_JSON_BYTES = 2 * 1024 * 1024
 
 export function Home() {
   const { uid } = useAuth()
-  const [sheets, setSheets] = useState<StoredCharacterSheet[]>([])
-  const [monsters, setMonsters] = useState<StoredMonsterSheet[]>([])
+  const sheets = useCharacterSheets(uid)
+  const monsters = useMonsterSheets(uid)
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const characterFileInputRef = useRef<HTMLInputElement>(null)
   const monsterFileInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (!uid) return
-    setSheets(listCharacterSheets(uid))
-    setMonsters(listMonsterSheets(uid))
-  }, [uid])
 
   function requestDeleteSheet(id: string, name: string) {
     setPendingDelete({ type: 'character', id, name })
@@ -55,15 +49,13 @@ export function Home() {
     setPendingDelete({ type: 'monster', id, name })
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete || !uid) return
 
     if (pendingDelete.type === 'character') {
-      deleteCharacterSheet(uid, pendingDelete.id)
-      setSheets((prev) => prev.filter((s) => s.id !== pendingDelete.id))
+      await deleteCharacterSheet(uid, pendingDelete.id)
     } else {
-      deleteMonster(uid, pendingDelete.id)
-      setMonsters((prev) => prev.filter((m) => m.id !== pendingDelete.id))
+      await deleteMonster(uid, pendingDelete.id)
     }
 
     setPendingDelete(null)
@@ -111,24 +103,12 @@ export function Home() {
   }
 
   function handleExportSheet(sheet: StoredCharacterSheet) {
-    if (!uid) return
-    const json = exportCharacterSheetAsJSON(uid, sheet.id)
-
-    if (!json) {
-      return
-    }
-
+    const json = exportCharacterSheetAsJSON(sheet)
     downloadJsonFile(json, createSheetFileName(sheet))
   }
 
   function handleExportMonster(monster: StoredMonsterSheet) {
-    if (!uid) return
-    const json = exportMonsterSheetAsJSON(uid, monster.id)
-
-    if (!json) {
-      return
-    }
-
+    const json = exportMonsterSheetAsJSON(monster)
     downloadJsonFile(json, createMonsterFileName(monster))
   }
 
@@ -158,13 +138,10 @@ export function Home() {
     if (!uid) return
 
     const reader = new FileReader()
-    reader.onload = (loadEvent) => {
+    reader.onload = async (loadEvent) => {
       const json = loadEvent.target?.result as string
-      const result = importCharacterSheetFromJSON(uid, json)
+      const result = await importCharacterSheetFromJSON(uid, json)
       setImportFeedback({ scope: 'character', result })
-      if (result.imported > 0) {
-        setSheets(listCharacterSheets(uid))
-      }
     }
     reader.readAsText(file)
 
@@ -187,13 +164,10 @@ export function Home() {
     if (!uid) return
 
     const reader = new FileReader()
-    reader.onload = (loadEvent) => {
+    reader.onload = async (loadEvent) => {
       const json = loadEvent.target?.result as string
-      const result = importMonsterSheetFromJSON(uid, json)
+      const result = await importMonsterSheetFromJSON(uid, json)
       setImportFeedback({ scope: 'monster', result })
-      if (result.imported > 0) {
-        setMonsters(listMonsterSheets(uid))
-      }
     }
     reader.readAsText(file)
 

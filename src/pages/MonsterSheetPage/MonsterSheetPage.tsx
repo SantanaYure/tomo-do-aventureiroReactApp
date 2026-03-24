@@ -8,11 +8,9 @@ import { MonsterSpellsPanel } from '../../components/monster/MonsterSpellsPanel/
 import { MonsterStatsPanel } from '../../components/monster/MonsterStatsPanel/MonsterStatsPanel'
 import { MonsterTraitsPanel } from '../../components/monster/MonsterTraitsPanel/MonsterTraitsPanel'
 import type { DeepPartial } from '../../components/monster/shared'
-import {
-  getMonsterSheet,
-  saveMonsterSheet,
-} from '../../store/monsterSheetStore'
+import { saveMonsterSheet } from '../../store/monsterSheetStore'
 import { useAuth } from '../../context/AuthContext'
+import { useMonsterSheet } from '../../hooks/useMonsterSheet'
 import type { MonsterSheet } from '../../types/system/dnd/monsterSheet'
 import styles from './MonsterSheetPage.module.css'
 
@@ -22,11 +20,10 @@ type Tab = (typeof TABS)[number]
 
 type MonsterLocationState = {
   startEditing?: boolean
-  clearPendingCreation?: boolean
 }
 
 const DEFAULT_TAB: Tab = 'Detalhes'
-const PENDING_MONSTER_CREATION_KEY = 'tomo:pending-new-monster-id'
+const SAVE_DEBOUNCE_MS = 800
 
 const TAB_PANEL_IDS: Record<Tab, string> = {
   Detalhes: 'monster-sheet-panel-detalhes',
@@ -107,14 +104,22 @@ export function MonsterSheetPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
+  const { monster: storedMonster, status } = useMonsterSheet(uid, id ?? null)
   const [sheet, setSheet] = useState<MonsterSheet | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
-  const [notFound, setNotFound] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isAtBottom, setIsAtBottom] = useState(false)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasSheet = sheet !== null
+
+  // Sync Firestore snapshot → local state (only on first load)
+  useEffect(() => {
+    if (storedMonster && sheet === null) {
+      setSheet(storedMonster.data)
+    }
+  }, [storedMonster, sheet])
 
   useEffect(() => {
     if (!hasSheet) return
@@ -133,31 +138,7 @@ export function MonsterSheetPage() {
   }, [hasSheet])
 
   useEffect(() => {
-    if (!id || !uid) {
-      setNotFound(true)
-      setSheet(null)
-      return
-    }
-
-    const stored = getMonsterSheet(uid, id)
-
-    if (!stored) {
-      setNotFound(true)
-      setSheet(null)
-      return
-    }
-
-    setNotFound(false)
-    setSheet(stored.data)
-  }, [id, uid])
-
-  useEffect(() => {
     const locationState = location.state as MonsterLocationState | null
-
-    if (typeof window !== 'undefined' && locationState?.clearPendingCreation) {
-      window.sessionStorage.removeItem(PENDING_MONSTER_CREATION_KEY)
-    }
-
     setIsEditing(Boolean(locationState?.startEditing))
   }, [id, location.state])
 
@@ -170,14 +151,25 @@ export function MonsterSheetPage() {
     window.sessionStorage.setItem(getTabStorageKey(id), activeTab)
   }, [activeTab, id])
 
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+  }, [])
+
   function handleSheetChange(patch: DeepPartial<MonsterSheet>) {
     if (!sheet || !id || !uid) {
       return
     }
 
     const updatedSheet = mergeDeepPatch(sheet, patch)
-    const stored = saveMonsterSheet(uid, id, updatedSheet)
-    setSheet(stored.data)
+    setSheet(updatedSheet)
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      saveMonsterSheet(uid, id, updatedSheet).catch(console.error)
+    }, SAVE_DEBOUNCE_MS)
   }
 
   function handleToggleEditMode() {
@@ -200,13 +192,13 @@ export function MonsterSheetPage() {
     })
   }
 
-  if (notFound) {
+  if (status === 'not-found') {
     return (
       <main className={styles.page}>
         <section className={styles.notFound}>
           <Link className={styles.backLink} to="/">← Voltar</Link>
           <h1>Ficha de monstro não encontrada</h1>
-          <p>O registro pedido não foi localizado no armazenamento local.</p>
+          <p>O registro pedido não foi localizado.</p>
           <button onClick={() => navigate('/')}>Ir para o início</button>
         </section>
       </main>

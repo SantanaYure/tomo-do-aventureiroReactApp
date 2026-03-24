@@ -4,11 +4,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import type { CharacterSheet } from '../../types/system/dnd'
-import {
-  getCharacterSheet,
-  saveCharacterSheet,
-} from '../../store/characterSheetStore'
+import { saveCharacterSheet } from '../../store/characterSheetStore'
 import { useAuth } from '../../context/AuthContext'
+import { useCharacterSheet } from '../../hooks/useCharacterSheet'
 import { CharacterHeader } from '../../components/CharacterHeader/CharacterHeader'
 import { AttributesPanel } from '../../components/AttributesPanel/AttributesPanel'
 import { SkillsPanel } from '../../components/SkillsPanel/SkillsPanel'
@@ -55,6 +53,8 @@ const TAB_BUTTON_IDS: Record<Tab, string> = {
   Detalhes: 'character-sheet-tab-detalhes',
 }
 
+const SAVE_DEBOUNCE_MS = 800
+
 function getTabStorageKey(id?: string) {
   return `character-sheet-active-tab:${id ?? 'default'}`
 }
@@ -81,13 +81,21 @@ export function CharacterSheetPage() {
   const { uid } = useAuth()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { sheet: storedSheet, status } = useCharacterSheet(uid, id ?? null)
   const [sheet, setSheet] = useState<SheetWithSlots | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
-  const [notFound, setNotFound] = useState(false)
   const [isAtBottom, setIsAtBottom] = useState(false)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasSheet = sheet !== null
+
+  // Sync Firestore snapshot → local state (only on first load)
+  useEffect(() => {
+    if (storedSheet && sheet === null) {
+      setSheet(storedSheet.data as SheetWithSlots)
+    }
+  }, [storedSheet, sheet])
 
   useEffect(() => {
     if (!hasSheet) return
@@ -102,30 +110,29 @@ export function CharacterSheetPage() {
   }, [hasSheet])
 
   useEffect(() => {
-    if (!id || !uid) return
-    const stored = getCharacterSheet(uid, id)
-    if (!stored) {
-      setNotFound(true)
-      return
-    }
-    setNotFound(false)
-    setSheet(stored.data as SheetWithSlots)
-  }, [id, uid])
-
-  useEffect(() => {
     setActiveTab(readStoredTab(id))
   }, [id])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-
     window.sessionStorage.setItem(getTabStorageKey(id), activeTab)
   }, [activeTab, id])
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+  }, [])
 
   function handleUpdate(updated: SheetWithSlots) {
     if (!id || !uid) return
     setSheet(updated)
-    saveCharacterSheet(uid, id, updated)
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      saveCharacterSheet(uid, id, updated).catch(console.error)
+    }, SAVE_DEBOUNCE_MS)
   }
 
   function handleToggleEditMode() {
@@ -149,13 +156,13 @@ export function CharacterSheetPage() {
     })
   }
 
-  if (notFound) {
+  if (status === 'not-found') {
     return (
       <main className={styles.page}>
         <section className={styles.notFound}>
           <Link className={styles.backLink} to="/">← Voltar</Link>
           <h1>Ficha não encontrada</h1>
-          <p>O registro pedido não foi localizado no armazenamento local.</p>
+          <p>O registro pedido não foi localizado.</p>
           <button onClick={() => navigate('/')}>Ir para o início</button>
         </section>
       </main>
