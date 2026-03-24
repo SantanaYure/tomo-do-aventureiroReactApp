@@ -1,4 +1,4 @@
-import { useState, useRef, type ChangeEvent } from 'react'
+import { useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   createCharacterSheet,
@@ -33,9 +33,9 @@ type PendingDelete = {
   name: string
 }
 
-const MAX_JSON_BYTES = 2 * 1024 * 1024
+type SheetFilterType = 'all' | 'character' | 'monster' | 'npc'
 
-// ── SheetSkeleton ─────────────────────────────────────────────────────────────
+const MAX_JSON_BYTES = 2 * 1024 * 1024
 
 function SheetSkeleton({ count = 3 }: { count?: number }) {
   return (
@@ -55,8 +55,6 @@ function SheetSkeleton({ count = 3 }: { count?: number }) {
     </ul>
   )
 }
-
-// ── SheetSection ──────────────────────────────────────────────────────────────
 
 interface SheetSectionProps<T> {
   title: string
@@ -98,8 +96,6 @@ function SheetSection<T>({
   )
 }
 
-// ── CharacterSheetItem ────────────────────────────────────────────────────────
-
 interface CharacterSheetItemProps {
   sheet: StoredCharacterSheet
   onExport: () => void
@@ -113,7 +109,7 @@ function CharacterSheetItem({ sheet, onExport, onDelete }: CharacterSheetItemPro
   const classNames = sheet.data.character.classes
     .filter((c) => c.className)
     .map((c) => (c.level > 0 ? `${c.className} ${c.level}` : c.className))
-    .join(' / ')
+    .join(' · ')
   const meta = [race, classNames].filter(Boolean).join(' · ') || (totalLevel > 0 ? `Nível ${totalLevel}` : null)
 
   return (
@@ -135,8 +131,6 @@ function CharacterSheetItem({ sheet, onExport, onDelete }: CharacterSheetItemPro
     </li>
   )
 }
-
-// ── MonsterSheetItem ──────────────────────────────────────────────────────────
 
 interface MonsterSheetItemProps {
   sheet: StoredMonsterSheet
@@ -168,49 +162,111 @@ function MonsterSheetItem({ sheet, onExport, onDelete }: MonsterSheetItemProps) 
   )
 }
 
-// ── CharactersPage ────────────────────────────────────────────────────────────
+function normalizeFilterValue(value: string): string {
+  return value.trim().toLocaleLowerCase('pt-BR')
+}
+
+function getCharacterTotalLevel(sheet: StoredCharacterSheet): number {
+  return sheet.data.character.classes.reduce((sum, currentClass) => sum + currentClass.level, 0)
+}
+
+function getCharacterClassNames(sheet: StoredCharacterSheet): string[] {
+  return sheet.data.character.classes
+    .map((currentClass) => currentClass.className.trim())
+    .filter(Boolean)
+}
 
 export function CharactersPage() {
   const { uid } = useAuth()
   const navigate = useNavigate()
 
-  // ── Listas completas (tempo-real via onSnapshot) ─────────────────────────
   const { sheets, isLoading: isLoadingSheets, error: sheetsError } = useCharacterSheets(uid)
   const { monsters, isLoading: isLoadingMonsters, error: monstersError } = useMonsterSheets(uid)
 
-  // ── Estado de criação ────────────────────────────────────────────────────
   const [isCreatingCharacter, setIsCreatingCharacter] = useState(false)
   const [isCreatingMonster, setIsCreatingMonster] = useState(false)
 
-  // ── Busca ────────────────────────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState('')
   const { characters: searchChars, monsters: searchMonsters, isSearching, searchError, retrySearch } =
     useFirestoreSearch(uid, searchTerm)
 
-  // ── Estado local ─────────────────────────────────────────────────────────
+  const [typeFilter, setTypeFilter] = useState<SheetFilterType>('all')
+  const [levelFilter, setLevelFilter] = useState('all')
+  const [classFilter, setClassFilter] = useState('all')
+  const [raceFilter, setRaceFilter] = useState('all')
+
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const characterFileInputRef = useRef<HTMLInputElement>(null)
   const monsterFileInputRef = useRef<HTMLInputElement>(null)
 
-  // ── Modo de busca vs. lista padrão ───────────────────────────────────────
   const isSearchMode = searchTerm.trim().length > 0
 
-  const displayedSheets = isSearchMode ? searchChars : sheets
-  const displayedAllMonsters = isSearchMode ? searchMonsters : monsters
+  const baseSheets = isSearchMode ? searchChars : sheets
+  const baseAllMonsters = isSearchMode ? searchMonsters : monsters
+
+  const levelOptions = useMemo(
+    () => Array.from(new Set(baseSheets.map(getCharacterTotalLevel))).sort((left, right) => left - right),
+    [baseSheets],
+  )
+
+  const classOptions = useMemo(
+    () => Array.from(new Set(baseSheets.flatMap(getCharacterClassNames))).sort((left, right) => left.localeCompare(right, 'pt-BR')),
+    [baseSheets],
+  )
+
+  const raceOptions = useMemo(
+    () => Array.from(
+      new Set(
+        baseSheets
+          .map((sheet) => sheet.data.character.race.trim())
+          .filter(Boolean),
+      ),
+    ).sort((left, right) => left.localeCompare(right, 'pt-BR')),
+    [baseSheets],
+  )
+
+  const displayedSheets = useMemo(
+    () => baseSheets.filter((sheet) => {
+      if (typeFilter !== 'all' && typeFilter !== 'character') return false
+      if (levelFilter !== 'all' && getCharacterTotalLevel(sheet) !== Number(levelFilter)) return false
+      if (
+        classFilter !== 'all' &&
+        !getCharacterClassNames(sheet).some(
+          (className) => normalizeFilterValue(className) === normalizeFilterValue(classFilter),
+        )
+      ) {
+        return false
+      }
+      if (
+        raceFilter !== 'all' &&
+        normalizeFilterValue(sheet.data.character.race) !== normalizeFilterValue(raceFilter)
+      ) {
+        return false
+      }
+      return true
+    }),
+    [baseSheets, classFilter, levelFilter, raceFilter, typeFilter],
+  )
+
+  const displayedAllMonsters = useMemo(
+    () => baseAllMonsters.filter((monster) => {
+      if (typeFilter === 'all') return true
+      return monster.data.details.kind === typeFilter
+    }),
+    [baseAllMonsters, typeFilter],
+  )
 
   const displayedMonsters = displayedAllMonsters.filter((m) => m.data.details.kind !== 'npc')
   const displayedNpcs = displayedAllMonsters.filter((m) => m.data.details.kind === 'npc')
 
-  // Skeleton mais leve (2 itens) durante busca; padrão (3 itens) no carregamento inicial
   const loadingSheets = isSearchMode ? isSearching : isLoadingSheets
   const loadingMonsters = isSearchMode ? isSearching : isLoadingMonsters
   const skeletonCount = isSearchMode ? 2 : 3
-
-  // ── Erros de carregamento inicial ────────────────────────────────────────
   const loadError = sheetsError ?? monstersError
 
-  // ── Criação ─────────────────────────────────────────────────────────────
+  const hasActiveFilters =
+    typeFilter !== 'all' || levelFilter !== 'all' || classFilter !== 'all' || raceFilter !== 'all'
 
   async function handleCreateCharacter() {
     if (!uid || isCreatingCharacter) return
@@ -238,8 +294,6 @@ export function CharactersPage() {
     }
   }
 
-  // ── Delete ──────────────────────────────────────────────────────────────
-
   function requestDeleteSheet(id: string, name: string) {
     setPendingDelete({ type: 'character', id, name })
   }
@@ -257,8 +311,6 @@ export function CharactersPage() {
     }
     setPendingDelete(null)
   }
-
-  // ── Export ──────────────────────────────────────────────────────────────
 
   function normalizeFileName(rawName: string, fallbackId: string, prefix: string): string {
     const normalizedName = rawName
@@ -289,8 +341,6 @@ export function CharactersPage() {
     const json = exportMonsterSheetAsJSON(monster)
     downloadJsonFile(json, normalizeFileName(monster.data.details.name.trim() || monster.id, monster.id, 'tomo-monstro'))
   }
-
-  // ── Import ──────────────────────────────────────────────────────────────
 
   function handleImportClick(scope: 'character' | 'monster') {
     setImportFeedback(null)
@@ -346,7 +396,12 @@ export function CharactersPage() {
     return `Nenhum ${label.toLowerCase()} foi importado.`
   }
 
-  // ── Erro de carregamento inicial (tela inteira) ──────────────────────────
+  function clearFilters() {
+    setTypeFilter('all')
+    setLevelFilter('all')
+    setClassFilter('all')
+    setRaceFilter('all')
+  }
 
   if (loadError) {
     return (
@@ -365,8 +420,6 @@ export function CharactersPage() {
     )
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────
-
   return (
     <main className={styles.page}>
       <input
@@ -384,7 +437,6 @@ export function CharactersPage() {
         onChange={handleMonsterImportFileChange}
       />
 
-      {/* ── Page top ── */}
       <header className={styles.pageTop}>
         <div className={styles.pageTitleRow}>
           <h1 className={styles.pageTitle}>Personagens</h1>
@@ -409,7 +461,6 @@ export function CharactersPage() {
         </div>
       </header>
 
-      {/* ── Search ── */}
       <header className={styles.pageHeader}>
         <div className={styles.searchWrapper}>
           <span className={styles.searchIcon} aria-hidden="true">⚲</span>
@@ -433,7 +484,62 @@ export function CharactersPage() {
           )}
         </div>
 
-        {/* Erro inline da busca (Etapa 8) */}
+        <div className={styles.filterGrid}>
+          <label className={styles.filterField}>
+            <span>Tipo</span>
+            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as SheetFilterType)}>
+              <option value="all">Todos</option>
+              <option value="character">Personagem</option>
+              <option value="monster">Monstro</option>
+              <option value="npc">NPC</option>
+            </select>
+          </label>
+
+          <label className={styles.filterField}>
+            <span>Nível</span>
+            <select value={levelFilter} onChange={(event) => setLevelFilter(event.target.value)}>
+              <option value="all">Todos</option>
+              {levelOptions.map((level) => (
+                <option key={level} value={String(level)}>
+                  Nível {level}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.filterField}>
+            <span>Classe</span>
+            <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)}>
+              <option value="all">Todas</option>
+              {classOptions.map((className) => (
+                <option key={className} value={className}>
+                  {className}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.filterField}>
+            <span>Raça/Linhagem</span>
+            <select value={raceFilter} onChange={(event) => setRaceFilter(event.target.value)}>
+              <option value="all">Todas</option>
+              {raceOptions.map((race) => (
+                <option key={race} value={race}>
+                  {race}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {hasActiveFilters && (
+          <div className={styles.filterActions}>
+            <button type="button" className={styles.retryButton} onClick={clearFilters}>
+              Limpar filtros
+            </button>
+          </div>
+        )}
+
         {searchError && (
           <div className={styles.searchError}>
             <span>Erro ao buscar fichas.</span>
@@ -444,7 +550,6 @@ export function CharactersPage() {
         )}
       </header>
 
-      {/* ── Personagens ── */}
       <SheetSection
         title="Personagens"
         items={displayedSheets}
@@ -460,10 +565,9 @@ export function CharactersPage() {
             onDelete={() => requestDeleteSheet(sheet.id, sheet.data.character.name)}
           />
         )}
-        emptyMessage={isSearchMode ? 'Nenhuma ficha encontrada.' : 'Nenhum personagem encontrado.'}
+        emptyMessage={isSearchMode || hasActiveFilters ? 'Nenhuma ficha encontrada.' : 'Nenhum personagem encontrado.'}
       />
 
-      {/* ── Monstros & NPCs ── */}
       <SheetSection
         title="Monstros & NPCs"
         items={[...displayedMonsters, ...displayedNpcs]}
@@ -479,10 +583,9 @@ export function CharactersPage() {
             onDelete={() => requestDeleteMonster(monster.id, monster.data.details.name)}
           />
         )}
-        emptyMessage={isSearchMode ? 'Nenhum monstro ou NPC encontrado.' : 'Nenhum monstro ou NPC encontrado.'}
+        emptyMessage={isSearchMode || hasActiveFilters ? 'Nenhum monstro ou NPC encontrado.' : 'Nenhum monstro ou NPC encontrado.'}
       />
 
-      {/* ── Feedback de importação ── */}
       {importFeedback && (
         <p
           className={
@@ -495,7 +598,6 @@ export function CharactersPage() {
         </p>
       )}
 
-      {/* ── Dialog de exclusão ── */}
       {pendingDelete && (
         <div className={styles.dialogOverlay}>
           <div

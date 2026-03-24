@@ -209,10 +209,11 @@ export function CharacterSheetPage() {
     )
   }
 
-  const spellSlots = sheet.spellSlots ?? {}
+  const currentSheet = sheet
+  const spellSlots = currentSheet.spellSlots ?? {}
 
   const handleCharacterChange = (updated: SheetWithSlots['character']) => {
-    handleUpdate({ ...sheet, character: updated })
+    handleUpdate({ ...currentSheet, character: updated })
   }
 
   const activePanelId = TAB_PANEL_IDS[activeTab]
@@ -221,13 +222,13 @@ export function CharacterSheetPage() {
     return (
       <>
         <AttributesPanel
-          character={sheet.character}
-          isEditMode={sheet.isEditMode}
+          character={currentSheet.character}
+          isEditMode={currentSheet.isEditMode}
           onChangeCharacter={handleCharacterChange}
         />
         <SkillsPanel
-          character={sheet.character}
-          isEditMode={sheet.isEditMode}
+          character={currentSheet.character}
+          isEditMode={currentSheet.isEditMode}
           onChangeCharacter={handleCharacterChange}
         />
       </>
@@ -238,16 +239,16 @@ export function CharacterSheetPage() {
     return (
       <>
         <CombatPanel
-          character={sheet.character}
-          isEditMode={sheet.isEditMode}
+          character={currentSheet.character}
+          isEditMode={currentSheet.isEditMode}
           onChangeCharacter={handleCharacterChange}
         />
         <AttacksPanel
-          attacks={sheet.attacks}
-          character={sheet.character}
-          isEditMode={sheet.isEditMode}
+          attacks={currentSheet.attacks}
+          character={currentSheet.character}
+          isEditMode={currentSheet.isEditMode}
           onChangeAttacks={(updated) =>
-            handleUpdate({ ...sheet, attacks: updated })
+            handleUpdate({ ...currentSheet, attacks: updated })
           }
         />
       </>
@@ -257,14 +258,14 @@ export function CharacterSheetPage() {
   function renderSpellsTab() {
     return (
       <SpellsPanel
-        spells={sheet.spells}
-        character={sheet.character}
-        isEditMode={sheet.isEditMode}
+        spells={currentSheet.spells}
+        character={currentSheet.character}
+        isEditMode={currentSheet.isEditMode}
         onChangeCharacter={handleCharacterChange}
-        onChangeSpells={(updated) => handleUpdate({ ...sheet, spells: updated })}
+        onChangeSpells={(updated) => handleUpdate({ ...currentSheet, spells: updated })}
         slotsData={spellSlots}
         onChangeSlotsData={(updated) =>
-          handleUpdate({ ...sheet, spellSlots: updated })
+          handleUpdate({ ...currentSheet, spellSlots: updated })
         }
       />
     )
@@ -273,10 +274,10 @@ export function CharacterSheetPage() {
   function renderResourcesTab() {
     return (
       <ResourcesPanel
-        resources={sheet.resources}
-        isEditMode={sheet.isEditMode}
+        resources={currentSheet.resources}
+        isEditMode={currentSheet.isEditMode}
         onChangeResources={(updated) =>
-          handleUpdate({ ...sheet, resources: updated })
+          handleUpdate({ ...currentSheet, resources: updated })
         }
       />
     )
@@ -285,11 +286,11 @@ export function CharacterSheetPage() {
   function renderInventoryTab() {
     return (
       <InventoryPanel
-        inventory={sheet.inventory}
-        character={sheet.character}
-        isEditMode={sheet.isEditMode}
+        inventory={currentSheet.inventory}
+        character={currentSheet.character}
+        isEditMode={currentSheet.isEditMode}
         onChangeInventory={(updated) =>
-          handleUpdate({ ...sheet, inventory: updated })
+          handleUpdate({ ...currentSheet, inventory: updated })
         }
         onChangeCharacter={handleCharacterChange}
       />
@@ -299,8 +300,8 @@ export function CharacterSheetPage() {
   function renderDetailsTab() {
     return (
       <CharacterDetailsPanel
-        character={sheet.character}
-        isEditMode={sheet.isEditMode}
+        character={currentSheet.character}
+        isEditMode={currentSheet.isEditMode}
         onChangeCharacter={handleCharacterChange}
       />
     )
@@ -330,8 +331,8 @@ export function CharacterSheetPage() {
       <Link className={styles.backLink} to="/">← Voltar</Link>
 
       <CharacterHeader
-        character={sheet.character}
-        isEditMode={sheet.isEditMode}
+        character={currentSheet.character}
+        isEditMode={currentSheet.isEditMode}
         onChangeCharacter={handleCharacterChange}
       />
 
@@ -383,3 +384,4 @@ export function CharacterSheetPage() {
     </main>
   )
 }
+

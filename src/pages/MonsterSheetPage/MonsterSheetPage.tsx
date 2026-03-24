@@ -245,37 +245,39 @@ export function MonsterSheetPage() {
     )
   }
 
+  const currentSheet = sheet
+
   function renderDetailsTab() {
-    return <MonsterHeader sheet={sheet} isEditing={isEditing} onChange={handleSheetChange} />
+    return <MonsterHeader sheet={currentSheet} isEditing={isEditing} onChange={handleSheetChange} />
   }
 
   function renderCombatTab() {
     return (
       <>
-        <MonsterStatsPanel sheet={sheet} isEditing={isEditing} onChange={handleSheetChange} />
-        <MonsterTraitsPanel sheet={sheet} isEditing={isEditing} onChange={handleSheetChange} />
+        <MonsterStatsPanel sheet={currentSheet} isEditing={isEditing} onChange={handleSheetChange} />
+        <MonsterTraitsPanel sheet={currentSheet} isEditing={isEditing} onChange={handleSheetChange} />
       </>
     )
   }
 
   function renderFeaturesTab() {
-    return <MonsterFeaturesPanel sheet={sheet} isEditing={isEditing} onChange={handleSheetChange} />
+    return <MonsterFeaturesPanel sheet={currentSheet} isEditing={isEditing} onChange={handleSheetChange} />
   }
 
   function renderActionsTab() {
-    return <MonsterActionsPanel sheet={sheet} isEditing={isEditing} onChange={handleSheetChange} />
+    return <MonsterActionsPanel sheet={currentSheet} isEditing={isEditing} onChange={handleSheetChange} />
   }
 
   function renderSpellsTab() {
-    return <MonsterSpellsPanel sheet={sheet} isEditing={isEditing} onChange={handleSheetChange} />
+    return <MonsterSpellsPanel sheet={currentSheet} isEditing={isEditing} onChange={handleSheetChange} />
   }
 
   function renderLegendaryTab() {
-    if (!isEditing && sheet.legendary.actions.length === 0) {
+    if (!isEditing && currentSheet.legendary.actions.length === 0) {
       return <p className={styles.emptyTab}>Este monstro não possui ações lendárias.</p>
     }
 
-    return <LegendaryActionsPanel sheet={sheet} isEditing={isEditing} onChange={handleSheetChange} />
+    return <LegendaryActionsPanel sheet={currentSheet} isEditing={isEditing} onChange={handleSheetChange} />
   }
 
   function renderActiveTab(tab: Tab) {
@@ -347,3 +349,4 @@ export function MonsterSheetPage() {
     </main>
   )
 }
+

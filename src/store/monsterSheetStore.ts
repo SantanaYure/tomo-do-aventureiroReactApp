@@ -367,7 +367,7 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
     )
     const pointsUsed = normalizeInteger(legendary.pointsUsed, defaultSheet.legendary.pointsUsed, 0)
     const maxHp = normalizeInteger(stats.maxHp, defaultSheet.stats.maxHp)
-    const legacyHp = normalizeInteger(stats.hp, defaultSheet.stats.hpCurrent)
+    const legacyHp = normalizeInteger(rawStats?.hp, defaultSheet.stats.hpCurrent)
     const hpCurrent = normalizeInteger(stats.hpCurrent, legacyHp)
     const defaultMovement = defaultSheet.stats.movements[0] ?? createDefaultMonsterMovement()
     const movements = Array.isArray(stats.movements)
@@ -659,3 +659,4 @@ export async function importMonsterSheetFromJSON(
 
     return result
 }
+

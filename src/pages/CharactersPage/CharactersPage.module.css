@@ -528,3 +528,57 @@
     justify-content: center;
   }
 }
+
+.filterGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.filterField {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.filterField span {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.filterField select {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  outline: none;
+}
+
+.filterField select:focus {
+  border-color: var(--border-dark);
+}
+
+.filterActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 720px) {
+  .filterGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .filterGrid {
+    grid-template-columns: 1fr;
+  }
+}
