@@ -308,6 +308,7 @@ export function createDefaultMonsterSheet(): MonsterSheet {
             creatureClass: '',
             description: '',
             lore: '',
+            guide: '',
         },
         stats: {
             hpCurrent: 10,
@@ -394,6 +395,7 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
             creatureClass: normalizeString(details.creatureClass),
             description: normalizeString(details.description),
             lore: normalizeString(details.lore),
+            guide: normalizeString(details.guide),
         },
         stats: {
             hpCurrent: Math.min(hpCurrent, maxHp),

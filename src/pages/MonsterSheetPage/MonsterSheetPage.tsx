@@ -213,35 +213,35 @@ export function MonsterSheetPage() {
 
   if (error) {
     return (
-      <main className={styles.page}>
+      <div className={styles.page}>
         <section className={styles.notFound}>
           <Link className={styles.backLink} to="/">← Voltar</Link>
           <h1>Erro ao carregar ficha</h1>
           <p>Não foi possível carregar os dados. Verifique sua conexão.</p>
           <button onClick={() => window.location.reload()}>Tentar novamente</button>
         </section>
-      </main>
+      </div>
     )
   }
 
   if (notFound) {
     return (
-      <main className={styles.page}>
+      <div className={styles.page}>
         <section className={styles.notFound}>
           <Link className={styles.backLink} to="/">← Voltar</Link>
           <h1>Ficha de monstro não encontrada</h1>
           <p>O registro pedido não foi localizado.</p>
           <button onClick={() => navigate('/')}>Ir para o início</button>
         </section>
-      </main>
+      </div>
     )
   }
 
   if (!sheet) {
     return (
-      <main className={styles.page}>
+      <div className={styles.page}>
         <section className={styles.loading}>Abrindo o tomo e restaurando os dados do monstro...</section>
-      </main>
+      </div>
     )
   }
 
@@ -302,7 +302,7 @@ export function MonsterSheetPage() {
   const activePanelId = TAB_PANEL_IDS[activeTab]
 
   return (
-    <main className={styles.page} data-saving-status={savingStatus}>
+    <div className={styles.page} data-saving-status={savingStatus}>
       <Link className={styles.backLink} to="/">← Voltar</Link>
 
       <div ref={tabBarRef} className={styles.tabBarShell}>
@@ -346,7 +346,7 @@ export function MonsterSheetPage() {
       </div>
 
       <div className={styles.editToggleSentinel} ref={sentinelRef} />
-    </main>
+    </div>
   )
 }
 

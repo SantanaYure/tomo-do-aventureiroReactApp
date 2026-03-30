@@ -325,6 +325,12 @@
 }
 
 /* ── Responsivo ── */
+@media (max-width: 768px) {
+  .counters {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 600px) {
   .page {
     padding: var(--space-5) var(--space-4);

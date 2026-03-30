@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   createCharacterSheet,
@@ -23,7 +23,7 @@ import { useFirestoreSearch } from '../../hooks/useFirestoreSearch'
 import styles from './CharactersPage.module.css'
 
 type ImportFeedback = {
-  scope: 'character' | 'monster'
+  scope: 'character' | 'monster' | 'npc' | 'unknown'
   result: CharacterImportResult | MonsterImportResult
 }
 
@@ -34,6 +34,7 @@ type PendingDelete = {
 }
 
 type SheetFilterType = 'all' | 'character' | 'monster' | 'npc'
+type FilterFieldKey = 'type' | 'level' | 'class' | 'race' | 'nd'
 
 type SortOrder = 'recent' | 'alpha' | 'class' | 'level-asc' | 'level-desc' | 'race' | 'custom'
 
@@ -65,11 +66,8 @@ interface SheetSectionProps<T> {
   items: T[]
   loading: boolean
   skeletonCount?: number
-  importLabel: string
-  onImport: () => void
   renderItem: (item: T) => React.ReactNode
   emptyMessage: string
-  extraHeader?: ReactNode
 }
 
 function SheetSection<T>({
@@ -77,21 +75,14 @@ function SheetSection<T>({
   items,
   loading,
   skeletonCount = 3,
-  importLabel,
-  onImport,
   renderItem,
   emptyMessage,
-  extraHeader,
 }: SheetSectionProps<T>) {
   return (
     <section className={styles.collectionSection}>
       <div className={styles.sectionHeader}>
         <h2 className={styles.sectionTitle}>{title}</h2>
-        <button type="button" className={styles.importButton} onClick={onImport}>
-          {importLabel}
-        </button>
       </div>
-      {extraHeader}
       {loading ? (
         <SheetSkeleton count={skeletonCount} />
       ) : items.length > 0 ? (
@@ -247,6 +238,64 @@ function normalizeFilterValue(value: string): string {
   return value.trim().toLocaleLowerCase('pt-BR')
 }
 
+function getImportedSheetData(parsed: unknown): Record<string, unknown> | null {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return null
+  }
+
+  const entry = parsed as Record<string, unknown>
+
+  if (entry.data && typeof entry.data === 'object' && !Array.isArray(entry.data)) {
+    return entry.data as Record<string, unknown>
+  }
+
+  const entries = Object.values(entry)
+
+  if (entries.length !== 1) {
+    return null
+  }
+
+  const nestedEntry = entries[0]
+
+  if (!nestedEntry || typeof nestedEntry !== 'object' || Array.isArray(nestedEntry)) {
+    return null
+  }
+
+  const nestedRecord = nestedEntry as Record<string, unknown>
+
+  if (!nestedRecord.data || typeof nestedRecord.data !== 'object' || Array.isArray(nestedRecord.data)) {
+    return null
+  }
+
+  return nestedRecord.data as Record<string, unknown>
+}
+
+function detectImportedSheetType(parsed: unknown): ImportFeedback['scope'] {
+  const data = getImportedSheetData(parsed)
+
+  if (!data) {
+    return 'unknown'
+  }
+
+  if (data.character && typeof data.character === 'object') {
+    return 'character'
+  }
+
+  if (data.details && typeof data.details === 'object') {
+    const details = data.details as Record<string, unknown>
+
+    if (details.kind === 'npc') {
+      return 'npc'
+    }
+
+    if (details.kind === 'monster') {
+      return 'monster'
+    }
+  }
+
+  return 'unknown'
+}
+
 function getCharacterTotalLevel(sheet: StoredCharacterSheet): number {
   return sheet.data.character.classes.reduce((sum, currentClass) => sum + currentClass.level, 0)
 }
@@ -269,20 +318,12 @@ function parseChallengeRating(cr: string): number {
   return isNaN(parsed) ? -1 : parsed
 }
 
-const SORT_CHIPS: { label: string; value: SortOrder }[] = [
-  { label: 'Recentes', value: 'recent' },
-  { label: 'A–Z', value: 'alpha' },
-  { label: 'Classe', value: 'class' },
-  { label: 'Nível ↑', value: 'level-asc' },
-  { label: 'Nível ↓', value: 'level-desc' },
-  { label: 'Raça', value: 'race' },
-]
-
-const MONSTER_SORT_CHIPS: { label: string; value: MonsterSortOrder }[] = [
-  { label: 'Recentes', value: 'recent' },
-  { label: 'A–Z', value: 'alpha' },
-  { label: 'ND ↑', value: 'nd-asc' },
-  { label: 'ND ↓', value: 'nd-desc' },
+const FILTER_FIELD_OPTIONS: { key: FilterFieldKey; label: string }[] = [
+  { key: 'type', label: 'Tipo' },
+  { key: 'level', label: 'Nível' },
+  { key: 'class', label: 'Classe' },
+  { key: 'race', label: 'Raça/Linhagem' },
+  { key: 'nd', label: 'ND' },
 ]
 
 function applyMonsterSort(
@@ -339,6 +380,13 @@ export function CharactersPage() {
   const [classFilter, setClassFilter] = useState('all')
   const [raceFilter, setRaceFilter] = useState('all')
   const [ndFilter, setNdFilter] = useState('all')
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
+  const [draftTypeFilter, setDraftTypeFilter] = useState<SheetFilterType>('all')
+  const [draftLevelFilter, setDraftLevelFilter] = useState('all')
+  const [draftClassFilter, setDraftClassFilter] = useState('all')
+  const [draftRaceFilter, setDraftRaceFilter] = useState('all')
+  const [draftNdFilter, setDraftNdFilter] = useState('all')
+  const [draftVisibleFilters, setDraftVisibleFilters] = useState<FilterFieldKey[]>([])
 
   const [sortOrder, setSortOrder] = useState<SortOrder>('recent')
   const [customOrder, setCustomOrder] = useState<string[]>([])
@@ -357,10 +405,27 @@ export function CharactersPage() {
 
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
-  const characterFileInputRef = useRef<HTMLInputElement>(null)
-  const monsterFileInputRef = useRef<HTMLInputElement>(null)
+  const importFileInputRef = useRef<HTMLInputElement>(null)
 
   const isSearchMode = searchTerm.trim().length > 0
+
+  useEffect(() => {
+    if (!isFilterModalOpen) {
+      return
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsFilterModalOpen(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [isFilterModalOpen])
 
   useEffect(() => {
     if (!uid) return
@@ -371,7 +436,7 @@ export function CharactersPage() {
           const parsed = JSON.parse(stored)
           if (Array.isArray(parsed)) setter(parsed)
         }
-      } catch {}
+      } catch { }
     }
     load(`tomo-char-order-${uid}`, setCustomOrder)
     load(`tomo-monster-order-${uid}`, setCustomMonsterOrder)
@@ -381,19 +446,19 @@ export function CharactersPage() {
   function saveCustomOrder(newOrder: string[]) {
     if (!uid) return
     setCustomOrder(newOrder)
-    try { localStorage.setItem(`tomo-char-order-${uid}`, JSON.stringify(newOrder)) } catch {}
+    try { localStorage.setItem(`tomo-char-order-${uid}`, JSON.stringify(newOrder)) } catch { }
   }
 
   function saveCustomMonsterOrder(newOrder: string[]) {
     if (!uid) return
     setCustomMonsterOrder(newOrder)
-    try { localStorage.setItem(`tomo-monster-order-${uid}`, JSON.stringify(newOrder)) } catch {}
+    try { localStorage.setItem(`tomo-monster-order-${uid}`, JSON.stringify(newOrder)) } catch { }
   }
 
   function saveCustomNpcOrder(newOrder: string[]) {
     if (!uid) return
     setCustomNpcOrder(newOrder)
-    try { localStorage.setItem(`tomo-npc-order-${uid}`, JSON.stringify(newOrder)) } catch {}
+    try { localStorage.setItem(`tomo-npc-order-${uid}`, JSON.stringify(newOrder)) } catch { }
   }
 
   const baseSheets = isSearchMode ? searchChars : sheets
@@ -522,6 +587,7 @@ export function CharactersPage() {
 
   const hasActiveFilters =
     typeFilter !== 'all' || levelFilter !== 'all' || classFilter !== 'all' || raceFilter !== 'all' || ndFilter !== 'all'
+  const activeFilterCount = [typeFilter, levelFilter, classFilter, raceFilter, ndFilter].filter((value) => value !== 'all').length
 
   // Visibilidade das seções por tipo e por resultado de busca/filtro
   const isFiltered = isSearchMode || hasActiveFilters
@@ -712,54 +778,70 @@ export function CharactersPage() {
     downloadJsonFile(json, normalizeFileName(monster.data.details.name.trim() || monster.id, monster.id, 'tomo-monstro'))
   }
 
-  function handleImportClick(scope: 'character' | 'monster') {
+  function handleImportClick() {
     setImportFeedback(null)
-    if (scope === 'character') characterFileInputRef.current?.click()
-    else monsterFileInputRef.current?.click()
+    importFileInputRef.current?.click()
   }
 
   function handleSearchTermChange(event: ChangeEvent<HTMLInputElement>) {
     setSearchTerm(event.target.value)
   }
 
-  function handleCharacterImportFileChange(event: ChangeEvent<HTMLInputElement>) {
+  function handleImportFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
-    if (file.size > MAX_JSON_BYTES) {
-      setImportFeedback({ scope: 'character', result: { imported: 0, skipped: 0, errors: 1 } })
-      event.target.value = ''
-      return
-    }
-    if (!uid) return
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      const result = await importCharacterSheetFromJSON(uid, e.target?.result as string)
-      setImportFeedback({ scope: 'character', result })
-    }
-    reader.readAsText(file)
-    event.target.value = ''
-  }
 
-  function handleMonsterImportFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
     if (file.size > MAX_JSON_BYTES) {
-      setImportFeedback({ scope: 'monster', result: { imported: 0, skipped: 0, errors: 1 } })
+      setImportFeedback({ scope: 'unknown', result: { imported: 0, skipped: 0, errors: 1 } })
       event.target.value = ''
       return
     }
+
     if (!uid) return
+
     const reader = new FileReader()
     reader.onload = async (e) => {
-      const result = await importMonsterSheetFromJSON(uid, e.target?.result as string)
-      setImportFeedback({ scope: 'monster', result })
+      const rawJson = String(e.target?.result ?? '')
+
+      let parsed: unknown
+
+      try {
+        parsed = JSON.parse(rawJson)
+      } catch {
+        setImportFeedback({ scope: 'unknown', result: { imported: 0, skipped: 0, errors: 1 } })
+        return
+      }
+
+      const detectedType = detectImportedSheetType(parsed)
+
+      if (detectedType === 'character') {
+        const result = await importCharacterSheetFromJSON(uid, rawJson)
+        setImportFeedback({ scope: 'character', result })
+        return
+      }
+
+      if (detectedType === 'monster' || detectedType === 'npc') {
+        const result = await importMonsterSheetFromJSON(uid, rawJson)
+        setImportFeedback({ scope: detectedType, result })
+        return
+      }
+
+      setImportFeedback({ scope: 'unknown', result: { imported: 0, skipped: 0, errors: 1 } })
     }
     reader.readAsText(file)
     event.target.value = ''
   }
 
   function feedbackMessage(feedback: ImportFeedback): string {
-    const label = feedback.scope === 'character' ? 'Ficha' : 'Monstro ou NPC'
+    const label =
+      feedback.scope === 'character'
+        ? 'Personagem'
+        : feedback.scope === 'npc'
+          ? 'NPC'
+          : feedback.scope === 'monster'
+            ? 'Monstro'
+            : 'Arquivo'
+
     if (feedback.result.imported > 0) return `${label} importado com sucesso.`
     if (feedback.result.skipped > 0) return `Esse ${label.toLowerCase()} já existe e não foi sobrescrito.`
     if (feedback.result.errors > 0) return 'Não foi possível importar o arquivo selecionado.'
@@ -774,81 +856,76 @@ export function CharactersPage() {
     setNdFilter('all')
   }
 
-  const sortBar = (
-    <div className={styles.sortBar}>
-      {customOrder.length > 0 && (
-        <button
-          type="button"
-          className={`${styles.sortChip} ${sortOrder === 'custom' ? styles.sortChipActive : ''}`}
-          onClick={() => setSortOrder('custom')}
-        >
-          Personalizado
-        </button>
-      )}
-      {SORT_CHIPS.map((chip) => (
-        <button
-          key={chip.value}
-          type="button"
-          className={`${styles.sortChip} ${sortOrder === chip.value ? styles.sortChipActive : ''}`}
-          onClick={() => setSortOrder(chip.value)}
-        >
-          {chip.label}
-        </button>
-      ))}
-    </div>
-  )
+  function getActiveFilterKeys(): FilterFieldKey[] {
+    const keys: FilterFieldKey[] = []
 
-  const monsterSortBar = (
-    <div className={styles.sortBar}>
-      {customMonsterOrder.length > 0 && (
-        <button
-          type="button"
-          className={`${styles.sortChip} ${monsterSortOrder === 'custom' ? styles.sortChipActive : ''}`}
-          onClick={() => setMonsterSortOrder('custom')}
-        >
-          Personalizado
-        </button>
-      )}
-      {MONSTER_SORT_CHIPS.map((chip) => (
-        <button
-          key={chip.value}
-          type="button"
-          className={`${styles.sortChip} ${monsterSortOrder === chip.value ? styles.sortChipActive : ''}`}
-          onClick={() => setMonsterSortOrder(chip.value)}
-        >
-          {chip.label}
-        </button>
-      ))}
-    </div>
-  )
+    if (typeFilter !== 'all') keys.push('type')
+    if (levelFilter !== 'all') keys.push('level')
+    if (classFilter !== 'all') keys.push('class')
+    if (raceFilter !== 'all') keys.push('race')
+    if (ndFilter !== 'all') keys.push('nd')
 
-  const npcSortBar = (
-    <div className={styles.sortBar}>
-      {customNpcOrder.length > 0 && (
-        <button
-          type="button"
-          className={`${styles.sortChip} ${npcSortOrder === 'custom' ? styles.sortChipActive : ''}`}
-          onClick={() => setNpcSortOrder('custom')}
-        >
-          Personalizado
-        </button>
-      )}
-      {MONSTER_SORT_CHIPS.map((chip) => (
-        <button
-          key={chip.value}
-          type="button"
-          className={`${styles.sortChip} ${npcSortOrder === chip.value ? styles.sortChipActive : ''}`}
-          onClick={() => setNpcSortOrder(chip.value)}
-        >
-          {chip.label}
-        </button>
-      ))}
-    </div>
-  )
+    return keys
+  }
+
+  function clearDraftFilterValue(key: FilterFieldKey) {
+    if (key === 'type') setDraftTypeFilter('all')
+    if (key === 'level') setDraftLevelFilter('all')
+    if (key === 'class') setDraftClassFilter('all')
+    if (key === 'race') setDraftRaceFilter('all')
+    if (key === 'nd') setDraftNdFilter('all')
+  }
+
+  function syncDraftFilters() {
+    setDraftTypeFilter(typeFilter)
+    setDraftLevelFilter(levelFilter)
+    setDraftClassFilter(classFilter)
+    setDraftRaceFilter(raceFilter)
+    setDraftNdFilter(ndFilter)
+    setDraftVisibleFilters(getActiveFilterKeys())
+  }
+
+  function openFilterModal() {
+    syncDraftFilters()
+    setIsFilterModalOpen(true)
+  }
+
+  function closeFilterModal() {
+    setIsFilterModalOpen(false)
+  }
+
+  function applyDraftFilters() {
+    setTypeFilter(draftVisibleFilters.includes('type') ? draftTypeFilter : 'all')
+    setLevelFilter(draftVisibleFilters.includes('level') ? draftLevelFilter : 'all')
+    setClassFilter(draftVisibleFilters.includes('class') ? draftClassFilter : 'all')
+    setRaceFilter(draftVisibleFilters.includes('race') ? draftRaceFilter : 'all')
+    setNdFilter(draftVisibleFilters.includes('nd') ? draftNdFilter : 'all')
+    setIsFilterModalOpen(false)
+  }
+
+  function clearDraftFilters() {
+    setDraftTypeFilter('all')
+    setDraftLevelFilter('all')
+    setDraftClassFilter('all')
+    setDraftRaceFilter('all')
+    setDraftNdFilter('all')
+    setDraftVisibleFilters([])
+  }
+
+  function toggleDraftVisibleFilter(key: FilterFieldKey) {
+    setDraftVisibleFilters((previous) => {
+      if (previous.includes(key)) {
+        clearDraftFilterValue(key)
+        return previous.filter((currentKey) => currentKey !== key)
+      }
+
+      return [...previous, key]
+    })
+  }
 
   if (loadError) {
     return (
-      <main className={styles.page}>
+      <div className={styles.page}>
         <div className={styles.errorState}>
           <p className={styles.errorMessage}>Erro ao carregar fichas. Verifique sua conexão.</p>
           <button
@@ -859,31 +936,31 @@ export function CharactersPage() {
             Tentar novamente
           </button>
         </div>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className={styles.page}>
+    <div className={styles.page}>
       <input
-        ref={characterFileInputRef}
+        ref={importFileInputRef}
         type="file"
         accept=".json,application/json"
         className={styles.hiddenInput}
-        onChange={handleCharacterImportFileChange}
-      />
-      <input
-        ref={monsterFileInputRef}
-        type="file"
-        accept=".json,application/json"
-        className={styles.hiddenInput}
-        onChange={handleMonsterImportFileChange}
+        onChange={handleImportFileChange}
       />
 
       <header className={styles.pageTop}>
         <div className={styles.pageTitleRow}>
           <h1 className={styles.pageTitle}>Personagens</h1>
           <div className={styles.createActions}>
+            <button
+              type="button"
+              className={styles.createSecondary}
+              onClick={handleImportClick}
+            >
+              ↑ Importar Personagem
+            </button>
             <button
               type="button"
               className={styles.createPrimary}
@@ -927,73 +1004,17 @@ export function CharactersPage() {
           )}
         </div>
 
-        <div className={styles.filterGrid}>
-          <label className={styles.filterField}>
-            <span>Tipo</span>
-            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as SheetFilterType)}>
-              <option value="all">Todos</option>
-              <option value="character">Personagem</option>
-              <option value="monster">Monstro</option>
-              <option value="npc">NPC</option>
-            </select>
-          </label>
-
-          <label className={styles.filterField}>
-            <span>Nível</span>
-            <select value={levelFilter} onChange={(event) => setLevelFilter(event.target.value)}>
-              <option value="all">Todos</option>
-              {levelOptions.map((level) => (
-                <option key={level} value={String(level)}>
-                  Nível {level}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className={styles.filterField}>
-            <span>Classe</span>
-            <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)}>
-              <option value="all">Todas</option>
-              {classOptions.map((className) => (
-                <option key={className} value={className}>
-                  {className}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className={styles.filterField}>
-            <span>Raça/Linhagem</span>
-            <select value={raceFilter} onChange={(event) => setRaceFilter(event.target.value)}>
-              <option value="all">Todas</option>
-              {raceOptions.map((race) => (
-                <option key={race} value={race}>
-                  {race}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className={styles.filterField}>
-            <span>ND</span>
-            <select value={ndFilter} onChange={(event) => setNdFilter(event.target.value)}>
-              <option value="all">Todos</option>
-              {ndOptions.map((nd) => (
-                <option key={nd} value={nd}>
-                  {nd}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className={styles.headerTools}>
+          <button
+            type="button"
+            className={styles.filterButton}
+            onClick={openFilterModal}
+            aria-haspopup="dialog"
+            aria-expanded={isFilterModalOpen}
+          >
+            Filtrar{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+          </button>
         </div>
-
-        {hasActiveFilters && (
-          <div className={styles.filterActions}>
-            <button type="button" className={styles.retryButton} onClick={clearFilters}>
-              Limpar filtros
-            </button>
-          </div>
-        )}
 
         {searchError && (
           <div className={styles.searchError}>
@@ -1011,9 +1032,6 @@ export function CharactersPage() {
           items={sortedSheets}
           loading={loadingSheets}
           skeletonCount={skeletonCount}
-          importLabel="↑ Importar personagem"
-          onImport={() => handleImportClick('character')}
-          extraHeader={sortBar}
           renderItem={(sheet) => (
             <CharacterSheetItem
               key={sheet.id}
@@ -1039,9 +1057,6 @@ export function CharactersPage() {
           items={sortedMonsters}
           loading={loadingMonsters}
           skeletonCount={skeletonCount}
-          importLabel="↑ Importar Monstro/NPC"
-          onImport={() => handleImportClick('monster')}
-          extraHeader={monsterSortBar}
           renderItem={(monster) => (
             <MonsterSheetItem
               key={monster.id}
@@ -1067,9 +1082,6 @@ export function CharactersPage() {
           items={sortedNpcs}
           loading={loadingMonsters}
           skeletonCount={skeletonCount}
-          importLabel="↑ Importar Monstro/NPC"
-          onImport={() => handleImportClick('monster')}
-          extraHeader={npcSortBar}
           renderItem={(npc) => (
             <MonsterSheetItem
               key={npc.id}
@@ -1101,6 +1113,133 @@ export function CharactersPage() {
         </p>
       )}
 
+      {isFilterModalOpen && (
+        <div className={styles.dialogOverlay} onClick={closeFilterModal}>
+          <div
+            className={styles.filterDialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="filters-dialog-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className={styles.filterDialogHeader}>
+              <div>
+                <p className={styles.filterDialogEyebrow}>Refinar lista</p>
+                <h2 id="filters-dialog-title" className={styles.filterDialogTitle}>Filtros</h2>
+              </div>
+              <button
+                type="button"
+                className={styles.filterDialogClose}
+                onClick={closeFilterModal}
+                aria-label="Fechar filtros"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className={styles.filterPicker}>
+              <p className={styles.filterPickerLabel}>Escolha quais critérios entrarão no combo</p>
+              <div className={styles.filterPickerChips}>
+                {FILTER_FIELD_OPTIONS.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    className={`${styles.filterPickerChip} ${draftVisibleFilters.includes(option.key) ? styles.filterPickerChipActive : ''}`}
+                    onClick={() => toggleDraftVisibleFilter(option.key)}
+                    aria-pressed={draftVisibleFilters.includes(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {draftVisibleFilters.length > 0 ? (
+              <div className={styles.filterGrid}>
+                {draftVisibleFilters.includes('type') && (
+                  <label className={styles.filterField}>
+                    <span>Tipo</span>
+                    <select value={draftTypeFilter} onChange={(event) => setDraftTypeFilter(event.target.value as SheetFilterType)}>
+                      <option value="all">Todos</option>
+                      <option value="character">Personagem</option>
+                      <option value="monster">Monstro</option>
+                      <option value="npc">NPC</option>
+                    </select>
+                  </label>
+                )}
+
+                {draftVisibleFilters.includes('level') && (
+                  <label className={styles.filterField}>
+                    <span>Nível</span>
+                    <select value={draftLevelFilter} onChange={(event) => setDraftLevelFilter(event.target.value)}>
+                      <option value="all">Todos</option>
+                      {levelOptions.map((level) => (
+                        <option key={level} value={String(level)}>
+                          Nível {level}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {draftVisibleFilters.includes('class') && (
+                  <label className={styles.filterField}>
+                    <span>Classe</span>
+                    <select value={draftClassFilter} onChange={(event) => setDraftClassFilter(event.target.value)}>
+                      <option value="all">Todas</option>
+                      {classOptions.map((className) => (
+                        <option key={className} value={className}>
+                          {className}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {draftVisibleFilters.includes('race') && (
+                  <label className={styles.filterField}>
+                    <span>Raça/Linhagem</span>
+                    <select value={draftRaceFilter} onChange={(event) => setDraftRaceFilter(event.target.value)}>
+                      <option value="all">Todas</option>
+                      {raceOptions.map((race) => (
+                        <option key={race} value={race}>
+                          {race}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {draftVisibleFilters.includes('nd') && (
+                  <label className={styles.filterField}>
+                    <span>ND</span>
+                    <select value={draftNdFilter} onChange={(event) => setDraftNdFilter(event.target.value)}>
+                      <option value="all">Todos</option>
+                      {ndOptions.map((nd) => (
+                        <option key={nd} value={nd}>
+                          {nd}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+            ) : (
+              <p className={styles.filterHint}>Nenhum critério selecionado ainda. Escolha acima os filtros que deseja usar.</p>
+            )}
+
+            <div className={styles.filterDialogActions}>
+              <button type="button" className={styles.createSecondary} onClick={clearDraftFilters}>
+                Limpar seleção
+              </button>
+              <button type="button" className={styles.createPrimary} onClick={applyDraftFilters}>
+                Aplicar filtros
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {pendingDelete && (
         <div className={styles.dialogOverlay}>
           <div
@@ -1127,6 +1266,6 @@ export function CharactersPage() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   )
 }

@@ -6,6 +6,49 @@ import styles from './MonsterTraitsPanel.module.css'
 
 const XP_FORMATTER = new Intl.NumberFormat('pt-BR')
 
+function normalizeText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
+function calculateModifier(score: number): number {
+  return Math.floor((score - 10) / 2)
+}
+
+function getPerceptionSkillBonus(skills: string[]): number | null {
+  for (const skill of skills) {
+    const normalizedSkill = normalizeText(skill)
+
+    if (!normalizedSkill.includes('percepcao') && !normalizedSkill.includes('perception')) {
+      continue
+    }
+
+    const match = skill.match(/([+-]?\d+)/)
+
+    if (match) {
+      const parsed = Number(match[1])
+
+      if (Number.isFinite(parsed)) {
+        return parsed
+      }
+    }
+  }
+
+  return null
+}
+
+function calculatePassivePerception(sheet: MonsterSheet): number {
+  const perceptionBonus = getPerceptionSkillBonus(sheet.traits.skills)
+
+  if (perceptionBonus !== null) {
+    return 10 + perceptionBonus
+  }
+
+  return 10 + calculateModifier(sheet.stats.wisdom)
+}
+
 function parseLines(value: string): string[] {
   const entries = value
     .split('\n')
@@ -52,6 +95,7 @@ export function MonsterTraitsPanel({
   onChange,
 }: MonsterComponentProps) {
   const { traits } = sheet
+  const passivePerception = calculatePassivePerception(sheet)
   const [savingThrowsDraft, setSavingThrowsDraft] = useState(formatLines(sheet.traits.savingThrows))
   const [skillsDraft, setSkillsDraft] = useState(formatLines(sheet.traits.skills))
   const [languagesDraft, setLanguagesDraft] = useState(formatLines(sheet.traits.languages))
@@ -220,6 +264,11 @@ export function MonsterTraitsPanel({
                 onChange={(event) => updateTraits({ xp: Number(event.target.value) || 0 })}
               />
             </label>
+
+            <div className={`${styles.field} ${styles.ratingCard}`}>
+              Percepcao Passiva
+              <strong className={styles.ratingValue}>{passivePerception}</strong>
+            </div>
           </div>
         </div>
       ) : hasVisibleContent ? (
@@ -241,6 +290,11 @@ export function MonsterTraitsPanel({
               <span className={styles.ratingLabel}>XP</span>
               <strong className={styles.ratingValue}>{XP_FORMATTER.format(traits.xp)}</strong>
             </div>
+
+            <div className={styles.ratingCard}>
+              <span className={styles.ratingLabel}>Percepcao Passiva</span>
+              <strong className={styles.ratingValue}>{passivePerception}</strong>
+            </div>
           </div>
         </div>
       ) : (
@@ -255,6 +309,11 @@ export function MonsterTraitsPanel({
             <div className={styles.ratingCard}>
               <span className={styles.ratingLabel}>XP</span>
               <strong className={styles.ratingValue}>{XP_FORMATTER.format(traits.xp)}</strong>
+            </div>
+
+            <div className={styles.ratingCard}>
+              <span className={styles.ratingLabel}>Percepcao Passiva</span>
+              <strong className={styles.ratingValue}>{passivePerception}</strong>
             </div>
           </div>
         </div>

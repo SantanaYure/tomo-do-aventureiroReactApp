@@ -15,7 +15,7 @@ const LEVEL_LABEL: Record<number, string> = {
   7: '7º nível', 8: '8º nível', 9: '9º nível',
 }
 
-const SCHOOLS = ['Abjuração','Adivinhação','Conjuração','Encantamento','Evocação','Ilusão','Necromancia','Transmutação']
+const SCHOOLS = ['Abjuração', 'Adivinhação', 'Conjuração', 'Encantamento', 'Evocação', 'Ilusão', 'Necromancia', 'Transmutação']
 const SPELLCASTING_OPTIONS: SpellcastingAbility[] = [
   '',
   'Força',
@@ -81,6 +81,7 @@ export function SpellsPanel({
   onChangeSlotsData,
 }: SpellsPanelProps) {
   const [expandedLevels, setExpandedLevels] = useState<Set<number>>(new Set([0]))
+  const [materialDrafts, setMaterialDrafts] = useState<Record<number, string>>({})
   const proficiencyBonus = calcProficiencyBonus(character.classes)
   const spellcastingModifier = getSpellcastingModifier(character)
   const spellAttackBonus =
@@ -114,11 +115,30 @@ export function SpellsPanel({
   }
 
   function addSpell(level: number) {
+    setMaterialDrafts({})
     onChangeSpells([...spells, { ...createSpell(), level }])
   }
 
   function removeSpell(index: number) {
+    setMaterialDrafts({})
     onChangeSpells(spells.filter((_, spellIndex) => spellIndex !== index))
+  }
+
+  function setMaterialDraft(index: number, value: string) {
+    setMaterialDrafts((previous) => ({ ...previous, [index]: value }))
+    setSpell(index, { components: parseMaterialComponents(value) })
+  }
+
+  function clearMaterialDraft(index: number) {
+    setMaterialDrafts((previous) => {
+      if (!(index in previous)) {
+        return previous
+      }
+
+      const next = { ...previous }
+      delete next[index]
+      return next
+    })
   }
 
   function setSlot(level: number, field: 'current' | 'max', value: number) {
@@ -293,11 +313,10 @@ export function SpellsPanel({
                           <input
                             className={styles.materialsInput}
                             type="text"
-                            value={formatMaterialComponents(spell.components)}
+                            value={materialDrafts[globalIndex] ?? formatMaterialComponents(spell.components)}
                             placeholder="Componentes materiais"
-                            onChange={(e) =>
-                              setSpell(globalIndex, { components: parseMaterialComponents(e.target.value) })
-                            }
+                            onChange={(e) => setMaterialDraft(globalIndex, e.target.value)}
+                            onBlur={() => clearMaterialDraft(globalIndex)}
                           />
 
                           <textarea

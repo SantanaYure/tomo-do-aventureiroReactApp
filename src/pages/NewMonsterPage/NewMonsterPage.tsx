@@ -25,8 +25,8 @@ export function NewMonsterPage() {
   }, [navigate, uid])
 
   return (
-    <main className={styles.page}>
+    <div className={styles.page}>
       <section className={styles.loading}>Criando uma nova ficha de monstro e preparando o tomo...</section>
-    </main>
+    </div>
   )
 }

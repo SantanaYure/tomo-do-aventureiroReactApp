@@ -162,7 +162,7 @@ export function Home() {
     .slice(0, 4)
 
   return (
-    <main className={styles.page}>
+    <div className={styles.page}>
       {/* Saudação */}
       <section className={styles.greeting}>
         <h1 className={styles.greetingTitle}>
@@ -217,6 +217,6 @@ export function Home() {
           </ul>
         )}
       </section>
-    </main>
+    </div>
   )
 }
