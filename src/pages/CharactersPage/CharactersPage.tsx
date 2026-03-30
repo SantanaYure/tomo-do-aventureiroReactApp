@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   createCharacterSheet,
@@ -34,6 +34,7 @@ type PendingDelete = {
 }
 
 type SheetFilterType = 'all' | 'character' | 'monster' | 'npc'
+type FilterFieldKey = 'type' | 'level' | 'class' | 'race' | 'nd'
 
 type SortOrder = 'recent' | 'alpha' | 'class' | 'level-asc' | 'level-desc' | 'race' | 'custom'
 
@@ -67,7 +68,6 @@ interface SheetSectionProps<T> {
   skeletonCount?: number
   renderItem: (item: T) => React.ReactNode
   emptyMessage: string
-  extraHeader?: ReactNode
 }
 
 function SheetSection<T>({
@@ -77,14 +77,12 @@ function SheetSection<T>({
   skeletonCount = 3,
   renderItem,
   emptyMessage,
-  extraHeader,
 }: SheetSectionProps<T>) {
   return (
     <section className={styles.collectionSection}>
       <div className={styles.sectionHeader}>
         <h2 className={styles.sectionTitle}>{title}</h2>
       </div>
-      {extraHeader}
       {loading ? (
         <SheetSkeleton count={skeletonCount} />
       ) : items.length > 0 ? (
@@ -320,20 +318,12 @@ function parseChallengeRating(cr: string): number {
   return isNaN(parsed) ? -1 : parsed
 }
 
-const SORT_CHIPS: { label: string; value: SortOrder }[] = [
-  { label: 'Recentes', value: 'recent' },
-  { label: 'A–Z', value: 'alpha' },
-  { label: 'Classe', value: 'class' },
-  { label: 'Nível ↑', value: 'level-asc' },
-  { label: 'Nível ↓', value: 'level-desc' },
-  { label: 'Raça', value: 'race' },
-]
-
-const MONSTER_SORT_CHIPS: { label: string; value: MonsterSortOrder }[] = [
-  { label: 'Recentes', value: 'recent' },
-  { label: 'A–Z', value: 'alpha' },
-  { label: 'ND ↑', value: 'nd-asc' },
-  { label: 'ND ↓', value: 'nd-desc' },
+const FILTER_FIELD_OPTIONS: { key: FilterFieldKey; label: string }[] = [
+  { key: 'type', label: 'Tipo' },
+  { key: 'level', label: 'Nível' },
+  { key: 'class', label: 'Classe' },
+  { key: 'race', label: 'Raça/Linhagem' },
+  { key: 'nd', label: 'ND' },
 ]
 
 function applyMonsterSort(
@@ -390,6 +380,13 @@ export function CharactersPage() {
   const [classFilter, setClassFilter] = useState('all')
   const [raceFilter, setRaceFilter] = useState('all')
   const [ndFilter, setNdFilter] = useState('all')
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
+  const [draftTypeFilter, setDraftTypeFilter] = useState<SheetFilterType>('all')
+  const [draftLevelFilter, setDraftLevelFilter] = useState('all')
+  const [draftClassFilter, setDraftClassFilter] = useState('all')
+  const [draftRaceFilter, setDraftRaceFilter] = useState('all')
+  const [draftNdFilter, setDraftNdFilter] = useState('all')
+  const [draftVisibleFilters, setDraftVisibleFilters] = useState<FilterFieldKey[]>([])
 
   const [sortOrder, setSortOrder] = useState<SortOrder>('recent')
   const [customOrder, setCustomOrder] = useState<string[]>([])
@@ -411,6 +408,24 @@ export function CharactersPage() {
   const importFileInputRef = useRef<HTMLInputElement>(null)
 
   const isSearchMode = searchTerm.trim().length > 0
+
+  useEffect(() => {
+    if (!isFilterModalOpen) {
+      return
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsFilterModalOpen(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [isFilterModalOpen])
 
   useEffect(() => {
     if (!uid) return
@@ -572,6 +587,7 @@ export function CharactersPage() {
 
   const hasActiveFilters =
     typeFilter !== 'all' || levelFilter !== 'all' || classFilter !== 'all' || raceFilter !== 'all' || ndFilter !== 'all'
+  const activeFilterCount = [typeFilter, levelFilter, classFilter, raceFilter, ndFilter].filter((value) => value !== 'all').length
 
   // Visibilidade das seções por tipo e por resultado de busca/filtro
   const isFiltered = isSearchMode || hasActiveFilters
@@ -840,77 +856,72 @@ export function CharactersPage() {
     setNdFilter('all')
   }
 
-  const sortBar = (
-    <div className={styles.sortBar}>
-      {customOrder.length > 0 && (
-        <button
-          type="button"
-          className={`${styles.sortChip} ${sortOrder === 'custom' ? styles.sortChipActive : ''}`}
-          onClick={() => setSortOrder('custom')}
-        >
-          Personalizado
-        </button>
-      )}
-      {SORT_CHIPS.map((chip) => (
-        <button
-          key={chip.value}
-          type="button"
-          className={`${styles.sortChip} ${sortOrder === chip.value ? styles.sortChipActive : ''}`}
-          onClick={() => setSortOrder(chip.value)}
-        >
-          {chip.label}
-        </button>
-      ))}
-    </div>
-  )
+  function getActiveFilterKeys(): FilterFieldKey[] {
+    const keys: FilterFieldKey[] = []
 
-  const monsterSortBar = (
-    <div className={styles.sortBar}>
-      {customMonsterOrder.length > 0 && (
-        <button
-          type="button"
-          className={`${styles.sortChip} ${monsterSortOrder === 'custom' ? styles.sortChipActive : ''}`}
-          onClick={() => setMonsterSortOrder('custom')}
-        >
-          Personalizado
-        </button>
-      )}
-      {MONSTER_SORT_CHIPS.map((chip) => (
-        <button
-          key={chip.value}
-          type="button"
-          className={`${styles.sortChip} ${monsterSortOrder === chip.value ? styles.sortChipActive : ''}`}
-          onClick={() => setMonsterSortOrder(chip.value)}
-        >
-          {chip.label}
-        </button>
-      ))}
-    </div>
-  )
+    if (typeFilter !== 'all') keys.push('type')
+    if (levelFilter !== 'all') keys.push('level')
+    if (classFilter !== 'all') keys.push('class')
+    if (raceFilter !== 'all') keys.push('race')
+    if (ndFilter !== 'all') keys.push('nd')
 
-  const npcSortBar = (
-    <div className={styles.sortBar}>
-      {customNpcOrder.length > 0 && (
-        <button
-          type="button"
-          className={`${styles.sortChip} ${npcSortOrder === 'custom' ? styles.sortChipActive : ''}`}
-          onClick={() => setNpcSortOrder('custom')}
-        >
-          Personalizado
-        </button>
-      )}
-      {MONSTER_SORT_CHIPS.map((chip) => (
-        <button
-          key={chip.value}
-          type="button"
-          className={`${styles.sortChip} ${npcSortOrder === chip.value ? styles.sortChipActive : ''}`}
-          onClick={() => setNpcSortOrder(chip.value)}
-        >
-          {chip.label}
-        </button>
-      ))}
-    </div>
-  )
+    return keys
+  }
+
+  function clearDraftFilterValue(key: FilterFieldKey) {
+    if (key === 'type') setDraftTypeFilter('all')
+    if (key === 'level') setDraftLevelFilter('all')
+    if (key === 'class') setDraftClassFilter('all')
+    if (key === 'race') setDraftRaceFilter('all')
+    if (key === 'nd') setDraftNdFilter('all')
+  }
+
+  function syncDraftFilters() {
+    setDraftTypeFilter(typeFilter)
+    setDraftLevelFilter(levelFilter)
+    setDraftClassFilter(classFilter)
+    setDraftRaceFilter(raceFilter)
+    setDraftNdFilter(ndFilter)
+    setDraftVisibleFilters(getActiveFilterKeys())
+  }
+
+  function openFilterModal() {
+    syncDraftFilters()
+    setIsFilterModalOpen(true)
+  }
+
+  function closeFilterModal() {
+    setIsFilterModalOpen(false)
+  }
+
+  function applyDraftFilters() {
+    setTypeFilter(draftVisibleFilters.includes('type') ? draftTypeFilter : 'all')
+    setLevelFilter(draftVisibleFilters.includes('level') ? draftLevelFilter : 'all')
+    setClassFilter(draftVisibleFilters.includes('class') ? draftClassFilter : 'all')
+    setRaceFilter(draftVisibleFilters.includes('race') ? draftRaceFilter : 'all')
+    setNdFilter(draftVisibleFilters.includes('nd') ? draftNdFilter : 'all')
+    setIsFilterModalOpen(false)
+  }
+
+  function clearDraftFilters() {
+    setDraftTypeFilter('all')
+    setDraftLevelFilter('all')
+    setDraftClassFilter('all')
+    setDraftRaceFilter('all')
+    setDraftNdFilter('all')
+    setDraftVisibleFilters([])
+  }
+
+  function toggleDraftVisibleFilter(key: FilterFieldKey) {
+    setDraftVisibleFilters((previous) => {
+      if (previous.includes(key)) {
+        clearDraftFilterValue(key)
+        return previous.filter((currentKey) => currentKey !== key)
+      }
+
+      return [...previous, key]
+    })
+  }
 
   if (loadError) {
     return (
@@ -993,73 +1004,17 @@ export function CharactersPage() {
           )}
         </div>
 
-        <div className={styles.filterGrid}>
-          <label className={styles.filterField}>
-            <span>Tipo</span>
-            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as SheetFilterType)}>
-              <option value="all">Todos</option>
-              <option value="character">Personagem</option>
-              <option value="monster">Monstro</option>
-              <option value="npc">NPC</option>
-            </select>
-          </label>
-
-          <label className={styles.filterField}>
-            <span>Nível</span>
-            <select value={levelFilter} onChange={(event) => setLevelFilter(event.target.value)}>
-              <option value="all">Todos</option>
-              {levelOptions.map((level) => (
-                <option key={level} value={String(level)}>
-                  Nível {level}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className={styles.filterField}>
-            <span>Classe</span>
-            <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)}>
-              <option value="all">Todas</option>
-              {classOptions.map((className) => (
-                <option key={className} value={className}>
-                  {className}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className={styles.filterField}>
-            <span>Raça/Linhagem</span>
-            <select value={raceFilter} onChange={(event) => setRaceFilter(event.target.value)}>
-              <option value="all">Todas</option>
-              {raceOptions.map((race) => (
-                <option key={race} value={race}>
-                  {race}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className={styles.filterField}>
-            <span>ND</span>
-            <select value={ndFilter} onChange={(event) => setNdFilter(event.target.value)}>
-              <option value="all">Todos</option>
-              {ndOptions.map((nd) => (
-                <option key={nd} value={nd}>
-                  {nd}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className={styles.headerTools}>
+          <button
+            type="button"
+            className={styles.filterButton}
+            onClick={openFilterModal}
+            aria-haspopup="dialog"
+            aria-expanded={isFilterModalOpen}
+          >
+            Filtrar{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+          </button>
         </div>
-
-        {hasActiveFilters && (
-          <div className={styles.filterActions}>
-            <button type="button" className={styles.retryButton} onClick={clearFilters}>
-              Limpar filtros
-            </button>
-          </div>
-        )}
 
         {searchError && (
           <div className={styles.searchError}>
@@ -1077,7 +1032,6 @@ export function CharactersPage() {
           items={sortedSheets}
           loading={loadingSheets}
           skeletonCount={skeletonCount}
-          extraHeader={sortBar}
           renderItem={(sheet) => (
             <CharacterSheetItem
               key={sheet.id}
@@ -1103,7 +1057,6 @@ export function CharactersPage() {
           items={sortedMonsters}
           loading={loadingMonsters}
           skeletonCount={skeletonCount}
-          extraHeader={monsterSortBar}
           renderItem={(monster) => (
             <MonsterSheetItem
               key={monster.id}
@@ -1129,7 +1082,6 @@ export function CharactersPage() {
           items={sortedNpcs}
           loading={loadingMonsters}
           skeletonCount={skeletonCount}
-          extraHeader={npcSortBar}
           renderItem={(npc) => (
             <MonsterSheetItem
               key={npc.id}
@@ -1159,6 +1111,133 @@ export function CharactersPage() {
         >
           {feedbackMessage(importFeedback)}
         </p>
+      )}
+
+      {isFilterModalOpen && (
+        <div className={styles.dialogOverlay} onClick={closeFilterModal}>
+          <div
+            className={styles.filterDialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="filters-dialog-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className={styles.filterDialogHeader}>
+              <div>
+                <p className={styles.filterDialogEyebrow}>Refinar lista</p>
+                <h2 id="filters-dialog-title" className={styles.filterDialogTitle}>Filtros</h2>
+              </div>
+              <button
+                type="button"
+                className={styles.filterDialogClose}
+                onClick={closeFilterModal}
+                aria-label="Fechar filtros"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className={styles.filterPicker}>
+              <p className={styles.filterPickerLabel}>Escolha quais critérios entrarão no combo</p>
+              <div className={styles.filterPickerChips}>
+                {FILTER_FIELD_OPTIONS.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    className={`${styles.filterPickerChip} ${draftVisibleFilters.includes(option.key) ? styles.filterPickerChipActive : ''}`}
+                    onClick={() => toggleDraftVisibleFilter(option.key)}
+                    aria-pressed={draftVisibleFilters.includes(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {draftVisibleFilters.length > 0 ? (
+              <div className={styles.filterGrid}>
+                {draftVisibleFilters.includes('type') && (
+                  <label className={styles.filterField}>
+                    <span>Tipo</span>
+                    <select value={draftTypeFilter} onChange={(event) => setDraftTypeFilter(event.target.value as SheetFilterType)}>
+                      <option value="all">Todos</option>
+                      <option value="character">Personagem</option>
+                      <option value="monster">Monstro</option>
+                      <option value="npc">NPC</option>
+                    </select>
+                  </label>
+                )}
+
+                {draftVisibleFilters.includes('level') && (
+                  <label className={styles.filterField}>
+                    <span>Nível</span>
+                    <select value={draftLevelFilter} onChange={(event) => setDraftLevelFilter(event.target.value)}>
+                      <option value="all">Todos</option>
+                      {levelOptions.map((level) => (
+                        <option key={level} value={String(level)}>
+                          Nível {level}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {draftVisibleFilters.includes('class') && (
+                  <label className={styles.filterField}>
+                    <span>Classe</span>
+                    <select value={draftClassFilter} onChange={(event) => setDraftClassFilter(event.target.value)}>
+                      <option value="all">Todas</option>
+                      {classOptions.map((className) => (
+                        <option key={className} value={className}>
+                          {className}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {draftVisibleFilters.includes('race') && (
+                  <label className={styles.filterField}>
+                    <span>Raça/Linhagem</span>
+                    <select value={draftRaceFilter} onChange={(event) => setDraftRaceFilter(event.target.value)}>
+                      <option value="all">Todas</option>
+                      {raceOptions.map((race) => (
+                        <option key={race} value={race}>
+                          {race}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {draftVisibleFilters.includes('nd') && (
+                  <label className={styles.filterField}>
+                    <span>ND</span>
+                    <select value={draftNdFilter} onChange={(event) => setDraftNdFilter(event.target.value)}>
+                      <option value="all">Todos</option>
+                      {ndOptions.map((nd) => (
+                        <option key={nd} value={nd}>
+                          {nd}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+            ) : (
+              <p className={styles.filterHint}>Nenhum critério selecionado ainda. Escolha acima os filtros que deseja usar.</p>
+            )}
+
+            <div className={styles.filterDialogActions}>
+              <button type="button" className={styles.createSecondary} onClick={clearDraftFilters}>
+                Limpar seleção
+              </button>
+              <button type="button" className={styles.createPrimary} onClick={applyDraftFilters}>
+                Aplicar filtros
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {pendingDelete && (
