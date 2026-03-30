@@ -72,6 +72,7 @@ function formatMaterialComponents(components: string[] | undefined): string {
 
 export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterComponentProps) {
     const [expandedLevels, setExpandedLevels] = useState<Set<number>>(new Set([0]))
+    const [materialDrafts, setMaterialDrafts] = useState<Record<number, string>>({})
     const { spells } = sheet
 
     const statMap: Record<string, number> = {
@@ -111,11 +112,30 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
     }
 
     function addSpell(level: number) {
+        setMaterialDrafts({})
         updateSpells({ items: [...spells.items, { ...createSpell(), level }] })
     }
 
     function removeSpell(index: number) {
+        setMaterialDrafts({})
         updateSpells({ items: spells.items.filter((_, spellIndex) => spellIndex !== index) })
+    }
+
+    function setMaterialDraft(index: number, value: string) {
+        setMaterialDrafts((previous) => ({ ...previous, [index]: value }))
+        setSpell(index, { components: parseMaterialComponents(value) })
+    }
+
+    function clearMaterialDraft(index: number) {
+        setMaterialDrafts((previous) => {
+            if (!(index in previous)) {
+                return previous
+            }
+
+            const next = { ...previous }
+            delete next[index]
+            return next
+        })
     }
 
     function setSlot(level: number, field: 'current' | 'max', value: number) {
@@ -347,13 +367,10 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
                                                     <input
                                                         className={styles.materialsInput}
                                                         type="text"
-                                                        value={formatMaterialComponents(spell.components)}
+                                                        value={materialDrafts[index] ?? formatMaterialComponents(spell.components)}
                                                         placeholder="Componentes materiais"
-                                                        onChange={(event) =>
-                                                            setSpell(index, {
-                                                                components: parseMaterialComponents(event.target.value),
-                                                            })
-                                                        }
+                                                        onChange={(event) => setMaterialDraft(index, event.target.value)}
+                                                        onBlur={() => clearMaterialDraft(index)}
                                                     />
                                                 </div>
 
