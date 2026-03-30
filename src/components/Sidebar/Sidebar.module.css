@@ -37,6 +37,7 @@
 .logoIcon {
   width: 12.15rem;
   height: 12.15rem;
+  margin-bottom: -1.5rem;
   object-fit: contain;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
   display: block;
@@ -44,7 +45,7 @@
 
 .logoText {
   display: block;
-  margin-top: 2.75rem;
+  margin-top: 1rem;
   font-family: var(--font-display);
   font-size: 1rem;
   letter-spacing: 0.14em;
