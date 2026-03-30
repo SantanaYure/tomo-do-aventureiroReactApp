@@ -371,7 +371,7 @@ export function CharactersPage() {
           const parsed = JSON.parse(stored)
           if (Array.isArray(parsed)) setter(parsed)
         }
-      } catch {}
+      } catch { }
     }
     load(`tomo-char-order-${uid}`, setCustomOrder)
     load(`tomo-monster-order-${uid}`, setCustomMonsterOrder)
@@ -381,19 +381,19 @@ export function CharactersPage() {
   function saveCustomOrder(newOrder: string[]) {
     if (!uid) return
     setCustomOrder(newOrder)
-    try { localStorage.setItem(`tomo-char-order-${uid}`, JSON.stringify(newOrder)) } catch {}
+    try { localStorage.setItem(`tomo-char-order-${uid}`, JSON.stringify(newOrder)) } catch { }
   }
 
   function saveCustomMonsterOrder(newOrder: string[]) {
     if (!uid) return
     setCustomMonsterOrder(newOrder)
-    try { localStorage.setItem(`tomo-monster-order-${uid}`, JSON.stringify(newOrder)) } catch {}
+    try { localStorage.setItem(`tomo-monster-order-${uid}`, JSON.stringify(newOrder)) } catch { }
   }
 
   function saveCustomNpcOrder(newOrder: string[]) {
     if (!uid) return
     setCustomNpcOrder(newOrder)
-    try { localStorage.setItem(`tomo-npc-order-${uid}`, JSON.stringify(newOrder)) } catch {}
+    try { localStorage.setItem(`tomo-npc-order-${uid}`, JSON.stringify(newOrder)) } catch { }
   }
 
   const baseSheets = isSearchMode ? searchChars : sheets
@@ -848,7 +848,7 @@ export function CharactersPage() {
 
   if (loadError) {
     return (
-      <main className={styles.page}>
+      <div className={styles.page}>
         <div className={styles.errorState}>
           <p className={styles.errorMessage}>Erro ao carregar fichas. Verifique sua conexão.</p>
           <button
@@ -859,12 +859,12 @@ export function CharactersPage() {
             Tentar novamente
           </button>
         </div>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className={styles.page}>
+    <div className={styles.page}>
       <input
         ref={characterFileInputRef}
         type="file"
@@ -1127,6 +1127,6 @@ export function CharactersPage() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   )
 }
