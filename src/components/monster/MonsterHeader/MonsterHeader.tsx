@@ -43,6 +43,12 @@ export function MonsterHeader({ sheet, isEditing, onChange }: MonsterComponentPr
   const meta = buildMeta(details)
   const description = details.description.trim()
   const lore = details.lore.trim()
+  const guide = details.guide.trim()
+  const contentSections = [
+    description ? { title: 'Descricao', body: description } : null,
+    lore ? { title: 'Sobre', body: lore } : null,
+    guide ? { title: 'Guia do Personagem', body: guide } : null,
+  ].filter((section): section is { title: string; body: string } => section !== null)
 
   const avatarElement = details.avatar ? (
     <img src={details.avatar} alt={`Foto de ${details.name || 'monstro'}`} className={styles.avatar} />
@@ -131,12 +137,12 @@ export function MonsterHeader({ sheet, isEditing, onChange }: MonsterComponentPr
           </div>
 
           <label className={styles.field}>
-            Classe/Tipo
+            Classe
             <input
               type="text"
               value={details.creatureClass}
               onChange={(event) => updateDetails({ creatureClass: event.target.value })}
-              placeholder="Soldado veterano, dragão, morto-vivo..."
+              placeholder="Soldado veterano, arcanista, caçador..."
             />
           </label>
 
@@ -145,7 +151,7 @@ export function MonsterHeader({ sheet, isEditing, onChange }: MonsterComponentPr
             <textarea
               value={details.description}
               onChange={(event) => updateDetails({ description: event.target.value })}
-              placeholder="Descrição curta da criatura"
+              placeholder="Aparência física do personagem, monstro ou criatura"
             />
           </label>
 
@@ -154,7 +160,16 @@ export function MonsterHeader({ sheet, isEditing, onChange }: MonsterComponentPr
             <textarea
               value={details.lore}
               onChange={(event) => updateDetails({ lore: event.target.value })}
-              placeholder="Contexto, história e observações"
+              placeholder="Origem, história e contexto geral"
+            />
+          </label>
+
+          <label className={styles.field}>
+            Guia do Personagem
+            <textarea
+              value={details.guide}
+              onChange={(event) => updateDetails({ guide: event.target.value })}
+              placeholder="Como interpretar, manias, voz, postura e detalhes marcantes"
             />
           </label>
         </div>
@@ -174,15 +189,13 @@ export function MonsterHeader({ sheet, isEditing, onChange }: MonsterComponentPr
             <p className={styles.classification}>{details.creatureClass}</p>
           ) : null}
 
-          <div className={styles.divider} />
-          <p className={description ? styles.bodyText : styles.placeholder}>
-            {description || 'Descrição não informada.'}
-          </p>
-
-          <div className={styles.divider} />
-          <p className={lore ? styles.bodyText : styles.placeholder}>
-            {lore || 'Sem informações adicionais.'}
-          </p>
+          {contentSections.map((section) => (
+            <div key={section.title} className={styles.textSection}>
+              <div className={styles.divider} />
+              <h2 className={styles.sectionTitle}>{section.title}</h2>
+              <p className={styles.bodyText}>{section.body}</p>
+            </div>
+          ))}
         </div>
       )}
     </header>

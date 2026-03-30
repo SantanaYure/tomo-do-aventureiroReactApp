@@ -110,6 +110,7 @@ export interface MonsterSheet {
         creatureClass: string
         description: string
         lore: string
+        guide: string
     }
 
     stats: {
