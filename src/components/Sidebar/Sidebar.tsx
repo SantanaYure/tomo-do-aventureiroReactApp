@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../../services/firebase'
 import { useAuth } from '../../context/AuthContext'
+import { BRAND_LOGO_URL } from '../../assets/brandLogo'
 import styles from './Sidebar.module.css'
 
 interface NavItem {
@@ -54,7 +55,7 @@ export function Sidebar() {
       <aside className={styles.sidebar} aria-label="Navegação principal">
         {/* Logo */}
         <div className={styles.logoArea}>
-          <span className={styles.logoIcon} aria-hidden="true">📖</span>
+          <img src={BRAND_LOGO_URL} alt="Logo do Tomo do Aventureiro" className={styles.logoIcon} />
           <span className={styles.logoText}>Tomo do Aventureiro</span>
         </div>
 

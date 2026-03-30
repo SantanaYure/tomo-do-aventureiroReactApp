@@ -33,18 +33,24 @@
 }
 
 .brandIcon {
-  font-size: 3rem;
+  width: clamp(12.15rem, 27vw, 16.2rem);
+  height: clamp(12.15rem, 27vw, 16.2rem);
+  object-fit: contain;
   display: block;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+  margin-bottom: 1.5rem;
 }
 
 .brandTitle {
+  margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.9rem, 3vw, 2.6rem);
-  color: #f0e6c8;
-  letter-spacing: 0.04em;
-  line-height: 1.2;
-  font-weight: 600;
+  font-size: clamp(2.2rem, 3.4vw, 3.1rem);
+  color: #f2d69a;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
 }
 
 .brandSubtitle {
@@ -139,7 +145,7 @@
   pointer-events: none;
 }
 
-.formCard > * {
+.formCard>* {
   position: relative;
   z-index: 1;
 }
@@ -157,10 +163,14 @@
 }
 
 .cardTitle {
+  margin: 0;
   font-family: var(--font-display);
-  font-size: var(--text-xl);
+  font-size: clamp(1.35rem, 2vw, 1.65rem);
   color: var(--ink);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
+  line-height: 1.15;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .cardSubtitle {

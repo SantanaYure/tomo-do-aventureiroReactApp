@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { BRAND_LOGO_URL } from '../../assets/brandLogo'
 import styles from './LoginPage.module.css'
 
 const FEATURES = [
@@ -124,7 +125,7 @@ export function LoginPage() {
       {/* Coluna esquerda: branding */}
       <aside className={styles.branding} aria-hidden="true">
         <div className={styles.brandingInner}>
-          <span className={styles.brandIcon}>📖</span>
+          <img src={BRAND_LOGO_URL} alt="Logo do Tomo do Aventureiro" className={styles.brandIcon} />
           <h1 className={styles.brandTitle}>Tomo do Aventureiro</h1>
           <p className={styles.brandSubtitle}>
             Organize seus personagens de histórias, RPGs e narrativas em um só lugar
