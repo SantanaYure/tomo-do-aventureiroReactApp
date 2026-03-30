@@ -1,0 +1,1 @@
+export const BRAND_LOGO_URL = 'https://res.cloudinary.com/dbfalryaz/image/upload/v1774883515/logo-tomodoaventureiro_iy0xh8.png'
