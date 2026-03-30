@@ -23,7 +23,7 @@ import { useFirestoreSearch } from '../../hooks/useFirestoreSearch'
 import styles from './CharactersPage.module.css'
 
 type ImportFeedback = {
-  scope: 'character' | 'monster'
+  scope: 'character' | 'monster' | 'npc' | 'unknown'
   result: CharacterImportResult | MonsterImportResult
 }
 
@@ -65,8 +65,6 @@ interface SheetSectionProps<T> {
   items: T[]
   loading: boolean
   skeletonCount?: number
-  importLabel: string
-  onImport: () => void
   renderItem: (item: T) => React.ReactNode
   emptyMessage: string
   extraHeader?: ReactNode
@@ -77,8 +75,6 @@ function SheetSection<T>({
   items,
   loading,
   skeletonCount = 3,
-  importLabel,
-  onImport,
   renderItem,
   emptyMessage,
   extraHeader,
@@ -87,9 +83,6 @@ function SheetSection<T>({
     <section className={styles.collectionSection}>
       <div className={styles.sectionHeader}>
         <h2 className={styles.sectionTitle}>{title}</h2>
-        <button type="button" className={styles.importButton} onClick={onImport}>
-          {importLabel}
-        </button>
       </div>
       {extraHeader}
       {loading ? (
@@ -247,6 +240,64 @@ function normalizeFilterValue(value: string): string {
   return value.trim().toLocaleLowerCase('pt-BR')
 }
 
+function getImportedSheetData(parsed: unknown): Record<string, unknown> | null {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return null
+  }
+
+  const entry = parsed as Record<string, unknown>
+
+  if (entry.data && typeof entry.data === 'object' && !Array.isArray(entry.data)) {
+    return entry.data as Record<string, unknown>
+  }
+
+  const entries = Object.values(entry)
+
+  if (entries.length !== 1) {
+    return null
+  }
+
+  const nestedEntry = entries[0]
+
+  if (!nestedEntry || typeof nestedEntry !== 'object' || Array.isArray(nestedEntry)) {
+    return null
+  }
+
+  const nestedRecord = nestedEntry as Record<string, unknown>
+
+  if (!nestedRecord.data || typeof nestedRecord.data !== 'object' || Array.isArray(nestedRecord.data)) {
+    return null
+  }
+
+  return nestedRecord.data as Record<string, unknown>
+}
+
+function detectImportedSheetType(parsed: unknown): ImportFeedback['scope'] {
+  const data = getImportedSheetData(parsed)
+
+  if (!data) {
+    return 'unknown'
+  }
+
+  if (data.character && typeof data.character === 'object') {
+    return 'character'
+  }
+
+  if (data.details && typeof data.details === 'object') {
+    const details = data.details as Record<string, unknown>
+
+    if (details.kind === 'npc') {
+      return 'npc'
+    }
+
+    if (details.kind === 'monster') {
+      return 'monster'
+    }
+  }
+
+  return 'unknown'
+}
+
 function getCharacterTotalLevel(sheet: StoredCharacterSheet): number {
   return sheet.data.character.classes.reduce((sum, currentClass) => sum + currentClass.level, 0)
 }
@@ -357,8 +408,7 @@ export function CharactersPage() {
 
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
-  const characterFileInputRef = useRef<HTMLInputElement>(null)
-  const monsterFileInputRef = useRef<HTMLInputElement>(null)
+  const importFileInputRef = useRef<HTMLInputElement>(null)
 
   const isSearchMode = searchTerm.trim().length > 0
 
@@ -712,54 +762,70 @@ export function CharactersPage() {
     downloadJsonFile(json, normalizeFileName(monster.data.details.name.trim() || monster.id, monster.id, 'tomo-monstro'))
   }
 
-  function handleImportClick(scope: 'character' | 'monster') {
+  function handleImportClick() {
     setImportFeedback(null)
-    if (scope === 'character') characterFileInputRef.current?.click()
-    else monsterFileInputRef.current?.click()
+    importFileInputRef.current?.click()
   }
 
   function handleSearchTermChange(event: ChangeEvent<HTMLInputElement>) {
     setSearchTerm(event.target.value)
   }
 
-  function handleCharacterImportFileChange(event: ChangeEvent<HTMLInputElement>) {
+  function handleImportFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
-    if (file.size > MAX_JSON_BYTES) {
-      setImportFeedback({ scope: 'character', result: { imported: 0, skipped: 0, errors: 1 } })
-      event.target.value = ''
-      return
-    }
-    if (!uid) return
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      const result = await importCharacterSheetFromJSON(uid, e.target?.result as string)
-      setImportFeedback({ scope: 'character', result })
-    }
-    reader.readAsText(file)
-    event.target.value = ''
-  }
 
-  function handleMonsterImportFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
     if (file.size > MAX_JSON_BYTES) {
-      setImportFeedback({ scope: 'monster', result: { imported: 0, skipped: 0, errors: 1 } })
+      setImportFeedback({ scope: 'unknown', result: { imported: 0, skipped: 0, errors: 1 } })
       event.target.value = ''
       return
     }
+
     if (!uid) return
+
     const reader = new FileReader()
     reader.onload = async (e) => {
-      const result = await importMonsterSheetFromJSON(uid, e.target?.result as string)
-      setImportFeedback({ scope: 'monster', result })
+      const rawJson = String(e.target?.result ?? '')
+
+      let parsed: unknown
+
+      try {
+        parsed = JSON.parse(rawJson)
+      } catch {
+        setImportFeedback({ scope: 'unknown', result: { imported: 0, skipped: 0, errors: 1 } })
+        return
+      }
+
+      const detectedType = detectImportedSheetType(parsed)
+
+      if (detectedType === 'character') {
+        const result = await importCharacterSheetFromJSON(uid, rawJson)
+        setImportFeedback({ scope: 'character', result })
+        return
+      }
+
+      if (detectedType === 'monster' || detectedType === 'npc') {
+        const result = await importMonsterSheetFromJSON(uid, rawJson)
+        setImportFeedback({ scope: detectedType, result })
+        return
+      }
+
+      setImportFeedback({ scope: 'unknown', result: { imported: 0, skipped: 0, errors: 1 } })
     }
     reader.readAsText(file)
     event.target.value = ''
   }
 
   function feedbackMessage(feedback: ImportFeedback): string {
-    const label = feedback.scope === 'character' ? 'Ficha' : 'Monstro ou NPC'
+    const label =
+      feedback.scope === 'character'
+        ? 'Personagem'
+        : feedback.scope === 'npc'
+          ? 'NPC'
+          : feedback.scope === 'monster'
+            ? 'Monstro'
+            : 'Arquivo'
+
     if (feedback.result.imported > 0) return `${label} importado com sucesso.`
     if (feedback.result.skipped > 0) return `Esse ${label.toLowerCase()} já existe e não foi sobrescrito.`
     if (feedback.result.errors > 0) return 'Não foi possível importar o arquivo selecionado.'
@@ -866,24 +932,24 @@ export function CharactersPage() {
   return (
     <div className={styles.page}>
       <input
-        ref={characterFileInputRef}
+        ref={importFileInputRef}
         type="file"
         accept=".json,application/json"
         className={styles.hiddenInput}
-        onChange={handleCharacterImportFileChange}
-      />
-      <input
-        ref={monsterFileInputRef}
-        type="file"
-        accept=".json,application/json"
-        className={styles.hiddenInput}
-        onChange={handleMonsterImportFileChange}
+        onChange={handleImportFileChange}
       />
 
       <header className={styles.pageTop}>
         <div className={styles.pageTitleRow}>
           <h1 className={styles.pageTitle}>Personagens</h1>
           <div className={styles.createActions}>
+            <button
+              type="button"
+              className={styles.createSecondary}
+              onClick={handleImportClick}
+            >
+              ↑ Importar JSON
+            </button>
             <button
               type="button"
               className={styles.createPrimary}
@@ -1011,8 +1077,6 @@ export function CharactersPage() {
           items={sortedSheets}
           loading={loadingSheets}
           skeletonCount={skeletonCount}
-          importLabel="↑ Importar personagem"
-          onImport={() => handleImportClick('character')}
           extraHeader={sortBar}
           renderItem={(sheet) => (
             <CharacterSheetItem
@@ -1039,8 +1103,6 @@ export function CharactersPage() {
           items={sortedMonsters}
           loading={loadingMonsters}
           skeletonCount={skeletonCount}
-          importLabel="↑ Importar Monstro/NPC"
-          onImport={() => handleImportClick('monster')}
           extraHeader={monsterSortBar}
           renderItem={(monster) => (
             <MonsterSheetItem
@@ -1067,8 +1129,6 @@ export function CharactersPage() {
           items={sortedNpcs}
           loading={loadingMonsters}
           skeletonCount={skeletonCount}
-          importLabel="↑ Importar Monstro/NPC"
-          onImport={() => handleImportClick('monster')}
           extraHeader={npcSortBar}
           renderItem={(npc) => (
             <MonsterSheetItem
