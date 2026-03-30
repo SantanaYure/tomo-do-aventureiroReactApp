@@ -948,7 +948,7 @@ export function CharactersPage() {
               className={styles.createSecondary}
               onClick={handleImportClick}
             >
-              ↑ Importar JSON
+              ↑ Importar Personagem
             </button>
             <button
               type="button"
