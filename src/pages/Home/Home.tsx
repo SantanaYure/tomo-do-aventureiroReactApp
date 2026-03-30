@@ -70,14 +70,24 @@ type RecentItemData = {
   updatedAt: string
   href: string
   meta: string
+  avatar: string
 }
 
 function RecentItem({ item }: { item: RecentItemData }) {
   return (
     <Link to={item.href} className={styles.recentItem}>
-      <span className={styles.recentIcon} aria-hidden="true">
-        {TYPE_ICON[item.type]}
-      </span>
+      <div className={styles.recentVisual} aria-hidden="true">
+        {item.avatar ? (
+          <img
+            src={item.avatar}
+            alt=""
+            className={styles.recentAvatar}
+            loading="lazy"
+          />
+        ) : (
+          <span className={styles.recentIcon}>{TYPE_ICON[item.type]}</span>
+        )}
+      </div>
       <div className={styles.recentInfo}>
         <span className={styles.recentName}>{item.name}</span>
         <span className={styles.recentMeta}>
@@ -143,6 +153,7 @@ export function Home() {
         updatedAt: sortKey,
         href: `/ficha/${s.id}`,
         meta: s.data.character.race || '',
+        avatar: s.data.character.avatar || '',
       }
     }),
     ...monsters.map((m) => {
@@ -155,6 +166,7 @@ export function Home() {
         updatedAt: sortKey,
         href: `/monstro/${m.id}`,
         meta: m.data.details.species || '',
+        avatar: m.data.details.avatar || '',
       }
     }),
   ]
