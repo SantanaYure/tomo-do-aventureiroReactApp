@@ -105,6 +105,7 @@ export function createDefaultCharacterSheet(): CharacterSheet {
     resources: [],
     inventory: [],
     spells: [],
+    spellSlots: {},
     attacks: [],
     combatNotes: '',
     isEditMode: true,

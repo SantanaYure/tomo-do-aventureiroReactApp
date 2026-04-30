@@ -14,3 +14,10 @@ export interface Spell {
   prepared?: boolean
   description?: string
 }
+
+export interface SpellSlot {
+  current: number
+  max: number
+}
+
+export type SpellSlots = Record<number, SpellSlot>

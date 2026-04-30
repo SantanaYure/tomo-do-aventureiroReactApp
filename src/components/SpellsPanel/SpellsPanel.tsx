@@ -1,12 +1,10 @@
 // src/components/SpellsPanel/SpellsPanel.tsx
 import { useState } from 'react'
-import type { Character, Spell, SpellcastingAbility } from '../../types/system/dnd'
+import type { Character, Spell, SpellSlots, SpellcastingAbility } from '../../types/system/dnd'
 import { NumberInput } from '../NumberInput/NumberInput'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './SpellsPanel.module.css'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
-
-interface SpellSlots { [level: number]: { current: number; max: number } }
 
 const SPELL_LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 const LEVEL_LABEL: Record<number, string> = {

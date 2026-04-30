@@ -17,12 +17,9 @@ import { AttacksPanel } from '../../components/AttacksPanel/AttacksPanel'
 import { SpellsPanel } from '../../components/SpellsPanel/SpellsPanel'
 import { InventoryPanel } from '../../components/InventoryPanel/InventoryPanel'
 import { CharacterDetailsPanel } from '../../components/CharacterDetailsPanel/CharacterDetailsPanel'
+import { CharacterSheetSummary } from '../../components/CharacterSheetSummary/CharacterSheetSummary'
 import type { SavingStatus } from '../../types/savingStatus'
 import styles from './CharacterSheetPage.module.css'
-
-type SheetWithSlots = CharacterSheet & {
-  spellSlots?: Record<number, { current: number; max: number }>
-}
 
 const TABS = [
   'Principal',
@@ -84,7 +81,7 @@ export function CharacterSheetPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { sheet: storedSheet, notFound, error } = useCharacterSheet(uid, id ?? null)
-  const [sheet, setSheet] = useState<SheetWithSlots | null>(null)
+  const [sheet, setSheet] = useState<CharacterSheet | null>(null)
   const [savingStatus, setSavingStatus] = useState<SavingStatus>('idle')
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isAtBottom, setIsAtBottom] = useState(false)
@@ -107,7 +104,7 @@ export function CharacterSheetPage() {
   // Sync Firestore snapshot → local state (only on first load)
   useEffect(() => {
     if (storedSheet && sheet === null) {
-      setSheet(storedSheet.data as SheetWithSlots)
+      setSheet(storedSheet.data)
     }
   }, [storedSheet, sheet])
 
@@ -143,14 +140,16 @@ export function CharacterSheetPage() {
     }
   }, [])
 
-  function handleUpdate(updated: SheetWithSlots) {
+  function handleUpdate(updated: CharacterSheet) {
     if (!id || !uid) return
     setSheet(updated)
     updateSavingStatus('saving')
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
-      saveCharacterSheet(uid, id, updated).catch(console.error)
+      saveCharacterSheet(uid, id, updated)
+        .then(() => updateSavingStatus('saved'))
+        .catch(() => updateSavingStatus('error'))
     }, SAVE_DEBOUNCE_MS)
   }
 
@@ -210,10 +209,19 @@ export function CharacterSheetPage() {
   }
 
   const currentSheet = sheet
-  const spellSlots = currentSheet.spellSlots ?? {}
 
-  const handleCharacterChange = (updated: SheetWithSlots['character']) => {
+  const handleCharacterChange = (updated: CharacterSheet['character']) => {
     handleUpdate({ ...currentSheet, character: updated })
+  }
+
+  function handleLongRest(updatedResources: CharacterSheet['resources']) {
+    const resetSlots = Object.fromEntries(
+      Object.entries(currentSheet.spellSlots).map(([level, slot]) => [
+        level,
+        { ...slot, current: slot.max },
+      ]),
+    )
+    handleUpdate({ ...currentSheet, resources: updatedResources, spellSlots: resetSlots })
   }
 
   const activePanelId = TAB_PANEL_IDS[activeTab]
@@ -263,7 +271,7 @@ export function CharacterSheetPage() {
         isEditMode={currentSheet.isEditMode}
         onChangeCharacter={handleCharacterChange}
         onChangeSpells={(updated) => handleUpdate({ ...currentSheet, spells: updated })}
-        slotsData={spellSlots}
+        slotsData={currentSheet.spellSlots}
         onChangeSlotsData={(updated) =>
           handleUpdate({ ...currentSheet, spellSlots: updated })
         }
@@ -279,6 +287,7 @@ export function CharacterSheetPage() {
         onChangeResources={(updated) =>
           handleUpdate({ ...currentSheet, resources: updated })
         }
+        onLongRest={handleLongRest}
       />
     )
   }
@@ -328,13 +337,24 @@ export function CharacterSheetPage() {
 
   return (
     <div className={styles.page} data-saving-status={savingStatus}>
-      <Link className={styles.backLink} to="/">← Voltar</Link>
+      <div className={styles.topBar}>
+        <Link className={styles.backLink} to="/">← Voltar</Link>
+        {savingStatus !== 'idle' && (
+          <span className={styles.savingIndicator} data-status={savingStatus}>
+            {savingStatus === 'saving' && 'Salvando...'}
+            {savingStatus === 'saved' && 'Salvo'}
+            {savingStatus === 'error' && 'Erro ao salvar'}
+          </span>
+        )}
+      </div>
 
       <CharacterHeader
         character={currentSheet.character}
         isEditMode={currentSheet.isEditMode}
         onChangeCharacter={handleCharacterChange}
       />
+
+      <CharacterSheetSummary character={currentSheet.character} />
 
       <div ref={tabBarRef} className={styles.tabBarShell}>
         <nav
@@ -376,7 +396,7 @@ export function CharacterSheetPage() {
             onClick={handleToggleEditMode}
             aria-controls={activePanelId}
           >
-            {sheet.isEditMode ? '✓ Concluir edição' : '✎ Editar ficha'}
+            {currentSheet.isEditMode ? '✓ Concluir edição' : '✎ Editar ficha'}
           </button>
         </div>
       </div>
