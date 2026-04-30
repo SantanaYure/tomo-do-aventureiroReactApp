@@ -176,10 +176,20 @@
   flex-shrink: 0;
 }
 
+.usageRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.counterValDepleted {
+  color: var(--accent);
+}
+
 .featureBody {
   display: grid;
   gap: var(--space-3);
-  margin-top: var(--space-2);
 }
 
 .resourceHeader {

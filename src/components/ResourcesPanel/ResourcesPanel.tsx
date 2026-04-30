@@ -59,20 +59,6 @@ function getResourceOriginLabel(resource: Resource): string {
   return ''
 }
 
-function getResourceCollapsedMeta(resource: Resource): string {
-  const current = resource.current ?? 0
-  const max = resource.max ?? 0
-
-  if (max > 0) {
-    return `${current}/${max} usos`
-  }
-
-  if (typeof resource.level === 'number' && Number.isFinite(resource.level)) {
-    return `Nível ${resource.level}`
-  }
-
-  return ''
-}
 
 interface ResourcesPanelProps {
   resources: Resource[]
@@ -250,7 +236,6 @@ export function ResourcesPanel({
         {resources.map((resource, index) => {
           const resourceId = resourceIds[index]
           const isCollapsed = !isEditMode && collapsedIds.has(resourceId)
-          const collapsedMeta = getResourceCollapsedMeta(resource)
 
           return (
             <div key={resourceId} className={styles.resourceCard}>
@@ -398,78 +383,48 @@ export function ResourcesPanel({
                 <>
                   <button
                     type="button"
-                    className={`${styles.resourceHeader} ${styles.featureHeader}`}
+                    className={styles.featureHeader}
                     onClick={() => toggleCollapse(resourceId)}
                     aria-expanded={!isCollapsed}
                   >
-                    <span className={`${styles.resourceName} ${styles.featureTitle}`}>
+                    <span className={styles.featureTitle}>
                       {resource.name || '(sem nome)'}
                     </span>
-                    {collapsedMeta && (
-                      <span className={`${styles.resourceReset} ${styles.featureMeta}`}>
-                        {collapsedMeta}
-                      </span>
-                    )}
                     <span className={styles.collapseIcon}>{isCollapsed ? '▸' : '▾'}</span>
                   </button>
 
-                  {!isCollapsed && (
-                    <div className={styles.featureBody}>
-                      <div className={styles.readStack}>
-                        <div className={styles.resourceMetaRow}>
-                          {getResourceOriginLabel(resource) && (
-                            <span className={styles.resourceMeta}>
-                              Origem: {getResourceOriginLabel(resource)}
-                            </span>
-                          )}
-                          {typeof resource.level === 'number' && Number.isFinite(resource.level) && (
-                            <span className={styles.resourceMeta}>Nível: {resource.level}</span>
-                          )}
-                          {resource.duration?.trim() && (
-                            <span className={styles.resourceMeta}>Duração: {resource.duration}</span>
-                          )}
-                          {resource.action?.trim() && (
-                            <span className={styles.resourceMeta}>Ação: {resource.action}</span>
-                          )}
-                          {resource.range?.trim() && (
-                            <span className={styles.resourceMeta}>Alcance: {resource.range}</span>
-                          )}
-                          <span className={styles.resourceMeta}>
-                            {RESET_LABEL[resource.resetOn ?? 'long-rest']}
-                          </span>
-                        </div>
+                  {(resource.max ?? 0) > 0 && (
+                    <div className={styles.usageRow}>
+                      <button
+                        type="button"
+                        className={styles.counterBtn}
+                        disabled={(resource.current ?? 0) <= 0}
+                        aria-label={`Usar ${resource.name?.trim() || 'recurso'}`}
+                        onClick={() => setCurrent(index, (resource.current ?? 0) - 1)}
+                      >
+                        −
+                      </button>
 
-                        {resource.description?.trim() && (
-                          <p className={styles.resourceDescription}>{resource.description}</p>
-                        )}
-                      </div>
+                      <span
+                        className={
+                          (resource.current ?? 0) === 0
+                            ? `${styles.counterVal} ${styles.counterValDepleted}`
+                            : styles.counterVal
+                        }
+                      >
+                        {resource.current ?? 0}
+                        <span className={styles.counterMax}> / {resource.max ?? 0}</span>
+                      </span>
 
-                      <div className={styles.counter}>
-                        <button
-                          type="button"
-                          className={styles.counterBtn}
-                          disabled={(resource.current ?? 0) <= 0}
-                          aria-label={`Usar ${resource.name?.trim() || 'recurso'}`}
-                          onClick={() => setCurrent(index, (resource.current ?? 0) - 1)}
-                        >
-                          −
-                        </button>
-
-                        <span className={styles.counterVal}>
-                          {resource.current ?? 0}
-                          <span className={styles.counterMax}> / {resource.max ?? 0}</span>
-                        </span>
-
-                        <button
-                          type="button"
-                          className={styles.counterBtn}
-                          disabled={(resource.current ?? 0) >= (resource.max ?? 0)}
-                          aria-label={`Aumentar ${resource.name?.trim() || 'recurso'}`}
-                          onClick={() => setCurrent(index, (resource.current ?? 0) + 1)}
-                        >
-                          +
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        className={styles.counterBtn}
+                        disabled={(resource.current ?? 0) >= (resource.max ?? 0)}
+                        aria-label={`Recuperar uso de ${resource.name?.trim() || 'recurso'}`}
+                        onClick={() => setCurrent(index, (resource.current ?? 0) + 1)}
+                      >
+                        +
+                      </button>
 
                       <button
                         type="button"
@@ -479,6 +434,37 @@ export function ResourcesPanel({
                       >
                         ↺ Restaurar
                       </button>
+                    </div>
+                  )}
+
+                  {!isCollapsed && (
+                    <div className={styles.featureBody}>
+                      <div className={styles.resourceMetaRow}>
+                        {getResourceOriginLabel(resource) && (
+                          <span className={styles.resourceMeta}>
+                            Origem: {getResourceOriginLabel(resource)}
+                          </span>
+                        )}
+                        {typeof resource.level === 'number' && Number.isFinite(resource.level) && (
+                          <span className={styles.resourceMeta}>Nível: {resource.level}</span>
+                        )}
+                        {resource.duration?.trim() && (
+                          <span className={styles.resourceMeta}>Duração: {resource.duration}</span>
+                        )}
+                        {resource.action?.trim() && (
+                          <span className={styles.resourceMeta}>Ação: {resource.action}</span>
+                        )}
+                        {resource.range?.trim() && (
+                          <span className={styles.resourceMeta}>Alcance: {resource.range}</span>
+                        )}
+                        <span className={styles.resourceMeta}>
+                          {RESET_LABEL[resource.resetOn ?? 'long-rest']}
+                        </span>
+                      </div>
+
+                      {resource.description?.trim() && (
+                        <p className={styles.resourceDescription}>{resource.description}</p>
+                      )}
                     </div>
                   )}
                 </>
