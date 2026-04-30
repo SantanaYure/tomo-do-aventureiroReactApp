@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import type { Resource, ResourceOrigin, ResourceReset } from '../../types/system/dnd'
-import { applyShortRest, applyLongRestToResources } from '../../utils/characterResources'
 import { NumberInput } from '../NumberInput/NumberInput'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './ResourcesPanel.module.css'
@@ -64,25 +63,16 @@ interface ResourcesPanelProps {
   resources: Resource[]
   isEditMode: boolean
   onChangeResources: (updated: Resource[]) => void
-  onLongRest?: (updatedResources: Resource[]) => void
 }
 
 export function ResourcesPanel({
   resources,
   isEditMode,
   onChangeResources,
-  onLongRest,
 }: ResourcesPanelProps) {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
-  const [restFeedback, setRestFeedback] = useState<string | null>(null)
-  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const resourceIds = resources.map((_, index) => `resource-${index}`)
 
-  useEffect(() => {
-    return () => {
-      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current)
-    }
-  }, [])
   const areAllCollapsed =
     resourceIds.length > 0 && resourceIds.every((resourceId) => collapsedIds.has(resourceId))
 
@@ -170,26 +160,6 @@ export function ResourcesPanel({
     setResource(index, { current: resource.max ?? 0 })
   }
 
-  function showFeedback(message: string) {
-    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current)
-    setRestFeedback(message)
-    feedbackTimerRef.current = setTimeout(() => setRestFeedback(null), 2000)
-  }
-
-  function handleShortRestClick() {
-    onChangeResources(applyShortRest(resources))
-    showFeedback('Recursos restaurados (descanso curto)')
-  }
-
-  function handleLongRestClick() {
-    const updated = applyLongRestToResources(resources)
-    if (onLongRest) {
-      onLongRest(updated)
-    } else {
-      onChangeResources(updated)
-    }
-    showFeedback('Recursos e espaços de magia restaurados')
-  }
 
   if (resources.length === 0 && !isEditMode) return null
 
@@ -208,28 +178,6 @@ export function ResourcesPanel({
             {areAllCollapsed ? 'Expandir tudo' : 'Recolher tudo'}
           </button>
         )}
-      </div>
-
-      <div className={styles.restRow}>
-        <button
-          type="button"
-          className={styles.restBtn}
-          onClick={handleShortRestClick}
-        >
-          Descanso curto
-        </button>
-
-        <button
-          type="button"
-          className={styles.restBtn}
-          onClick={handleLongRestClick}
-        >
-          Descanso longo
-        </button>
-      </div>
-
-      <div aria-live="polite" aria-atomic="true" className={styles.restFeedback}>
-        {restFeedback}
       </div>
 
       <div className={styles.resourceList}>

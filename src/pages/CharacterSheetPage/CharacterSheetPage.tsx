@@ -6,7 +6,11 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import type { CharacterSheet } from '../../types/system/dnd'
 import { saveCharacterSheet } from '../../store/characterSheetStore'
 import { recordOpened } from '../../utils/recentlyOpened'
-import { applyLongRestToSpellSlots } from '../../utils/characterResources'
+import {
+  applyShortRest,
+  applyLongRestToResources,
+  applyLongRestToSpellSlots,
+} from '../../utils/characterResources'
 import { useAuth } from '../../context/AuthContext'
 import { useCharacterSheet } from '../../hooks/useCharacterSheet'
 import { CharacterHeader } from '../../components/CharacterHeader/CharacterHeader'
@@ -85,9 +89,11 @@ export function CharacterSheetPage() {
   const [savingStatus, setSavingStatus] = useState<SavingStatus>('idle')
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isAtBottom, setIsAtBottom] = useState(false)
+  const [restFeedback, setRestFeedback] = useState<string | null>(null)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const restFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasSheet = sheet !== null
 
   function updateSavingStatus(nextStatus: SavingStatus) {
@@ -137,6 +143,7 @@ export function CharacterSheetPage() {
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
     }
   }, [])
 
@@ -172,6 +179,12 @@ export function CharacterSheetPage() {
       top: Math.max(0, nextTop - 12),
       behavior: 'smooth',
     })
+  }
+
+  function showRestFeedback(message: string) {
+    if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
+    setRestFeedback(message)
+    restFeedbackTimerRef.current = setTimeout(() => setRestFeedback(null), 2000)
   }
 
   if (error) {
@@ -214,12 +227,21 @@ export function CharacterSheetPage() {
     handleUpdate({ ...currentSheet, character: updated })
   }
 
-  function handleLongRest(updatedResources: CharacterSheet['resources']) {
+  function handleShortRest() {
     handleUpdate({
       ...currentSheet,
-      resources: updatedResources,
+      resources: applyShortRest(currentSheet.resources),
+    })
+    showRestFeedback('Recursos restaurados (descanso curto)')
+  }
+
+  function handleLongRest() {
+    handleUpdate({
+      ...currentSheet,
+      resources: applyLongRestToResources(currentSheet.resources),
       spellSlots: applyLongRestToSpellSlots(currentSheet.spellSlots),
     })
+    showRestFeedback('Recursos e espaços de magia restaurados')
   }
 
   const activePanelId = TAB_PANEL_IDS[activeTab]
@@ -285,7 +307,6 @@ export function CharacterSheetPage() {
         onChangeResources={(updated) =>
           handleUpdate({ ...currentSheet, resources: updated })
         }
-        onLongRest={handleLongRest}
       />
     )
   }
@@ -350,6 +371,9 @@ export function CharacterSheetPage() {
         character={currentSheet.character}
         isEditMode={currentSheet.isEditMode}
         onChangeCharacter={handleCharacterChange}
+        onShortRest={handleShortRest}
+        onLongRest={handleLongRest}
+        restFeedback={restFeedback}
       />
 
       <div ref={tabBarRef} className={styles.tabBarShell}>
