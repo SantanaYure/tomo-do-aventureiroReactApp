@@ -17,7 +17,6 @@ import { AttacksPanel } from '../../components/AttacksPanel/AttacksPanel'
 import { SpellsPanel } from '../../components/SpellsPanel/SpellsPanel'
 import { InventoryPanel } from '../../components/InventoryPanel/InventoryPanel'
 import { CharacterDetailsPanel } from '../../components/CharacterDetailsPanel/CharacterDetailsPanel'
-import { CharacterSheetSummary } from '../../components/CharacterSheetSummary/CharacterSheetSummary'
 import type { SavingStatus } from '../../types/savingStatus'
 import styles from './CharacterSheetPage.module.css'
 
@@ -353,8 +352,6 @@ export function CharacterSheetPage() {
         isEditMode={currentSheet.isEditMode}
         onChangeCharacter={handleCharacterChange}
       />
-
-      <CharacterSheetSummary character={currentSheet.character} />
 
       <div ref={tabBarRef} className={styles.tabBarShell}>
         <nav
