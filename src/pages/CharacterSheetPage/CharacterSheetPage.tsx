@@ -6,6 +6,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import type { CharacterSheet } from '../../types/system/dnd'
 import { saveCharacterSheet } from '../../store/characterSheetStore'
 import { recordOpened } from '../../utils/recentlyOpened'
+import { applyLongRestToSpellSlots } from '../../utils/characterResources'
 import { useAuth } from '../../context/AuthContext'
 import { useCharacterSheet } from '../../hooks/useCharacterSheet'
 import { CharacterHeader } from '../../components/CharacterHeader/CharacterHeader'
@@ -214,13 +215,11 @@ export function CharacterSheetPage() {
   }
 
   function handleLongRest(updatedResources: CharacterSheet['resources']) {
-    const resetSlots = Object.fromEntries(
-      Object.entries(currentSheet.spellSlots).map(([level, slot]) => [
-        level,
-        { ...slot, current: slot.max },
-      ]),
-    )
-    handleUpdate({ ...currentSheet, resources: updatedResources, spellSlots: resetSlots })
+    handleUpdate({
+      ...currentSheet,
+      resources: updatedResources,
+      spellSlots: applyLongRestToSpellSlots(currentSheet.spellSlots),
+    })
   }
 
   const activePanelId = TAB_PANEL_IDS[activeTab]

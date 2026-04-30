@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Resource, ResourceOrigin, ResourceReset } from '../../types/system/dnd'
+import { applyShortRest, applyLongRestToResources } from '../../utils/characterResources'
 import { NumberInput } from '../NumberInput/NumberInput'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './ResourcesPanel.module.css'
@@ -175,20 +176,8 @@ export function ResourcesPanel({
     setResource(index, { current: resource.max ?? 0 })
   }
 
-  function computeReset(type: ResourceReset): Resource[] {
-    return resources.map((resource) =>
-      resource.resetOn === type
-        ? { ...resource, current: resource.max ?? 0 }
-        : resource,
-    )
-  }
-
-  function resetAll(type: ResourceReset) {
-    onChangeResources(computeReset(type))
-  }
-
   function handleLongRestClick() {
-    const updated = computeReset('long-rest')
+    const updated = applyLongRestToResources(resources)
     if (onLongRest) {
       onLongRest(updated)
     } else {
@@ -219,7 +208,7 @@ export function ResourcesPanel({
         <button
           type="button"
           className={styles.restBtn}
-          onClick={() => resetAll('short-rest')}
+          onClick={() => onChangeResources(applyShortRest(resources))}
         >
           Descanso curto
         </button>
@@ -435,6 +424,8 @@ export function ResourcesPanel({
                         <button
                           type="button"
                           className={styles.counterBtn}
+                          disabled={(resource.current ?? 0) <= 0}
+                          aria-label={`Usar ${resource.name?.trim() || 'recurso'}`}
                           onClick={() => setCurrent(index, (resource.current ?? 0) - 1)}
                         >
                           −
@@ -448,6 +439,8 @@ export function ResourcesPanel({
                         <button
                           type="button"
                           className={styles.counterBtn}
+                          disabled={(resource.current ?? 0) >= (resource.max ?? 0)}
+                          aria-label={`Aumentar ${resource.name?.trim() || 'recurso'}`}
                           onClick={() => setCurrent(index, (resource.current ?? 0) + 1)}
                         >
                           +
@@ -457,6 +450,7 @@ export function ResourcesPanel({
                       <button
                         type="button"
                         className={styles.resetBtn}
+                        disabled={(resource.current ?? 0) >= (resource.max ?? 0)}
                         onClick={() => resetResource(index)}
                       >
                         ↺ Restaurar
