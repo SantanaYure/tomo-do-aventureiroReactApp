@@ -5,6 +5,7 @@
 import { useState } from 'react'
 import type { Character, Class } from '../../types/system/dnd'
 import { AvatarCropper } from '../AvatarCropper/AvatarCropper'
+import { NumberInput } from '../NumberInput/NumberInput'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './CharacterHeader.module.css'
 
@@ -143,11 +144,10 @@ export function CharacterHeader({
 
               <label className={styles.field}>
                 XP
-                <input
-                  type="number"
+                <NumberInput
                   min={0}
                   value={character.xp}
-                  onChange={(event) => set('xp', Number(event.target.value))}
+                  onChange={(value) => set('xp', value)}
                 />
               </label>
             </div>
@@ -179,15 +179,13 @@ export function CharacterHeader({
                       </option>
                     ))}
                   </select>
-                  <input
+                  <NumberInput
                     className={styles.classInput}
-                    type="number"
                     min={1}
                     max={20}
                     value={currentClass.level}
-                    onChange={(event) =>
-                      setClass(index, 'level', Number(event.target.value))
-                    }
+                    emptyValue={1}
+                    onChange={(value) => setClass(index, 'level', value)}
                   />
                   <input
                     className={styles.classInput}

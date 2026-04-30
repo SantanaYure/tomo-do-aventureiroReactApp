@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { MonsterFeature } from '../../../types/system/dnd/monsterSheet'
+import { NumberInput } from '../../NumberInput/NumberInput'
 import panelStyles from '../../../styles/panel.module.css'
 import {
     clampTrackerValue,
@@ -23,11 +24,6 @@ function createFeature(): MonsterFeature {
         range: '',
         requirements: '',
     }
-}
-
-function parseCount(rawValue: string, fallback: number, minimum = 0): number {
-    const parsed = Number(rawValue)
-    return Number.isFinite(parsed) ? Math.max(minimum, Math.trunc(parsed)) : fallback
 }
 
 export function MonsterFeaturesPanel({
@@ -80,9 +76,9 @@ export function MonsterFeaturesPanel({
         })
     }
 
-    function setMaxUses(index: number, rawValue: string) {
+    function setMaxUses(index: number, value: number) {
         const feature = features[index]
-        const nextMax = parseCount(rawValue, feature.maxUses, 1)
+        const nextMax = Math.max(1, Math.trunc(value))
         const nextCurrent = feature.currentUses >= feature.maxUses
             ? nextMax
             : clampTrackerValue(feature.currentUses, nextMax)
@@ -201,11 +197,11 @@ export function MonsterFeaturesPanel({
                                     <div className={styles.limitedUsesGrid}>
                                         <label className={styles.field}>
                                             Máximo
-                                            <input
-                                                type="number"
+                                            <NumberInput
                                                 min={1}
                                                 value={feature.maxUses}
-                                                onChange={(event) => setMaxUses(index, event.target.value)}
+                                                emptyValue={1}
+                                                onChange={(value) => setMaxUses(index, value)}
                                             />
                                         </label>
 

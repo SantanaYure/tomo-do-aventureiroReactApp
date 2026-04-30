@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Spell, SpellcastingAbility } from '../../../types/system/dnd/monsterSheet'
 import { calcModifier } from '../../AttributesPanel/AttributesPanel'
+import { NumberInput } from '../../NumberInput/NumberInput'
 import panelStyles from '../../../styles/panel.module.css'
 import type { MonsterComponentProps } from '../shared'
 import styles from './MonsterSpellsPanel.module.css'
@@ -208,14 +209,14 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
                 <div className={styles.spellStat}>
                     <span className={styles.spellStatLabel}>Proficiência</span>
                     {isEditing ? (
-                        <input
-                            type="number"
+                        <NumberInput
                             min={1}
                             className={styles.profInput}
                             value={spells.proficiencyBonus}
-                            onChange={(event) =>
+                            emptyValue={2}
+                            onChange={(value) =>
                                 updateSpells({
-                                    proficiencyBonus: Math.max(1, Number(event.target.value) || 2),
+                                    proficiencyBonus: Math.max(1, value),
                                 })
                             }
                         />
@@ -267,16 +268,13 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
 
                             {level > 0 && (
                                 isEditing ? (
-                                    <input
+                                    <NumberInput
                                         className={styles.slotInput}
-                                        type="number"
                                         min={0}
                                         placeholder="Slots Máximos"
-                                        value={slots.max || ''}
+                                        value={slots.max}
                                         onClick={(event) => event.stopPropagation()}
-                                        onChange={(event) =>
-                                            setSlot(level, 'max', Number(event.target.value))
-                                        }
+                                        onChange={(value) => setSlot(level, 'max', value)}
                                     />
                                 ) : slots.max > 0 ? (
                                     <div

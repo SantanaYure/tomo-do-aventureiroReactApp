@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Resource, ResourceOrigin, ResourceReset } from '../../types/system/dnd'
+import { NumberInput } from '../NumberInput/NumberInput'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './ResourcesPanel.module.css'
 
@@ -345,12 +346,11 @@ export function ResourcesPanel({
                       {resource.current ?? 0}
                       <span className={styles.counterMax}> / </span>
                     </span>
-                    <input
+                    <NumberInput
                       className={styles.maxInput}
-                      type="number"
                       min={0}
                       value={resource.max ?? 0}
-                      onChange={(event) => setMax(index, Number(event.target.value))}
+                      onChange={(value) => setMax(index, value)}
                     />
                     <button
                       type="button"

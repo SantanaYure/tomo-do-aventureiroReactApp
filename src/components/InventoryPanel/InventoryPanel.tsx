@@ -1,5 +1,6 @@
 // src/components/InventoryPanel/InventoryPanel.tsx
 import type { Character, Currency, InventoryItem } from '../../types/system/dnd'
+import { NumberInput } from '../NumberInput/NumberInput'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './InventoryPanel.module.css'
 
@@ -75,7 +76,7 @@ export function InventoryPanel({
             <div key={key} className={styles.coinBlock}>
               <span className={styles.coinLabel}>{CURRENCY_LABEL[key]}</span>
               {isEditMode
-                ? <input className={styles.coinInput} type="number" min={0} value={character.currency[key]} onChange={(e) => setCurrency(key, Number(e.target.value))} />
+                ? <NumberInput className={styles.coinInput} min={0} value={character.currency[key]} onChange={(value) => setCurrency(key, value)} />
                 : <span className={styles.coinValue}>{character.currency[key]}</span>}
             </div>
           ))}
@@ -111,12 +112,12 @@ export function InventoryPanel({
                   </td>
                   <td className={styles.qtyTd}>
                     {isEditMode
-                      ? <input type="number" min={0} value={item.quantity ?? 1} onChange={(e) => setItem(i, { quantity: Number(e.target.value) })} />
+                      ? <NumberInput min={0} value={item.quantity ?? 1} emptyValue={1} onChange={(value) => setItem(i, { quantity: value })} />
                       : <span>{item.quantity ?? 1}</span>}
                   </td>
                   <td className={styles.weightTd}>
                     {isEditMode
-                      ? <input type="number" min={0} step={0.1} value={item.weight ?? 0} onChange={(e) => setItem(i, { weight: Number(e.target.value) })} />
+                      ? <NumberInput min={0} step={0.1} value={item.weight ?? 0} onChange={(value) => setItem(i, { weight: value })} />
                       : <span>{item.weight ?? 0}</span>}
                   </td>
                   {isEditMode && <td><input type="text" value={String(item.description ?? '')} placeholder="Descrição" onChange={(e) => setItem(i, { description: e.target.value })} /></td>}

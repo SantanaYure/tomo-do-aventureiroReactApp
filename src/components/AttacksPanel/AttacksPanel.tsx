@@ -1,5 +1,6 @@
 import type { Attack, AttackAttributeKey, Character } from '../../types/system/dnd'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
+import { NumberInput } from '../NumberInput/NumberInput'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './AttacksPanel.module.css'
 
@@ -166,13 +167,10 @@ export function AttacksPanel({
                     </td>
                     <td className={styles.bonusTd} data-label="Bônus">
                       {attack.attributeKey === 'manual' && isEditMode ? (
-                        <input
+                        <NumberInput
                           className={styles.manualBonusInput}
-                          type="number"
                           value={attack.attackBonus ?? 0}
-                          onChange={(event) =>
-                            setAttack(i, { attackBonus: Number(event.target.value) })
-                          }
+                          onChange={(value) => setAttack(i, { attackBonus: value })}
                         />
                       ) : (
                         <span className={styles.bonusDisplay}>{formatBonus(bonus)}</span>

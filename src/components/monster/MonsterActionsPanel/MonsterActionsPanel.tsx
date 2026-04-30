@@ -5,6 +5,7 @@ import type {
     MonsterAction,
     MonsterFeature,
 } from '../../../types/system/dnd/monsterSheet'
+import { NumberInput } from '../../NumberInput/NumberInput'
 import panelStyles from '../../../styles/panel.module.css'
 import type { MonsterComponentProps } from '../shared'
 import styles from './MonsterActionsPanel.module.css'
@@ -77,11 +78,6 @@ function formatActionSummary(action: MonsterAction): string {
     }
 
     return summaryParts.join(' | ')
-}
-
-function parseCount(rawValue: string, fallback: number): number {
-    const parsed = Number(rawValue)
-    return Number.isFinite(parsed) ? Math.max(1, Math.trunc(parsed)) : fallback
 }
 
 export function MonsterActionsPanel({
@@ -304,13 +300,13 @@ export function MonsterActionsPanel({
                                     {action.isMultiattack && (
                                         <label className={`${styles.field} ${styles.smallField}`}>
                                             Total de ataques
-                                            <input
-                                                type="number"
+                                            <NumberInput
                                                 min={1}
                                                 value={action.attackCount}
-                                                onChange={(event) =>
+                                                emptyValue={1}
+                                                onChange={(value) =>
                                                     setAction(index, {
-                                                        attackCount: parseCount(event.target.value, action.attackCount),
+                                                        attackCount: Math.max(1, Math.trunc(value)),
                                                     })
                                                 }
                                             />

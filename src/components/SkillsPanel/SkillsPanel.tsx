@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from 'react'
 import type { AttributeName, Character, SkillName } from '../../types/system/dnd'
+import { NumberInput } from '../NumberInput/NumberInput'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './SkillsPanel.module.css'
 import {
@@ -93,11 +94,6 @@ const ATTRIBUTE_ABBREVIATION: Record<AttributeName, string> = {
 
 function formatModifier(modifier: number): string {
 	return modifier >= 0 ? `+${modifier}` : `${modifier}`
-}
-
-function parseNumberInput(rawValue: string, fallback = 0): number {
-	const parsed = Number(rawValue)
-	return Number.isFinite(parsed) ? parsed : fallback
 }
 
 function normalizeSkillProficiency(value: number): number {
@@ -222,13 +218,12 @@ export function SkillsPanel({
 
 									<div className={styles.skillValueGroup}>
 										{isEditMode ? (
-											<input
-												type="number"
+											<NumberInput
 												aria-label={`Modificador extra de ${SKILL_LABEL[skill]}`}
 												className={styles.miscInput}
 												title="Modificador extra"
 												value={misc}
-												onChange={(event) => setMisc(skill, parseNumberInput(event.target.value, 0))}
+												onChange={(value) => setMisc(skill, value)}
 											/>
 										) : null}
 
@@ -248,16 +243,15 @@ export function SkillsPanel({
 					<strong className={styles.passiveValue}>{passivePerception}</strong>
 
 					{isEditMode ? (
-						<input
-							type="number"
+						<NumberInput
 							aria-label="Bônus extra à percepção passiva"
 							className={styles.passiveBonusInput}
 							title="Bônus extra à percepção passiva"
 							value={character.passivePerceptionBonus}
-							onChange={(event) =>
+							onChange={(value) =>
 								onChangeCharacter({
 									...character,
-									passivePerceptionBonus: parseNumberInput(event.target.value, 0),
+									passivePerceptionBonus: value,
 								})
 							}
 						/>
