@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { MonsterSheet } from '../../../types/system/dnd/monsterSheet'
+import { NumberInput } from '../../NumberInput/NumberInput'
 import panelStyles from '../../../styles/panel.module.css'
 import type { DeepPartial, MonsterComponentProps } from '../shared'
 import styles from './MonsterTraitsPanel.module.css'
@@ -257,11 +258,10 @@ export function MonsterTraitsPanel({
 
             <label className={`${styles.field} ${styles.ratingCard}`}>
               XP
-              <input
-                type="number"
+              <NumberInput
                 min={0}
                 value={traits.xp}
-                onChange={(event) => updateTraits({ xp: Number(event.target.value) || 0 })}
+                onChange={(value) => updateTraits({ xp: value })}
               />
             </label>
 

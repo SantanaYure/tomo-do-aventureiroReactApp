@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { LegendaryAction } from '../../../types/system/dnd/monsterSheet'
+import { NumberInput } from '../../NumberInput/NumberInput'
 import panelStyles from '../../../styles/panel.module.css'
 import {
     clampTrackerValue,
@@ -128,16 +129,12 @@ export function LegendaryActionsPanel({
                     <div className={styles.topGrid}>
                         <label className={`${styles.field} ${styles.pointsField}`}>
                             Pontos por rodada
-                            <input
-                                type="number"
+                            <NumberInput
                                 min={0}
                                 value={legendary.pointsPerRound}
-                                onChange={(event) =>
+                                onChange={(value) =>
                                     updateLegendary({
-                                        pointsPerRound: parsePoints(
-                                            event.target.value,
-                                            legendary.pointsPerRound,
-                                        ),
+                                        pointsPerRound: Math.max(0, Math.trunc(value)),
                                     })
                                 }
                             />

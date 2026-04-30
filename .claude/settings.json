@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Edit(/.claude/skills/tomo-repository-analysis/**)"
+      "Edit(/.claude/skills/tomo-repository-analysis/**)",
+      "Bash(echo \"EXIT_CODE=$?\")"
     ]
   }
 }

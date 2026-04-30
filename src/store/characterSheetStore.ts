@@ -13,6 +13,7 @@ import type {
   CharacterSheet,
   Resource,
   ResourceOrigin,
+  SpellSlots,
 } from '../types/system/dnd'
 import {
   addUniqueTextEntry,
@@ -224,6 +225,29 @@ function normalizeResource(resource: Resource | undefined): Resource {
   }
 }
 
+function normalizeSpellSlots(value: unknown): SpellSlots {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const raw = value as Record<string, unknown>
+  const result: SpellSlots = {}
+  for (const key of Object.keys(raw)) {
+    const level = Number(key)
+    if (!Number.isFinite(level) || level < 0 || level > 9) continue
+    const slot = raw[key]
+    if (!slot || typeof slot !== 'object' || Array.isArray(slot)) continue
+    const s = slot as Record<string, unknown>
+    const max =
+      typeof s.max === 'number' && Number.isFinite(s.max)
+        ? Math.max(0, Math.trunc(s.max))
+        : 0
+    const current =
+      typeof s.current === 'number' && Number.isFinite(s.current)
+        ? Math.min(max, Math.max(0, Math.trunc(s.current)))
+        : 0
+    result[level] = { current, max }
+  }
+  return result
+}
+
 function isValidAvatarDataUrl(value: unknown): boolean {
   if (typeof value !== 'string') return false
   if (value === '') return true
@@ -375,6 +399,7 @@ export function normalizeCharacterSheet<T extends CharacterSheet>(value: T): T {
       : defaultSheet.resources,
     inventory: Array.isArray(nextValue.inventory) ? nextValue.inventory : defaultSheet.inventory,
     spells: Array.isArray(nextValue.spells) ? nextValue.spells : defaultSheet.spells,
+    spellSlots: normalizeSpellSlots(nextValue.spellSlots),
     attacks: Array.isArray(nextValue.attacks)
       ? nextValue.attacks.map((attack) => normalizeAttack(attack))
       : defaultSheet.attacks,

@@ -1,11 +1,10 @@
 // src/components/SpellsPanel/SpellsPanel.tsx
 import { useState } from 'react'
-import type { Character, Spell, SpellcastingAbility } from '../../types/system/dnd'
+import type { Character, Spell, SpellSlots, SpellcastingAbility } from '../../types/system/dnd'
+import { NumberInput } from '../NumberInput/NumberInput'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './SpellsPanel.module.css'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
-
-interface SpellSlots { [level: number]: { current: number; max: number } }
 
 const SPELL_LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 const LEVEL_LABEL: Record<number, string> = {
@@ -219,14 +218,13 @@ export function SpellsPanel({
               <span className={styles.levelCount}>{levelSpells.length} magia{levelSpells.length !== 1 ? 's' : ''}</span>
               {level > 0 && (
                 isEditMode ? (
-                  <input
+                  <NumberInput
                     className={styles.slotInput}
-                    type="number"
                     min={0}
                     placeholder="Slots Máximos"
-                    value={slots.max || ''}
+                    value={slots.max}
                     onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => setSlot(level, 'max', Number(e.target.value))}
+                    onChange={(value) => setSlot(level, 'max', value)}
                   />
                 ) : slots.max > 0 ? (
                   <div className={styles.slotCounter} onClick={(e) => e.stopPropagation()}>

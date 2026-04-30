@@ -6,6 +6,7 @@ import type {
   SavingThrowProficiency,
   SavingThrows,
 } from '../../types/system/dnd'
+import { NumberInput } from '../NumberInput/NumberInput'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './AttributesPanel.module.css'
 
@@ -20,11 +21,6 @@ export function calcProficiencyBonus(classes: Class[]): number {
 
 function formatModifier(modifier: number): string {
   return modifier >= 0 ? `+${modifier}` : `${modifier}`
-}
-
-function parseNumberInput(rawValue: string, fallback = 0): number {
-  const parsed = Number(rawValue)
-  return Number.isFinite(parsed) ? parsed : fallback
 }
 
 function clampAttributeValue(value: number): number {
@@ -147,17 +143,15 @@ export function AttributesPanel({
               <div>
                 {isEditMode ? (
                   <label htmlFor={inputId}>
-                    <input
+                    <NumberInput
                       id={inputId}
-                      type="number"
                       min={1}
                       max={30}
                       aria-label={`Valor de ${attribute.name}`}
                       className={styles.attrInput}
                       value={attribute.value}
-                      onChange={(event) =>
-                        setAttrValue(currentIndex, parseNumberInput(event.target.value, 1))
-                      }
+                      emptyValue={1}
+                      onChange={(value) => setAttrValue(currentIndex, value)}
                     />
                   </label>
                 ) : (

@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react'
 import type { Character, HpBonusEntry } from '../../types/system/dnd'
+import { NumberInput } from '../NumberInput/NumberInput'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './CombatPanel.module.css'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
@@ -288,11 +289,10 @@ export function CombatPanel({
           {isEditMode ? (
             <label className={styles.editField}>
               Valor base
-              <input
+              <NumberInput
                 className={`${panelStyles.compactInput} ${styles.statInput}`}
-                type="number"
                 value={character.armorClassBase}
-                onChange={(e) => set('armorClassBase', Number(e.target.value))}
+                onChange={(value) => set('armorClassBase', value)}
               />
             </label>
           ) : (
@@ -307,11 +307,10 @@ export function CombatPanel({
           {isEditMode ? (
             <label className={styles.editField}>
               Bônus extra
-              <input
+              <NumberInput
                 className={`${panelStyles.compactInput} ${styles.statInput}`}
-                type="number"
                 value={character.initiativeBonusExtra}
-                onChange={(e) => set('initiativeBonusExtra', Number(e.target.value))}
+                onChange={(value) => set('initiativeBonusExtra', value)}
               />
             </label>
           ) : (
@@ -369,12 +368,11 @@ export function CombatPanel({
               <span className={styles.hpBlockLabel}>Máximo</span>
 
               {isEditMode && !character.hpAutoCalc ? (
-                <input
+                <NumberInput
                   className={`${panelStyles.compactInput} ${styles.hpInput}`}
-                  type="number"
                   min={0}
                   value={character.hpMax}
-                  onChange={(e) => set('hpMax', Number(e.target.value))}
+                  onChange={(value) => set('hpMax', value)}
                 />
               ) : (
                 <strong className={styles.hpValue}>{effectiveHpMax}</strong>
@@ -405,13 +403,12 @@ export function CombatPanel({
                     −
                   </button>
 
-                  <input
+                  <NumberInput
                     className={`${panelStyles.compactInput} ${styles.hpInput}`}
-                    type="number"
                     min={0}
                     max={effectiveHpMax}
                     value={displayedCurrentHp}
-                    onChange={(e) => setHpCurrent(Number(e.target.value))}
+                    onChange={(value) => setHpCurrent(value)}
                   />
 
                   <button
@@ -440,12 +437,11 @@ export function CombatPanel({
                     −
                   </button>
 
-                  <input
+                  <NumberInput
                     className={`${panelStyles.compactInput} ${styles.hpInput}`}
-                    type="number"
                     min={0}
                     value={quickTempHp}
-                    onChange={(e) => set('hpTemp', normalizeNonNegativeInt(Number(e.target.value)))}
+                    onChange={(value) => set('hpTemp', normalizeNonNegativeInt(value))}
                   />
 
                   <button
@@ -466,13 +462,12 @@ export function CombatPanel({
           <div className={styles.hpManager}>
             <div className={styles.hpDisplay}>
               <span className={styles.hpBlockLabel}>HP Atual:</span>
-              <input
+              <NumberInput
                 className={styles.hpCurrent}
-                type="number"
                 min={0}
                 max={effectiveHpMax}
                 value={quickCurrentHp}
-                onChange={(event) => setQuickHpCurrent(Number(event.target.value))}
+                onChange={(value) => setQuickHpCurrent(value)}
               />
               <span className={styles.hpSeparator}>/</span>
               <span className={styles.hpMax}>{effectiveHpMax}</span>
@@ -480,12 +475,11 @@ export function CombatPanel({
 
             <div className={styles.hpTemp}>
               <span>Vida Temporária:</span>
-              <input
+              <NumberInput
                 className={styles.hpTempInput}
-                type="number"
                 min={0}
                 value={quickTempHp}
-                onChange={(event) => setQuickHpTemp(Number(event.target.value))}
+                onChange={(value) => setQuickHpTemp(value)}
               />
             </div>
 
@@ -556,12 +550,11 @@ export function CombatPanel({
                 <div className={styles.bonusEntry} key={index}>
                   {isEditMode ? (
                     <>
-                      <input
+                      <NumberInput
                         className={styles.bonusValueInput}
-                        type="number"
                         value={entry.value}
-                        onChange={(e) =>
-                          setHpBonusEntry(index, { value: Number(e.target.value) })
+                        onChange={(value) =>
+                          setHpBonusEntry(index, { value })
                         }
                         placeholder="Valor"
                       />
@@ -632,17 +625,13 @@ export function CombatPanel({
             </button>
 
             {isEditMode ? (
-              <input
+              <NumberInput
                 className={`${panelStyles.compactInput} ${styles.statInput}`}
-                type="number"
                 min={0}
                 max={totalHitDiceAvailable}
                 value={character.hitDiceSpent}
-                onChange={(e) =>
-                  set(
-                    'hitDiceSpent',
-                    clamp(Number(e.target.value), 0, totalHitDiceAvailable),
-                  )
+                onChange={(value) =>
+                  set('hitDiceSpent', clamp(value, 0, totalHitDiceAvailable))
                 }
               />
             ) : (

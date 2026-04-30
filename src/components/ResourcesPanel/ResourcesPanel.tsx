@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Resource, ResourceOrigin, ResourceReset } from '../../types/system/dnd'
+import { NumberInput } from '../NumberInput/NumberInput'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './ResourcesPanel.module.css'
 
@@ -76,12 +77,14 @@ interface ResourcesPanelProps {
   resources: Resource[]
   isEditMode: boolean
   onChangeResources: (updated: Resource[]) => void
+  onLongRest?: (updatedResources: Resource[]) => void
 }
 
 export function ResourcesPanel({
   resources,
   isEditMode,
   onChangeResources,
+  onLongRest,
 }: ResourcesPanelProps) {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const resourceIds = resources.map((_, index) => `resource-${index}`)
@@ -172,14 +175,25 @@ export function ResourcesPanel({
     setResource(index, { current: resource.max ?? 0 })
   }
 
-  function resetAll(type: ResourceReset) {
-    onChangeResources(
-      resources.map((resource) =>
-        resource.resetOn === type
-          ? { ...resource, current: resource.max ?? 0 }
-          : resource,
-      ),
+  function computeReset(type: ResourceReset): Resource[] {
+    return resources.map((resource) =>
+      resource.resetOn === type
+        ? { ...resource, current: resource.max ?? 0 }
+        : resource,
     )
+  }
+
+  function resetAll(type: ResourceReset) {
+    onChangeResources(computeReset(type))
+  }
+
+  function handleLongRestClick() {
+    const updated = computeReset('long-rest')
+    if (onLongRest) {
+      onLongRest(updated)
+    } else {
+      onChangeResources(updated)
+    }
   }
 
   if (resources.length === 0 && !isEditMode) return null
@@ -213,7 +227,7 @@ export function ResourcesPanel({
         <button
           type="button"
           className={styles.restBtn}
-          onClick={() => resetAll('long-rest')}
+          onClick={handleLongRestClick}
         >
           Descanso longo
         </button>
@@ -345,12 +359,11 @@ export function ResourcesPanel({
                       {resource.current ?? 0}
                       <span className={styles.counterMax}> / </span>
                     </span>
-                    <input
+                    <NumberInput
                       className={styles.maxInput}
-                      type="number"
                       min={0}
                       value={resource.max ?? 0}
-                      onChange={(event) => setMax(index, Number(event.target.value))}
+                      onChange={(value) => setMax(index, value)}
                     />
                     <button
                       type="button"

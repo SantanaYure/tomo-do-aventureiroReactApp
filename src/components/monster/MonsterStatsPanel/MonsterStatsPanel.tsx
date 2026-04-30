@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { MonsterMovement, MonsterSheet } from '../../../types/system/dnd/monsterSheet'
+import { NumberInput } from '../../NumberInput/NumberInput'
 import panelStyles from '../../../styles/panel.module.css'
 import type { DeepPartial, MonsterComponentProps } from '../shared'
 import styles from './MonsterStatsPanel.module.css'
@@ -16,11 +17,6 @@ const ABILITIES = [
     shortLabel: string
     label: string
 }>
-
-function parseNumberInput(rawValue: string, fallback: number): number {
-    const parsed = Number(rawValue)
-    return Number.isFinite(parsed) ? parsed : fallback
-}
 
 function clampAbility(value: number): number {
     return Math.min(30, Math.max(1, Math.trunc(value)))
@@ -153,14 +149,11 @@ export function MonsterStatsPanel({
                     {isEditing ? (
                         <label className={styles.inlineField}>
                             Classe de Armadura
-                            <input
+                            <NumberInput
                                 className={styles.summaryInput}
-                                type="number"
                                 min={0}
                                 value={stats.ac}
-                                onChange={(event) =>
-                                    updateStats({ ac: clampMetric(parseNumberInput(event.target.value, stats.ac)) })
-                                }
+                                onChange={(value) => updateStats({ ac: clampMetric(value) })}
                             />
                         </label>
                     ) : (
@@ -196,16 +189,13 @@ export function MonsterStatsPanel({
 
                                         <label className={styles.movementDistanceField}>
                                             Metros
-                                            <input
+                                            <NumberInput
                                                 className={styles.movementDistanceInput}
-                                                type="number"
                                                 min={0}
                                                 value={movement.distance}
-                                                onChange={(event) =>
+                                                onChange={(value) =>
                                                     setMovement(index, {
-                                                        distance: clampMetric(
-                                                            parseNumberInput(event.target.value, movement.distance),
-                                                        ),
+                                                        distance: clampMetric(value),
                                                     })
                                                 }
                                             />
@@ -265,14 +255,11 @@ export function MonsterStatsPanel({
                     <div className={styles.hpRow}>
                         <div className={styles.hpBlock}>
                             <span className={styles.hpBlockLabel}>Máximo</span>
-                            <input
+                            <NumberInput
                                 className={`${panelStyles.compactInput} ${styles.hpInput}`}
-                                type="number"
                                 min={0}
                                 value={effectiveHpMax}
-                                onChange={(event) =>
-                                    setMaxHp(parseNumberInput(event.target.value, effectiveHpMax))
-                                }
+                                onChange={(value) => setMaxHp(value)}
                             />
                             <span className={styles.hpHelper}>Limite total de HP</span>
                         </div>
@@ -290,15 +277,12 @@ export function MonsterStatsPanel({
                                     −
                                 </button>
 
-                                <input
+                                <NumberInput
                                     className={`${panelStyles.compactInput} ${styles.hpInput}`}
-                                    type="number"
                                     min={0}
                                     max={effectiveHpMax}
                                     value={displayedCurrentHp}
-                                    onChange={(event) =>
-                                        setHpCurrent(parseNumberInput(event.target.value, displayedCurrentHp))
-                                    }
+                                    onChange={(value) => setHpCurrent(value)}
                                 />
 
                                 <button
@@ -327,14 +311,11 @@ export function MonsterStatsPanel({
                                     −
                                 </button>
 
-                                <input
+                                <NumberInput
                                     className={`${panelStyles.compactInput} ${styles.hpInput}`}
-                                    type="number"
                                     min={0}
                                     value={displayedTempHp}
-                                    onChange={(event) =>
-                                        setHpTemp(parseNumberInput(event.target.value, displayedTempHp))
-                                    }
+                                    onChange={(value) => setHpTemp(value)}
                                 />
 
                                 <button
@@ -354,15 +335,12 @@ export function MonsterStatsPanel({
                     <div className={styles.hpManager}>
                         <div className={styles.hpDisplay}>
                             <span className={styles.hpBlockLabel}>HP Atual:</span>
-                            <input
+                            <NumberInput
                                 className={styles.hpCurrent}
-                                type="number"
                                 min={0}
                                 max={effectiveHpMax}
                                 value={displayedCurrentHp}
-                                onChange={(event) =>
-                                    setHpCurrent(parseNumberInput(event.target.value, displayedCurrentHp))
-                                }
+                                onChange={(value) => setHpCurrent(value)}
                             />
                             <span className={styles.hpSeparator}>/</span>
                             <span className={styles.hpMax}>{effectiveHpMax}</span>
@@ -370,14 +348,11 @@ export function MonsterStatsPanel({
 
                         <div className={styles.hpTempRow}>
                             <span>Vida Temporária:</span>
-                            <input
+                            <NumberInput
                                 className={styles.hpTempInput}
-                                type="number"
                                 min={0}
                                 value={displayedTempHp}
-                                onChange={(event) =>
-                                    setHpTemp(parseNumberInput(event.target.value, displayedTempHp))
-                                }
+                                onChange={(value) => setHpTemp(value)}
                             />
                         </div>
 
@@ -436,17 +411,15 @@ export function MonsterStatsPanel({
                             {isEditing ? (
                                 <label className={styles.abilityField}>
                                     <span className="sr-only">{ability.label}</span>
-                                    <input
+                                    <NumberInput
                                         className={styles.abilityInput}
-                                        type="number"
                                         min={1}
                                         max={30}
                                         value={score}
-                                        onChange={(event) =>
+                                        emptyValue={1}
+                                        onChange={(value) =>
                                             updateStats({
-                                                [ability.key]: clampAbility(
-                                                    parseNumberInput(event.target.value, score),
-                                                ),
+                                                [ability.key]: clampAbility(value),
                                             })
                                         }
                                     />
