@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import type { Resource, ResourceOrigin, ResourceReset } from '../../types/system/dnd'
 import { ManagedResourceControls } from '../ManagedResourceControls/ManagedResourceControls'
+import { ResourceDots } from '../ResourceDots/ResourceDots'
 import { NumberInput } from '../NumberInput/NumberInput'
 import {
   restoreResource,
   restoreResourceFull,
-  setResourceCurrent,
   setResourceMax,
   spendResource,
 } from '../../utils/manageableResource'
+import { isRestBasedReset } from '../../utils/restRules'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './ResourcesPanel.module.css'
 
@@ -108,11 +109,6 @@ export function ResourcesPanel({
         currentIndex === index ? { ...resource, ...partial } : resource,
       ),
     )
-  }
-
-  function setCurrent(index: number, value: number) {
-    const next = setResourceCurrent(resources[index], value)
-    setResource(index, { current: next.current })
   }
 
   function setMax(index: number, value: number) {
@@ -306,43 +302,43 @@ export function ResourcesPanel({
                   />
 
                   <div className={styles.editRow}>
-                    <button
-                      type="button"
-                      className={styles.counterBtn}
-                      onClick={() => setCurrent(index, (resource.current ?? 0) - 1)}
-                      disabled={(resource.current ?? 0) <= 0}
-                      aria-label={`Usar habilidade: ${resource.name?.trim() || `#${index + 1}`}`}
-                    >
-                      −
-                    </button>
-                    <span className={styles.counterVal}>
-                      {resource.current ?? 0}
-                      <span className={styles.counterMax}> / </span>
-                    </span>
+                    <span className={styles.maxLabel}>Máximo de usos</span>
                     <NumberInput
                       className={styles.maxInput}
                       min={0}
                       value={resource.max ?? 0}
                       onChange={(value) => setMax(index, value)}
                     />
-                    <button
-                      type="button"
-                      className={styles.counterBtn}
-                      onClick={() => setCurrent(index, (resource.current ?? 0) + 1)}
-                      disabled={(resource.current ?? 0) >= (resource.max ?? 0)}
-                      aria-label={`Restaurar habilidade: ${resource.name?.trim() || `#${index + 1}`}`}
-                    >
-                      +
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.resetBtn}
-                      onClick={() => resetResource(index)}
-                      disabled={(resource.current ?? 0) >= (resource.max ?? 0)}
-                      aria-label={`Restaurar todos os usos de habilidade: ${resource.name?.trim() || `#${index + 1}`}`}
-                    >
-                      ↺ Restaurar
-                    </button>
+                    {(resource.max ?? 0) > 0 && (
+                      <ResourceDots
+                        current={resource.current ?? 0}
+                        max={resource.max ?? 0}
+                        itemName={resource.name ?? ''}
+                        resourceKind="habilidade"
+                        onSpend={() => spendResourceUse(index)}
+                        onRestore={
+                          isRestBasedReset(resource.resetOn)
+                            ? undefined
+                            : () => restoreResourceUse(index)
+                        }
+                      />
+                    )}
+                    {(resource.max ?? 0) > 0 && !isRestBasedReset(resource.resetOn) && (
+                      <button
+                        type="button"
+                        className={styles.resetBtn}
+                        onClick={() => resetResource(index)}
+                        disabled={(resource.current ?? 0) >= (resource.max ?? 0)}
+                        aria-label={`Restaurar todos os usos de habilidade: ${resource.name?.trim() || `#${index + 1}`}`}
+                      >
+                        ↺ Restaurar
+                      </button>
+                    )}
+                    {(resource.max ?? 0) > 0 && isRestBasedReset(resource.resetOn) && (
+                      <span className={styles.restHint}>
+                        Recupera no {resource.resetOn === 'short-rest' ? 'descanso curto' : 'descanso longo'}
+                      </span>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -367,8 +363,16 @@ export function ResourcesPanel({
                         itemName={resource.name ?? ''}
                         resourceKind="habilidade"
                         onSpend={() => spendResourceUse(index)}
-                        onRestore={() => restoreResourceUse(index)}
-                        onRestoreFull={() => resetResource(index)}
+                        onRestore={
+                          isRestBasedReset(resource.resetOn)
+                            ? undefined
+                            : () => restoreResourceUse(index)
+                        }
+                        onRestoreFull={
+                          isRestBasedReset(resource.resetOn)
+                            ? undefined
+                            : () => resetResource(index)
+                        }
                         restoreFullText="Restaurar"
                       />
                     </div>

@@ -4,8 +4,6 @@ import type { Character, Spell, SpellSlots, SpellcastingAbility } from '../../ty
 import { ManagedResourceControls } from '../ManagedResourceControls/ManagedResourceControls'
 import { NumberInput } from '../NumberInput/NumberInput'
 import {
-  restoreResource,
-  restoreResourceFull,
   setResourceCurrent,
   setResourceMax,
   spendResource,
@@ -161,16 +159,6 @@ export function SpellsPanel({
     onChangeSlotsData({ ...slotsData, [level]: next })
   }
 
-  function restoreSlot(level: number) {
-    const next = restoreResource(slotsData[level] ?? { current: 0, max: 0 })
-    onChangeSlotsData({ ...slotsData, [level]: next })
-  }
-
-  function restoreSlotFull(level: number) {
-    const next = restoreResourceFull(slotsData[level] ?? { current: 0, max: 0 })
-    onChangeSlotsData({ ...slotsData, [level]: next })
-  }
-
   const spellsByLevel = SPELL_LEVELS.reduce<Record<number, Spell[]>>((acc, level) => {
     acc[level] = spells.filter((s) => (s.level ?? 0) === level); return acc
   }, {})
@@ -265,9 +253,6 @@ export function SpellsPanel({
                       itemName={LEVEL_LABEL[level]}
                       resourceKind="espaço de magia"
                       onSpend={() => spendSlot(level)}
-                      onRestore={() => restoreSlot(level)}
-                      onRestoreFull={() => restoreSlotFull(level)}
-                      restoreFullText="Restaurar"
                     />
                   </div>
                 ) : null
@@ -387,7 +372,6 @@ export function SpellsPanel({
                               itemName={spell.name ?? LEVEL_LABEL[level]}
                               resourceKind="magia"
                               onSpend={() => spendSlot(level)}
-                              onRestore={() => restoreSlot(level)}
                             />
                           )}
                           {spell.description && <p className={styles.spellDescriptionRead}>{spell.description}</p>}

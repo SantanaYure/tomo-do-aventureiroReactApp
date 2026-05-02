@@ -19,6 +19,7 @@ import {
     type MonsterComponentProps,
     RECHARGE_OPTIONS,
 } from '../shared'
+import { isRestBasedRecharge } from '../../../utils/restRules'
 import styles from './MonsterActionsPanel.module.css'
 
 const ATTACK_TYPES: AttackType[] = ['Corpo-a-corpo', 'Distância', 'Magia']
@@ -608,8 +609,8 @@ export function MonsterActionsPanel({
                                                     itemName={action.name}
                                                     resourceKind="ação"
                                                     onSpend={() => spendActionUse(index)}
-                                                    onRestore={() => restoreActionUse(index)}
-                                                    onRestoreFull={() => resetActionUses(index)}
+                                                    onRestore={isRestBasedRecharge(action.recharge) ? undefined : () => restoreActionUse(index)}
+                                                    onRestoreFull={isRestBasedRecharge(action.recharge) ? undefined : () => resetActionUses(index)}
                                                     restoreFullText="Recarregar"
                                                     meta={<span className={styles.metaChip}>{getRechargeLabel(action.recharge)}</span>}
                                                 />
@@ -677,8 +678,8 @@ export function MonsterActionsPanel({
                                                             itemName={action.name}
                                                             resourceKind="ação"
                                                             onSpend={() => spendActionUse(index)}
-                                                            onRestore={() => restoreActionUse(index)}
-                                                            onRestoreFull={() => resetActionUses(index)}
+                                                            onRestore={isRestBasedRecharge(action.recharge) ? undefined : () => restoreActionUse(index)}
+                                                            onRestoreFull={isRestBasedRecharge(action.recharge) ? undefined : () => resetActionUses(index)}
                                                             restoreFullText="Recarregar"
                                                             meta={<span className={styles.metaChip}>{getRechargeLabel(action.recharge)}</span>}
                                                         />
@@ -736,8 +737,8 @@ export function MonsterActionsPanel({
                                                                 itemName={reaction.name}
                                                                 resourceKind="reação"
                                                                 onSpend={() => spendReactionUse(index)}
-                                                                onRestore={() => restoreReactionUse(index)}
-                                                                onRestoreFull={() => resetReactionUses(index)}
+                                                                onRestore={isRestBasedRecharge(reaction.recharge) ? undefined : () => restoreReactionUse(index)}
+                                                                onRestoreFull={isRestBasedRecharge(reaction.recharge) ? undefined : () => resetReactionUses(index)}
                                                                 restoreFullText="Recarregar"
                                                                 meta={<span className={styles.metaChip}>{getRechargeLabel(reaction.recharge)}</span>}
                                                             />

@@ -6,11 +6,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import type { CharacterSheet } from '../../types/system/dnd'
 import { saveCharacterSheet } from '../../store/characterSheetStore'
 import { recordOpened } from '../../utils/recentlyOpened'
-import {
-  applyShortRest,
-  applyLongRestToResources,
-  applyLongRestToSpellSlots,
-} from '../../utils/characterResources'
+import { applyRestToCharacterSheet, hasWarlockClass } from '../../utils/restRules'
 import { useAuth } from '../../context/AuthContext'
 import { useCharacterSheet } from '../../hooks/useCharacterSheet'
 import { CharacterHeader } from '../../components/CharacterHeader/CharacterHeader'
@@ -228,20 +224,18 @@ export function CharacterSheetPage() {
   }
 
   function handleShortRest() {
-    handleUpdate({
-      ...currentSheet,
-      resources: applyShortRest(currentSheet.resources),
-    })
-    showRestFeedback('Recursos restaurados (descanso curto)')
+    handleUpdate(applyRestToCharacterSheet(currentSheet, 'short'))
+    const warlock = hasWarlockClass(currentSheet.character.classes)
+    showRestFeedback(
+      warlock
+        ? 'Recursos restaurados — Bruxo recuperou os espaços de magia'
+        : 'Recursos restaurados (descanso curto)',
+    )
   }
 
   function handleLongRest() {
-    handleUpdate({
-      ...currentSheet,
-      resources: applyLongRestToResources(currentSheet.resources),
-      spellSlots: applyLongRestToSpellSlots(currentSheet.spellSlots),
-    })
-    showRestFeedback('Recursos e espaços de magia restaurados')
+    handleUpdate(applyRestToCharacterSheet(currentSheet, 'long'))
+    showRestFeedback('Recursos e espaços de magia restaurados (descanso longo)')
   }
 
   const activePanelId = TAB_PANEL_IDS[activeTab]

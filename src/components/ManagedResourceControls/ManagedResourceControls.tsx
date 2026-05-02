@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react'
 import {
   canRestore,
-  canSpend,
-  getResourceStatus,
   resolveManagedResource,
 } from '../../utils/manageableResource'
+import { ResourceDots } from '../ResourceDots/ResourceDots'
 import styles from './ManagedResourceControls.module.css'
 
 interface ManagedResourceControlsProps {
@@ -23,15 +22,13 @@ interface ManagedResourceControlsProps {
   restoreFullText?: string
   meta?: ReactNode
   className?: string
+  disabled?: boolean
+  size?: 'sm' | 'md'
 }
 
 function getSafeName(itemName: string): string {
   const trimmedName = itemName.trim()
   return trimmedName || 'sem nome'
-}
-
-function formatDelta(prefix: string, amount: number): string {
-  return amount > 1 ? `${prefix}${amount}` : prefix
 }
 
 export function ManagedResourceControls({
@@ -42,23 +39,18 @@ export function ManagedResourceControls({
   onSpend,
   onRestore,
   onRestoreFull,
-  spendAmount = 1,
-  restoreAmount = 1,
-  spendAriaLabel,
-  restoreAriaLabel,
+  spendAriaLabel: _spendAriaLabel,
+  restoreAriaLabel: _restoreAriaLabel,
   restoreFullAriaLabel,
   restoreFullText = 'Restaurar',
   meta,
   className,
+  disabled = false,
+  size = 'md',
 }: ManagedResourceControlsProps) {
   const resource = resolveManagedResource({ current, max })
-  const status = getResourceStatus(resource)
   const safeName = getSafeName(itemName)
-  const normalizedSpendAmount = Math.max(1, Math.trunc(spendAmount))
-  const normalizedRestoreAmount = Math.max(1, Math.trunc(restoreAmount))
-  const spendDisabled = !onSpend || !canSpend(resource, normalizedSpendAmount)
-  const restoreDisabled = !onRestore || !canRestore(resource)
-  const restoreFullDisabled = !onRestoreFull || !canRestore(resource)
+  const restoreFullDisabled = disabled || !onRestoreFull || !canRestore(resource)
   const classes = className ? `${styles.controls} ${className}` : styles.controls
 
   if (resource.max <= 0) {
@@ -66,34 +58,21 @@ export function ManagedResourceControls({
   }
 
   return (
-    <div className={classes} data-resource-status={status}>
-      <button
-        type="button"
-        className={styles.stepButton}
-        disabled={spendDisabled}
-        aria-label={spendAriaLabel ?? `Usar ${resourceKind}: ${safeName}`}
-        onClick={onSpend}
-      >
-        {formatDelta('-', normalizedSpendAmount)}
-      </button>
+    <span className={classes}>
+      <ResourceDots
+        current={resource.current}
+        max={resource.max}
+        itemName={itemName}
+        resourceKind={resourceKind}
+        onSpend={onSpend}
+        onRestore={onRestore}
+        disabled={disabled}
+        size={size}
+      />
 
-      <span
-        className={styles.counter}
-        aria-label={`${resource.current} de ${resource.max} usos disponiveis`}
-      >
-        {resource.current}
-        <span className={styles.counterMax}> / {resource.max}</span>
+      <span className={styles.counterText} aria-hidden="true">
+        {resource.current}/{resource.max}
       </span>
-
-      <button
-        type="button"
-        className={styles.stepButton}
-        disabled={restoreDisabled}
-        aria-label={restoreAriaLabel ?? `Restaurar ${resourceKind}: ${safeName}`}
-        onClick={onRestore}
-      >
-        {formatDelta('+', normalizedRestoreAmount)}
-      </button>
 
       {onRestoreFull && (
         <button
@@ -110,6 +89,6 @@ export function ManagedResourceControls({
       )}
 
       {meta && <span className={styles.meta}>{meta}</span>}
-    </div>
+    </span>
   )
 }
