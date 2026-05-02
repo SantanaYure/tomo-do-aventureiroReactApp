@@ -326,70 +326,73 @@ export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
             ))}
 
             {/* Ações regulares */}
-            {sheet.actions.filter((a) => !a.isMultiattack).map((action, index) => {
-              const id = action.id || `action-${index}`
-              const isCollapsed = collapsedIds.has(id)
-              const restBased = isRestBasedRecharge(action.recharge)
-              const summary = action.isAttack
-                ? [action.attackBonus.trim(), action.damage.trim() ? `${action.damage} ${action.damageType}`.trim() : ''].filter(Boolean).join(' | ')
-                : ''
+            {sheet.actions
+              .map((action, realIndex) => ({ action, realIndex }))
+              .filter(({ action: a }) => !a.isMultiattack)
+              .map(({ action, realIndex }) => {
+                const id = action.id || `action-${realIndex}`
+                const isCollapsed = collapsedIds.has(id)
+                const restBased = isRestBasedRecharge(action.recharge)
+                const summary = action.isAttack
+                  ? [action.attackBonus.trim(), action.damage.trim() ? `${action.damage} ${action.damageType}`.trim() : ''].filter(Boolean).join(' | ')
+                  : ''
 
-              return (
-                <article className={styles.itemCard} key={id}>
-                  <button
-                    type="button"
-                    className={styles.itemToggle}
-                    onClick={() => toggleCollapse(id)}
-                    aria-expanded={!isCollapsed}
-                  >
-                    <span className={styles.itemTitle}>{action.name || '(sem nome)'}</span>
-                    {summary && <span className={styles.itemMeta}>{summary}</span>}
-                    {action.hasLimitedUses && (
-                      <span className={styles.itemMeta}>{action.currentUses}/{action.maxUses}</span>
-                    )}
-                    <span className={styles.collapseIcon}>{isCollapsed ? '▸' : '▾'}</span>
-                  </button>
-
-                  {!isCollapsed && (
-                    <div className={styles.itemBody}>
-                      <div className={styles.metaRow}>
-                        {action.isAttack && action.attackType && <span className={styles.metaChip}>{action.attackType}</span>}
-                        {action.isAttack && action.attackBonus.trim() && <span className={styles.metaChip}>Bônus {action.attackBonus}</span>}
-                        {action.isAttack && action.damage.trim() && (
-                          <span className={styles.metaChip}>Dano {action.damage}{action.damageType ? ` ${action.damageType}` : ''}</span>
-                        )}
-                        {action.reach.trim() && <span className={styles.metaChip}>Alcance {action.reach}</span>}
-                      </div>
+                return (
+                  <article className={styles.itemCard} key={id}>
+                    <button
+                      type="button"
+                      className={styles.itemToggle}
+                      onClick={() => toggleCollapse(id)}
+                      aria-expanded={!isCollapsed}
+                    >
+                      <span className={styles.itemTitle}>{action.name || '(sem nome)'}</span>
+                      {summary && <span className={styles.itemMeta}>{summary}</span>}
                       {action.hasLimitedUses && (
-                        <ManagedResourceControls
-                          current={action.currentUses}
-                          max={action.maxUses}
-                          itemName={action.name}
-                          resourceKind="ação"
-                          onSpend={() => {
-                            const next = spendResource({ current: action.currentUses, max: action.maxUses })
-                            updateAction(index, { currentUses: next.current })
-                          }}
-                          onRestore={restBased ? undefined : () => {
-                            const next = restoreResource({ current: action.currentUses, max: action.maxUses })
-                            updateAction(index, { currentUses: next.current })
-                          }}
-                          onRestoreFull={restBased ? undefined : () => {
-                            const next = restoreResourceFull({ current: action.currentUses, max: action.maxUses })
-                            updateAction(index, { currentUses: next.current })
-                          }}
-                          restoreFullText="Recarregar"
-                          meta={<span className={styles.metaChip}>{getRechargeLabel(action.recharge)}</span>}
-                        />
+                        <span className={styles.itemMeta}>{action.currentUses}/{action.maxUses}</span>
                       )}
-                      <p className={action.description.trim() ? styles.description : styles.emptyText}>
-                        {action.description.trim() || 'Sem descrição.'}
-                      </p>
-                    </div>
-                  )}
-                </article>
-              )
-            })}
+                      <span className={styles.collapseIcon}>{isCollapsed ? '▸' : '▾'}</span>
+                    </button>
+
+                    {!isCollapsed && (
+                      <div className={styles.itemBody}>
+                        <div className={styles.metaRow}>
+                          {action.isAttack && action.attackType && <span className={styles.metaChip}>{action.attackType}</span>}
+                          {action.isAttack && action.attackBonus.trim() && <span className={styles.metaChip}>Bônus {action.attackBonus}</span>}
+                          {action.isAttack && action.damage.trim() && (
+                            <span className={styles.metaChip}>Dano {action.damage}{action.damageType ? ` ${action.damageType}` : ''}</span>
+                          )}
+                          {action.reach.trim() && <span className={styles.metaChip}>Alcance {action.reach}</span>}
+                        </div>
+                        {action.hasLimitedUses && (
+                          <ManagedResourceControls
+                            current={action.currentUses}
+                            max={action.maxUses}
+                            itemName={action.name}
+                            resourceKind="ação"
+                            onSpend={() => {
+                              const next = spendResource({ current: action.currentUses, max: action.maxUses })
+                              updateAction(realIndex, { currentUses: next.current })
+                            }}
+                            onRestore={restBased ? undefined : () => {
+                              const next = restoreResource({ current: action.currentUses, max: action.maxUses })
+                              updateAction(realIndex, { currentUses: next.current })
+                            }}
+                            onRestoreFull={restBased ? undefined : () => {
+                              const next = restoreResourceFull({ current: action.currentUses, max: action.maxUses })
+                              updateAction(realIndex, { currentUses: next.current })
+                            }}
+                            restoreFullText="Recarregar"
+                            meta={<span className={styles.metaChip}>{getRechargeLabel(action.recharge)}</span>}
+                          />
+                        )}
+                        <p className={action.description.trim() ? styles.description : styles.emptyText}>
+                          {action.description.trim() || 'Sem descrição.'}
+                        </p>
+                      </div>
+                    )}
+                  </article>
+                )
+              })}
 
             {/* Reações */}
             {sheet.reactions.length > 0 && (
