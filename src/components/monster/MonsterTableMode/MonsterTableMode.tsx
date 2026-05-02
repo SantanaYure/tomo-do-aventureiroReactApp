@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import type { MonsterSheet, MonsterKind } from '../../../types/system/dnd/monsterSheet'
 import type { DeepPartial } from '../shared'
+import { getRechargeLabel } from '../shared'
+import { isRestBasedRecharge } from '../../../utils/restRules'
+import { spendResource, restoreResource, restoreResourceFull } from '../../../utils/manageableResource'
+import { ManagedResourceControls } from '../../ManagedResourceControls/ManagedResourceControls'
 import panelStyles from '../../../styles/panel.module.css'
 import styles from './MonsterTableMode.module.css'
 
@@ -56,6 +60,30 @@ function calcPassivePerception(sheet: MonsterSheet): number {
 export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
   const { details, stats, traits } = sheet
   const [actionValue, setActionValue] = useState('')
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+
+  function toggleCollapse(id: string) {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) { next.delete(id) } else { next.add(id) }
+      return next
+    })
+  }
+
+  function updateFeature(index: number, patch: Partial<MonsterSheet['features'][number]>) {
+    const updated = sheet.features.map((f, i) => i === index ? { ...f, ...patch } : f)
+    onChange({ features: updated })
+  }
+
+  function updateAction(index: number, patch: Partial<MonsterSheet['actions'][number]>) {
+    const updated = sheet.actions.map((a, i) => i === index ? { ...a, ...patch } : a)
+    onChange({ actions: updated })
+  }
+
+  function updateReaction(index: number, patch: Partial<MonsterSheet['reactions'][number]>) {
+    const updated = sheet.reactions.map((r, i) => i === index ? { ...r, ...patch } : r)
+    onChange({ reactions: updated })
+  }
 
   const effectiveHpMax = Math.max(0, Math.trunc(stats.maxHp))
   const displayedCurrentHp = clamp(stats.hpCurrent, 0, effectiveHpMax)
@@ -216,6 +244,214 @@ export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
           <span className={styles.chip}>{calcPassivePerception(sheet)}</span>
         </div>
       </section>
+
+      {/* ── Seção D: Habilidades Especiais ── */}
+      {sheet.features.length > 0 && (
+        <section className={panelStyles.panel}>
+          <span className={styles.sectionTitle}>Habilidades Especiais</span>
+          <div className={styles.itemList}>
+            {sheet.features.map((feature, index) => {
+              const id = feature.id || `feature-${index}`
+              const isCollapsed = collapsedIds.has(id)
+              const restBased = isRestBasedRecharge(feature.recharge)
+
+              return (
+                <article className={styles.itemCard} key={id}>
+                  <button
+                    type="button"
+                    className={styles.itemToggle}
+                    onClick={() => toggleCollapse(id)}
+                    aria-expanded={!isCollapsed}
+                  >
+                    <span className={styles.itemTitle}>{feature.name || '(sem nome)'}</span>
+                    {feature.hasLimitedUses && (
+                      <span className={styles.itemMeta}>
+                        {feature.currentUses}/{feature.maxUses} · {getRechargeLabel(feature.recharge)}
+                      </span>
+                    )}
+                    <span className={styles.collapseIcon}>{isCollapsed ? '▸' : '▾'}</span>
+                  </button>
+
+                  {!isCollapsed && (
+                    <div className={styles.itemBody}>
+                      {feature.hasLimitedUses && (
+                        <ManagedResourceControls
+                          current={feature.currentUses}
+                          max={feature.maxUses}
+                          itemName={feature.name}
+                          resourceKind="habilidade"
+                          onSpend={() => {
+                            const next = spendResource({ current: feature.currentUses, max: feature.maxUses })
+                            updateFeature(index, { currentUses: next.current })
+                          }}
+                          onRestore={restBased ? undefined : () => {
+                            const next = restoreResource({ current: feature.currentUses, max: feature.maxUses })
+                            updateFeature(index, { currentUses: next.current })
+                          }}
+                          onRestoreFull={restBased ? undefined : () => {
+                            const next = restoreResourceFull({ current: feature.currentUses, max: feature.maxUses })
+                            updateFeature(index, { currentUses: next.current })
+                          }}
+                          restoreFullText="Recarregar"
+                          meta={<span className={styles.metaChip}>{getRechargeLabel(feature.recharge)}</span>}
+                        />
+                      )}
+                      <p className={feature.description.trim() ? styles.description : styles.emptyText}>
+                        {feature.description.trim() || 'Sem descrição.'}
+                      </p>
+                    </div>
+                  )}
+                </article>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ── Seção E: Ações e Reações ── */}
+      {(sheet.actions.length > 0 || sheet.reactions.length > 0) && (
+        <section className={panelStyles.panel}>
+          <span className={styles.sectionTitle}>Ações</span>
+          <div className={styles.itemList}>
+            {/* Multiataques em destaque */}
+            {sheet.actions.filter((a) => a.isMultiattack).map((action, i) => (
+              <article key={action.id || `multi-${i}`} className={styles.multiattackCard}>
+                <p className={styles.multiattackTitle}>
+                  {action.name.trim() || 'Multiataque'}. Realiza {action.attackCount} ataques por turno.
+                </p>
+                {action.description.trim() && (
+                  <p className={styles.description}>{action.description}</p>
+                )}
+              </article>
+            ))}
+
+            {/* Ações regulares */}
+            {sheet.actions.filter((a) => !a.isMultiattack).map((action, index) => {
+              const id = action.id || `action-${index}`
+              const isCollapsed = collapsedIds.has(id)
+              const restBased = isRestBasedRecharge(action.recharge)
+              const summary = action.isAttack
+                ? [action.attackBonus.trim(), action.damage.trim() ? `${action.damage} ${action.damageType}`.trim() : ''].filter(Boolean).join(' | ')
+                : ''
+
+              return (
+                <article className={styles.itemCard} key={id}>
+                  <button
+                    type="button"
+                    className={styles.itemToggle}
+                    onClick={() => toggleCollapse(id)}
+                    aria-expanded={!isCollapsed}
+                  >
+                    <span className={styles.itemTitle}>{action.name || '(sem nome)'}</span>
+                    {summary && <span className={styles.itemMeta}>{summary}</span>}
+                    {action.hasLimitedUses && (
+                      <span className={styles.itemMeta}>{action.currentUses}/{action.maxUses}</span>
+                    )}
+                    <span className={styles.collapseIcon}>{isCollapsed ? '▸' : '▾'}</span>
+                  </button>
+
+                  {!isCollapsed && (
+                    <div className={styles.itemBody}>
+                      <div className={styles.metaRow}>
+                        {action.isAttack && action.attackType && <span className={styles.metaChip}>{action.attackType}</span>}
+                        {action.isAttack && action.attackBonus.trim() && <span className={styles.metaChip}>Bônus {action.attackBonus}</span>}
+                        {action.isAttack && action.damage.trim() && (
+                          <span className={styles.metaChip}>Dano {action.damage}{action.damageType ? ` ${action.damageType}` : ''}</span>
+                        )}
+                        {action.reach.trim() && <span className={styles.metaChip}>Alcance {action.reach}</span>}
+                      </div>
+                      {action.hasLimitedUses && (
+                        <ManagedResourceControls
+                          current={action.currentUses}
+                          max={action.maxUses}
+                          itemName={action.name}
+                          resourceKind="ação"
+                          onSpend={() => {
+                            const next = spendResource({ current: action.currentUses, max: action.maxUses })
+                            updateAction(index, { currentUses: next.current })
+                          }}
+                          onRestore={restBased ? undefined : () => {
+                            const next = restoreResource({ current: action.currentUses, max: action.maxUses })
+                            updateAction(index, { currentUses: next.current })
+                          }}
+                          onRestoreFull={restBased ? undefined : () => {
+                            const next = restoreResourceFull({ current: action.currentUses, max: action.maxUses })
+                            updateAction(index, { currentUses: next.current })
+                          }}
+                          restoreFullText="Recarregar"
+                          meta={<span className={styles.metaChip}>{getRechargeLabel(action.recharge)}</span>}
+                        />
+                      )}
+                      <p className={action.description.trim() ? styles.description : styles.emptyText}>
+                        {action.description.trim() || 'Sem descrição.'}
+                      </p>
+                    </div>
+                  )}
+                </article>
+              )
+            })}
+
+            {/* Reações */}
+            {sheet.reactions.length > 0 && (
+              <>
+                <p className={styles.subsectionTitle}>Reações</p>
+                {sheet.reactions.map((reaction, index) => {
+                  const id = reaction.id || `reaction-${index}`
+                  const isCollapsed = collapsedIds.has(id)
+                  const restBased = isRestBasedRecharge(reaction.recharge)
+
+                  return (
+                    <article className={styles.itemCard} key={id}>
+                      <button
+                        type="button"
+                        className={styles.itemToggle}
+                        onClick={() => toggleCollapse(id)}
+                        aria-expanded={!isCollapsed}
+                      >
+                        <span className={styles.itemTitle}>{reaction.name || '(sem nome)'}</span>
+                        {reaction.hasLimitedUses && (
+                          <span className={styles.itemMeta}>{reaction.currentUses}/{reaction.maxUses}</span>
+                        )}
+                        <span className={styles.collapseIcon}>{isCollapsed ? '▸' : '▾'}</span>
+                      </button>
+
+                      {!isCollapsed && (
+                        <div className={styles.itemBody}>
+                          {reaction.hasLimitedUses && (
+                            <ManagedResourceControls
+                              current={reaction.currentUses}
+                              max={reaction.maxUses}
+                              itemName={reaction.name}
+                              resourceKind="reação"
+                              onSpend={() => {
+                                const next = spendResource({ current: reaction.currentUses, max: reaction.maxUses })
+                                updateReaction(index, { currentUses: next.current })
+                              }}
+                              onRestore={restBased ? undefined : () => {
+                                const next = restoreResource({ current: reaction.currentUses, max: reaction.maxUses })
+                                updateReaction(index, { currentUses: next.current })
+                              }}
+                              onRestoreFull={restBased ? undefined : () => {
+                                const next = restoreResourceFull({ current: reaction.currentUses, max: reaction.maxUses })
+                                updateReaction(index, { currentUses: next.current })
+                              }}
+                              restoreFullText="Recarregar"
+                              meta={<span className={styles.metaChip}>{getRechargeLabel(reaction.recharge)}</span>}
+                            />
+                          )}
+                          <p className={reaction.description.trim() ? styles.description : styles.emptyText}>
+                            {reaction.description.trim() || 'Sem descrição.'}
+                          </p>
+                        </div>
+                      )}
+                    </article>
+                  )
+                })}
+              </>
+            )}
+          </div>
+        </section>
+      )}
     </>
   )
 }
