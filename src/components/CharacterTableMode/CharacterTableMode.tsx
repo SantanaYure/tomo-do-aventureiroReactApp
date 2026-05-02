@@ -184,9 +184,9 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
           <span className={styles.sectionTitle}>Recursos</span>
           <div className={styles.resourceList}>
             {sheet.resources
-              .filter((r) => (r.max ?? 0) > 0)
-              .map((resource, index) => {
-                const originalIndex = sheet.resources.indexOf(resource)
+              .map((resource, originalIndex) => ({ resource, originalIndex }))
+              .filter(({ resource: r }) => (r.max ?? 0) > 0)
+              .map(({ resource, originalIndex }) => {
                 const current = resource.current ?? 0
                 const max = resource.max ?? 0
                 const restBased = isRestBasedReset(resource.resetOn)
@@ -216,7 +216,7 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
                 }
 
                 return (
-                  <div className={styles.resourceRow} key={index}>
+                  <div className={styles.resourceRow} key={originalIndex}>
                     <span className={styles.resourceName}>{resource.name || '(sem nome)'}</span>
                     <ManagedResourceControls
                       current={current}
