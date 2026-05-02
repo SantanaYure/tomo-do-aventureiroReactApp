@@ -13,9 +13,44 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Math.trunc(value)))
 }
 
+function fmt(mod: number): string {
+  return mod >= 0 ? `+${mod}` : `${mod}`
+}
+
+function calcModifier(score: number): number {
+  return Math.floor((score - 10) / 2)
+}
+
 const KIND_LABELS: Record<MonsterKind, string> = {
   monster: 'Monstro',
   npc: 'NPC',
+}
+
+const ABILITIES = [
+  { key: 'strength'     as const, short: 'FOR', label: 'Força' },
+  { key: 'dexterity'    as const, short: 'DES', label: 'Destreza' },
+  { key: 'constitution' as const, short: 'CON', label: 'Constituição' },
+  { key: 'intelligence' as const, short: 'INT', label: 'Inteligência' },
+  { key: 'wisdom'       as const, short: 'SAB', label: 'Sabedoria' },
+  { key: 'charisma'     as const, short: 'CAR', label: 'Carisma' },
+]
+
+function getPerceptionBonus(skills: string[]): number | null {
+  for (const s of skills) {
+    const norm = s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    if (!norm.includes('percepcao') && !norm.includes('perception')) continue
+    const m = s.match(/([+-]?\d+)/)
+    if (m) {
+      const v = Number(m[1])
+      if (Number.isFinite(v)) return v
+    }
+  }
+  return null
+}
+
+function calcPassivePerception(sheet: MonsterSheet): number {
+  const bonus = getPerceptionBonus(sheet.traits.skills)
+  return bonus !== null ? 10 + bonus : 10 + calcModifier(sheet.stats.wisdom)
 }
 
 export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
@@ -132,6 +167,54 @@ export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
             {traits.conditionImmunities.map((r) => <span key={r} className={styles.chipCondIm}>{r}</span>)}
           </div>
         )}
+      </section>
+
+      {/* ── Seção C: Atributos e Traços ── */}
+      <section className={panelStyles.panel}>
+        <span className={styles.sectionTitle}>Atributos</span>
+        <div className={styles.abilityGrid}>
+          {ABILITIES.map((a) => {
+            const score = stats[a.key]
+            const mod = calcModifier(score)
+            return (
+              <article className={styles.abilityCard} key={a.key}>
+                <span className={styles.abilityShort}>{a.short}</span>
+                <strong className={styles.abilityValue}>{score}</strong>
+                <span className={styles.abilityMod}>{fmt(mod)}</span>
+              </article>
+            )
+          })}
+        </div>
+
+        {traits.savingThrows.length > 0 && (
+          <div className={styles.traitBlock}>
+            <span className={styles.traitTitle}>Testes de Resistência</span>
+            <div className={styles.traitList}>
+              {traits.savingThrows.map((s) => <span key={s} className={styles.chip}>{s}</span>)}
+            </div>
+          </div>
+        )}
+        {traits.skills.length > 0 && (
+          <div className={styles.traitBlock}>
+            <span className={styles.traitTitle}>Perícias</span>
+            <div className={styles.traitList}>
+              {traits.skills.map((s) => <span key={s} className={styles.chip}>{s}</span>)}
+            </div>
+          </div>
+        )}
+        {traits.languages.length > 0 && (
+          <div className={styles.traitBlock}>
+            <span className={styles.traitTitle}>Idiomas</span>
+            <div className={styles.traitList}>
+              {traits.languages.map((l) => <span key={l} className={styles.chip}>{l}</span>)}
+            </div>
+          </div>
+        )}
+
+        <div className={styles.traitBlock}>
+          <span className={styles.traitTitle}>Percepção Passiva</span>
+          <span className={styles.chip}>{calcPassivePerception(sheet)}</span>
+        </div>
       </section>
     </>
   )
