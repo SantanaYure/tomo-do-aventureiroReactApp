@@ -1,6 +1,14 @@
 import { useState } from 'react'
 import type { Resource, ResourceOrigin, ResourceReset } from '../../types/system/dnd'
+import { ManagedResourceControls } from '../ManagedResourceControls/ManagedResourceControls'
 import { NumberInput } from '../NumberInput/NumberInput'
+import {
+  restoreResource,
+  restoreResourceFull,
+  setResourceCurrent,
+  setResourceMax,
+  spendResource,
+} from '../../utils/manageableResource'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './ResourcesPanel.module.css'
 
@@ -58,36 +66,21 @@ function getResourceOriginLabel(resource: Resource): string {
   return ''
 }
 
-function getResourceCollapsedMeta(resource: Resource): string {
-  const current = resource.current ?? 0
-  const max = resource.max ?? 0
-
-  if (max > 0) {
-    return `${current}/${max} usos`
-  }
-
-  if (typeof resource.level === 'number' && Number.isFinite(resource.level)) {
-    return `Nível ${resource.level}`
-  }
-
-  return ''
-}
 
 interface ResourcesPanelProps {
   resources: Resource[]
   isEditMode: boolean
   onChangeResources: (updated: Resource[]) => void
-  onLongRest?: (updatedResources: Resource[]) => void
 }
 
 export function ResourcesPanel({
   resources,
   isEditMode,
   onChangeResources,
-  onLongRest,
 }: ResourcesPanelProps) {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const resourceIds = resources.map((_, index) => `resource-${index}`)
+
   const areAllCollapsed =
     resourceIds.length > 0 && resourceIds.every((resourceId) => collapsedIds.has(resourceId))
 
@@ -118,23 +111,17 @@ export function ResourcesPanel({
   }
 
   function setCurrent(index: number, value: number) {
-    const max = resources[index].max ?? 0
-    setResource(index, { current: Math.min(max, Math.max(0, value)) })
+    const next = setResourceCurrent(resources[index], value)
+    setResource(index, { current: next.current })
   }
 
   function setMax(index: number, value: number) {
     const resource = resources[index]
-    const nextMax = Math.max(0, value)
-    const previousMax = resource.max ?? 0
-    const current = Math.max(0, resource.current ?? 0)
-    const nextCurrent =
-      previousMax === 0 || current >= previousMax
-        ? nextMax
-        : Math.min(nextMax, current)
+    const next = setResourceMax(resource, value)
 
     setResource(index, {
-      max: nextMax,
-      current: nextCurrent,
+      max: next.max,
+      current: next.current,
     })
   }
 
@@ -171,30 +158,20 @@ export function ResourcesPanel({
   }
 
   function resetResource(index: number) {
-    const resource = resources[index]
-    setResource(index, { current: resource.max ?? 0 })
+    const next = restoreResourceFull(resources[index])
+    setResource(index, { current: next.current })
   }
 
-  function computeReset(type: ResourceReset): Resource[] {
-    return resources.map((resource) =>
-      resource.resetOn === type
-        ? { ...resource, current: resource.max ?? 0 }
-        : resource,
-    )
+  function spendResourceUse(index: number) {
+    const next = spendResource(resources[index])
+    setResource(index, { current: next.current })
   }
 
-  function resetAll(type: ResourceReset) {
-    onChangeResources(computeReset(type))
+  function restoreResourceUse(index: number) {
+    const next = restoreResource(resources[index])
+    setResource(index, { current: next.current })
   }
 
-  function handleLongRestClick() {
-    const updated = computeReset('long-rest')
-    if (onLongRest) {
-      onLongRest(updated)
-    } else {
-      onChangeResources(updated)
-    }
-  }
 
   if (resources.length === 0 && !isEditMode) return null
 
@@ -215,29 +192,10 @@ export function ResourcesPanel({
         )}
       </div>
 
-      <div className={styles.restRow}>
-        <button
-          type="button"
-          className={styles.restBtn}
-          onClick={() => resetAll('short-rest')}
-        >
-          Descanso curto
-        </button>
-
-        <button
-          type="button"
-          className={styles.restBtn}
-          onClick={handleLongRestClick}
-        >
-          Descanso longo
-        </button>
-      </div>
-
       <div className={styles.resourceList}>
         {resources.map((resource, index) => {
           const resourceId = resourceIds[index]
           const isCollapsed = !isEditMode && collapsedIds.has(resourceId)
-          const collapsedMeta = getResourceCollapsedMeta(resource)
 
           return (
             <div key={resourceId} className={styles.resourceCard}>
@@ -352,6 +310,8 @@ export function ResourcesPanel({
                       type="button"
                       className={styles.counterBtn}
                       onClick={() => setCurrent(index, (resource.current ?? 0) - 1)}
+                      disabled={(resource.current ?? 0) <= 0}
+                      aria-label={`Usar habilidade: ${resource.name?.trim() || `#${index + 1}`}`}
                     >
                       −
                     </button>
@@ -369,6 +329,8 @@ export function ResourcesPanel({
                       type="button"
                       className={styles.counterBtn}
                       onClick={() => setCurrent(index, (resource.current ?? 0) + 1)}
+                      disabled={(resource.current ?? 0) >= (resource.max ?? 0)}
+                      aria-label={`Restaurar habilidade: ${resource.name?.trim() || `#${index + 1}`}`}
                     >
                       +
                     </button>
@@ -376,6 +338,8 @@ export function ResourcesPanel({
                       type="button"
                       className={styles.resetBtn}
                       onClick={() => resetResource(index)}
+                      disabled={(resource.current ?? 0) >= (resource.max ?? 0)}
+                      aria-label={`Restaurar todos os usos de habilidade: ${resource.name?.trim() || `#${index + 1}`}`}
                     >
                       ↺ Restaurar
                     </button>
@@ -385,82 +349,59 @@ export function ResourcesPanel({
                 <>
                   <button
                     type="button"
-                    className={`${styles.resourceHeader} ${styles.featureHeader}`}
+                    className={styles.featureHeader}
                     onClick={() => toggleCollapse(resourceId)}
                     aria-expanded={!isCollapsed}
                   >
-                    <span className={`${styles.resourceName} ${styles.featureTitle}`}>
+                    <span className={styles.featureTitle}>
                       {resource.name || '(sem nome)'}
                     </span>
-                    {collapsedMeta && (
-                      <span className={`${styles.resourceReset} ${styles.featureMeta}`}>
-                        {collapsedMeta}
-                      </span>
-                    )}
                     <span className={styles.collapseIcon}>{isCollapsed ? '▸' : '▾'}</span>
                   </button>
 
+                  {(resource.max ?? 0) > 0 && (
+                    <div className={styles.usageRow}>
+                      <ManagedResourceControls
+                        current={resource.current ?? 0}
+                        max={resource.max ?? 0}
+                        itemName={resource.name ?? ''}
+                        resourceKind="habilidade"
+                        onSpend={() => spendResourceUse(index)}
+                        onRestore={() => restoreResourceUse(index)}
+                        onRestoreFull={() => resetResource(index)}
+                        restoreFullText="Restaurar"
+                      />
+                    </div>
+                  )}
+
                   {!isCollapsed && (
                     <div className={styles.featureBody}>
-                      <div className={styles.readStack}>
-                        <div className={styles.resourceMetaRow}>
-                          {getResourceOriginLabel(resource) && (
-                            <span className={styles.resourceMeta}>
-                              Origem: {getResourceOriginLabel(resource)}
-                            </span>
-                          )}
-                          {typeof resource.level === 'number' && Number.isFinite(resource.level) && (
-                            <span className={styles.resourceMeta}>Nível: {resource.level}</span>
-                          )}
-                          {resource.duration?.trim() && (
-                            <span className={styles.resourceMeta}>Duração: {resource.duration}</span>
-                          )}
-                          {resource.action?.trim() && (
-                            <span className={styles.resourceMeta}>Ação: {resource.action}</span>
-                          )}
-                          {resource.range?.trim() && (
-                            <span className={styles.resourceMeta}>Alcance: {resource.range}</span>
-                          )}
+                      <div className={styles.resourceMetaRow}>
+                        {getResourceOriginLabel(resource) && (
                           <span className={styles.resourceMeta}>
-                            {RESET_LABEL[resource.resetOn ?? 'long-rest']}
+                            Origem: {getResourceOriginLabel(resource)}
                           </span>
-                        </div>
-
-                        {resource.description?.trim() && (
-                          <p className={styles.resourceDescription}>{resource.description}</p>
                         )}
-                      </div>
-
-                      <div className={styles.counter}>
-                        <button
-                          type="button"
-                          className={styles.counterBtn}
-                          onClick={() => setCurrent(index, (resource.current ?? 0) - 1)}
-                        >
-                          −
-                        </button>
-
-                        <span className={styles.counterVal}>
-                          {resource.current ?? 0}
-                          <span className={styles.counterMax}> / {resource.max ?? 0}</span>
+                        {typeof resource.level === 'number' && Number.isFinite(resource.level) && (
+                          <span className={styles.resourceMeta}>Nível: {resource.level}</span>
+                        )}
+                        {resource.duration?.trim() && (
+                          <span className={styles.resourceMeta}>Duração: {resource.duration}</span>
+                        )}
+                        {resource.action?.trim() && (
+                          <span className={styles.resourceMeta}>Ação: {resource.action}</span>
+                        )}
+                        {resource.range?.trim() && (
+                          <span className={styles.resourceMeta}>Alcance: {resource.range}</span>
+                        )}
+                        <span className={styles.resourceMeta}>
+                          {RESET_LABEL[resource.resetOn ?? 'long-rest']}
                         </span>
-
-                        <button
-                          type="button"
-                          className={styles.counterBtn}
-                          onClick={() => setCurrent(index, (resource.current ?? 0) + 1)}
-                        >
-                          +
-                        </button>
                       </div>
 
-                      <button
-                        type="button"
-                        className={styles.resetBtn}
-                        onClick={() => resetResource(index)}
-                      >
-                        ↺ Restaurar
-                      </button>
+                      {resource.description?.trim() && (
+                        <p className={styles.resourceDescription}>{resource.description}</p>
+                      )}
                     </div>
                   )}
                 </>

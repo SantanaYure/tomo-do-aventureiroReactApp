@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import type { MonsterFeature } from '../../../types/system/dnd/monsterSheet'
+import { ManagedResourceControls } from '../../ManagedResourceControls/ManagedResourceControls'
 import { NumberInput } from '../../NumberInput/NumberInput'
+import {
+    restoreResource,
+    restoreResourceFull,
+    setResourceMax,
+    spendResource,
+} from '../../../utils/manageableResource'
 import panelStyles from '../../../styles/panel.module.css'
 import {
-    clampTrackerValue,
     getRechargeLabel,
-    MAX_TRACKER_DOTS,
     type MonsterComponentProps,
     RECHARGE_OPTIONS,
 } from '../shared'
@@ -63,42 +68,55 @@ export function MonsterFeaturesPanel({
     function setLimitedUses(index: number, enabled: boolean) {
         const feature = features[index]
         const nextMax = Math.max(1, feature.maxUses)
-        const nextCurrent = enabled
-            ? feature.currentUses >= feature.maxUses
-                ? nextMax
-                : clampTrackerValue(feature.currentUses, nextMax)
-            : clampTrackerValue(feature.currentUses, nextMax)
+        const next = setResourceMax(
+            { current: feature.currentUses, max: feature.maxUses },
+            nextMax,
+            1,
+        )
 
         setFeature(index, {
             hasLimitedUses: enabled,
-            maxUses: nextMax,
-            currentUses: nextCurrent,
+            maxUses: next.max,
+            currentUses: next.current,
         })
     }
 
     function setMaxUses(index: number, value: number) {
         const feature = features[index]
-        const nextMax = Math.max(1, Math.trunc(value))
-        const nextCurrent = feature.currentUses >= feature.maxUses
-            ? nextMax
-            : clampTrackerValue(feature.currentUses, nextMax)
+        const next = setResourceMax(
+            { current: feature.currentUses, max: feature.maxUses },
+            value,
+            1,
+        )
 
         setFeature(index, {
-            maxUses: nextMax,
-            currentUses: nextCurrent,
+            maxUses: next.max,
+            currentUses: next.current,
         })
     }
 
-    function adjustCurrentUses(index: number, delta: number) {
+    function spendFeatureUse(index: number) {
         const feature = features[index]
 
         if (!feature.hasLimitedUses) {
             return
         }
 
+        const next = spendResource({ current: feature.currentUses, max: feature.maxUses })
         setFeature(index, {
-            currentUses: clampTrackerValue(feature.currentUses + delta, feature.maxUses),
+            currentUses: next.current,
         })
+    }
+
+    function restoreFeatureUse(index: number) {
+        const feature = features[index]
+
+        if (!feature.hasLimitedUses) {
+            return
+        }
+
+        const next = restoreResource({ current: feature.currentUses, max: feature.maxUses })
+        setFeature(index, { currentUses: next.current })
     }
 
     function resetCurrentUses(index: number) {
@@ -108,7 +126,8 @@ export function MonsterFeaturesPanel({
             return
         }
 
-        setFeature(index, { currentUses: feature.maxUses })
+        const next = restoreResourceFull({ current: feature.currentUses, max: feature.maxUses })
+        setFeature(index, { currentUses: next.current })
     }
 
     function addFeature() {
@@ -124,27 +143,18 @@ export function MonsterFeaturesPanel({
             return null
         }
 
-        if (feature.maxUses > MAX_TRACKER_DOTS) {
-            return <span className={styles.usageText}>{feature.currentUses} / {feature.maxUses} usos</span>
-        }
-
         return (
-            <div className={styles.usageTracker}>
-                {Array.from({ length: feature.maxUses }, (_, dotIndex) => {
-                    const isFilled = dotIndex < feature.currentUses
-
-                    return (
-                        <button
-                            key={`${feature.id || index}-usage-${dotIndex}`}
-                            type="button"
-                            className={isFilled ? `${styles.usageDot} ${styles.usageDotFilled}` : styles.usageDot}
-                            onClick={() => adjustCurrentUses(index, isFilled ? 1 : -1)}
-                            aria-label={isFilled ? 'Recuperar um uso' : 'Gastar um uso'}
-                            aria-pressed={isFilled}
-                        />
-                    )
-                })}
-            </div>
+            <ManagedResourceControls
+                current={feature.currentUses}
+                max={feature.maxUses}
+                itemName={feature.name}
+                resourceKind="habilidade"
+                onSpend={() => spendFeatureUse(index)}
+                onRestore={() => restoreFeatureUse(index)}
+                onRestoreFull={() => resetCurrentUses(index)}
+                restoreFullText="Recarregar"
+                meta={<span className={styles.metaChip}>{getRechargeLabel(feature.recharge)}</span>}
+            />
         )
     }
 
@@ -312,20 +322,7 @@ export function MonsterFeaturesPanel({
                                     <div className={styles.cardBody}>
                                         {feature.hasLimitedUses && (
                                             <div className={styles.summaryRow}>
-                                                <span className={styles.usageText}>
-                                                    {feature.currentUses} / {feature.maxUses} usos
-                                                </span>
                                                 {renderUsageTracker(feature, index)}
-                                                <span className={styles.metaChip}>
-                                                    {getRechargeLabel(feature.recharge)}
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    className={styles.rechargeButton}
-                                                    onClick={() => resetCurrentUses(index)}
-                                                >
-                                                    Recarregar
-                                                </button>
                                             </div>
                                         )}
 

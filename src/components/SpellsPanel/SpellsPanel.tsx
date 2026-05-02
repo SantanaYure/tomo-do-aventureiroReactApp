@@ -1,7 +1,15 @@
 // src/components/SpellsPanel/SpellsPanel.tsx
 import { useState } from 'react'
 import type { Character, Spell, SpellSlots, SpellcastingAbility } from '../../types/system/dnd'
+import { ManagedResourceControls } from '../ManagedResourceControls/ManagedResourceControls'
 import { NumberInput } from '../NumberInput/NumberInput'
+import {
+  restoreResource,
+  restoreResourceFull,
+  setResourceCurrent,
+  setResourceMax,
+  spendResource,
+} from '../../utils/manageableResource'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './SpellsPanel.module.css'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
@@ -142,8 +150,24 @@ export function SpellsPanel({
 
   function setSlot(level: number, field: 'current' | 'max', value: number) {
     const prev = slotsData[level] ?? { current: 0, max: 0 }
-    const next = { ...prev, [field]: Math.max(0, value) }
-    if (field === 'current') next.current = Math.min(next.current, next.max)
+    const next = field === 'max'
+      ? setResourceMax(prev, value)
+      : setResourceCurrent(prev, value)
+    onChangeSlotsData({ ...slotsData, [level]: next })
+  }
+
+  function spendSlot(level: number) {
+    const next = spendResource(slotsData[level] ?? { current: 0, max: 0 })
+    onChangeSlotsData({ ...slotsData, [level]: next })
+  }
+
+  function restoreSlot(level: number) {
+    const next = restoreResource(slotsData[level] ?? { current: 0, max: 0 })
+    onChangeSlotsData({ ...slotsData, [level]: next })
+  }
+
+  function restoreSlotFull(level: number) {
+    const next = restoreResourceFull(slotsData[level] ?? { current: 0, max: 0 })
     onChangeSlotsData({ ...slotsData, [level]: next })
   }
 
@@ -212,10 +236,17 @@ export function SpellsPanel({
 
         return (
           <div key={level} className={styles.levelSection}>
-            <button className={styles.levelHeader} onClick={() => toggleLevel(level)}>
-              <span className={`${styles.chevron} ${expanded ? styles.chevronOpen : ''}`}>▸</span>
-              <span className={styles.levelTitle}>{LEVEL_LABEL[level]}</span>
-              <span className={styles.levelCount}>{levelSpells.length} magia{levelSpells.length !== 1 ? 's' : ''}</span>
+            <div className={styles.levelHeader}>
+              <button
+                type="button"
+                className={styles.levelToggle}
+                onClick={() => toggleLevel(level)}
+                aria-expanded={expanded}
+              >
+                <span className={`${styles.chevron} ${expanded ? styles.chevronOpen : ''}`}>▸</span>
+                <span className={styles.levelTitle}>{LEVEL_LABEL[level]}</span>
+                <span className={styles.levelCount}>{levelSpells.length} magia{levelSpells.length !== 1 ? 's' : ''}</span>
+              </button>
               {level > 0 && (
                 isEditMode ? (
                   <NumberInput
@@ -228,13 +259,20 @@ export function SpellsPanel({
                   />
                 ) : slots.max > 0 ? (
                   <div className={styles.slotCounter} onClick={(e) => e.stopPropagation()}>
-                    <button className={styles.slotBtn} onClick={() => setSlot(level, 'current', slots.current - 1)}>−</button>
-                    <span className={styles.slotNumbers}>{slots.current}/{slots.max}</span>
-                    <button className={styles.slotBtn} onClick={() => setSlot(level, 'current', slots.current + 1)}>+</button>
+                    <ManagedResourceControls
+                      current={slots.current}
+                      max={slots.max}
+                      itemName={LEVEL_LABEL[level]}
+                      resourceKind="espaço de magia"
+                      onSpend={() => spendSlot(level)}
+                      onRestore={() => restoreSlot(level)}
+                      onRestoreFull={() => restoreSlotFull(level)}
+                      restoreFullText="Restaurar"
+                    />
                   </div>
                 ) : null
               )}
-            </button>
+            </div>
 
             {expanded && (
               <div className={styles.levelBody}>
@@ -340,6 +378,17 @@ export function SpellsPanel({
                             <span className={styles.spellMetaText}>
                               Materiais: {formatMaterialComponents(spell.components)}
                             </span>
+                          )}
+                          {(spell.level ?? 0) > 0 && slots.max > 0 && (
+                            <ManagedResourceControls
+                              className={styles.spellResourceControls}
+                              current={slots.current}
+                              max={slots.max}
+                              itemName={spell.name ?? LEVEL_LABEL[level]}
+                              resourceKind="magia"
+                              onSpend={() => spendSlot(level)}
+                              onRestore={() => restoreSlot(level)}
+                            />
                           )}
                           {spell.description && <p className={styles.spellDescriptionRead}>{spell.description}</p>}
                         </>

@@ -16,6 +16,9 @@ interface CharacterHeaderProps {
   character: Character
   isEditMode: boolean
   onChangeCharacter: (updated: Character) => void
+  onShortRest: () => void
+  onLongRest: () => void
+  restFeedback?: string | null
 }
 
 function formatClasses(classes: Class[]): string {
@@ -147,6 +150,9 @@ export function CharacterHeader({
   character,
   isEditMode,
   onChangeCharacter,
+  onShortRest,
+  onLongRest,
+  restFeedback,
 }: CharacterHeaderProps) {
   const [showCropper, setShowCropper] = useState(false)
 
@@ -205,6 +211,18 @@ export function CharacterHeader({
           onCancel={() => setShowCropper(false)}
         />
       )}
+
+      <div className={styles.restActions}>
+        <button type="button" className={styles.restButton} onClick={onShortRest}>
+          Descanso curto
+        </button>
+        <button type="button" className={styles.restButton} onClick={onLongRest}>
+          Descanso longo
+        </button>
+        <span aria-live="polite" aria-atomic="true" className={styles.restFeedback}>
+          {restFeedback}
+        </span>
+      </div>
 
       {isEditMode ? (
         <div className={styles.editLayout}>

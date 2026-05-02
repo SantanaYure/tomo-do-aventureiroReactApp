@@ -55,7 +55,14 @@ export type RechargeType =
 
 export type MonsterSystemId = 'dnd-monster' | 'dnd5e-monster'
 
-export interface MonsterAction {
+export interface LimitedUseResource {
+    hasLimitedUses: boolean
+    maxUses: number
+    currentUses: number
+    recharge: RechargeType
+}
+
+export interface MonsterAction extends LimitedUseResource {
     id: string
     name: string
     description: string
@@ -76,14 +83,10 @@ export interface LegendaryAction {
     description: string
 }
 
-export interface MonsterFeature {
+export interface MonsterFeature extends LimitedUseResource {
     id: string
     name: string
     description: string
-    hasLimitedUses: boolean
-    maxUses: number
-    currentUses: number
-    recharge: RechargeType
     duration: string
     range: string
     requirements: string

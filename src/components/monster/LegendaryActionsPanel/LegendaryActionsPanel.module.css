@@ -73,6 +73,13 @@
     flex-wrap: wrap;
 }
 
+.actionResourceRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
 .pointsSummary,
 .cardMeta {
     display: inline-flex;
