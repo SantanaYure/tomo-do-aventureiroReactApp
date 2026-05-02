@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import type { Attribute, CharacterSheet } from '../../types/system/dnd'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
+import { ManagedResourceControls } from '../ManagedResourceControls/ManagedResourceControls'
+import { spendResource, restoreResource, restoreResourceFull } from '../../utils/manageableResource'
+import { isRestBasedReset } from '../../utils/restRules'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './CharacterTableMode.module.css'
 
@@ -46,6 +49,22 @@ function calcPassivePerception(character: CharacterSheet['character'], profBonus
   const perc = character.skills.perception
   const profLevel = Math.max(0, Math.min(2, Math.trunc(perc?.proficiency ?? 0)))
   return 10 + wisMod + profLevel * profBonus + (perc?.misc ?? 0) + (character.passivePerceptionBonus ?? 0)
+}
+
+const ABILITIES = [
+  { key: 'Força',        short: 'FOR' },
+  { key: 'Destreza',     short: 'DES' },
+  { key: 'Constituição', short: 'CON' },
+  { key: 'Inteligência', short: 'INT' },
+  { key: 'Sabedoria',    short: 'SAB' },
+  { key: 'Carisma',      short: 'CAR' },
+] as const
+
+const RESET_LABEL: Record<string, string> = {
+  'short-rest': 'Desc. curto',
+  'long-rest':  'Desc. longo',
+  manual:       'Manual',
+  na:           'N/A',
 }
 
 export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps) {
@@ -139,6 +158,87 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
           <button type="button" className={styles.btnTemp} onClick={() => applyHpAction('temp')}>Temp</button>
         </div>
       </section>
+
+      {/* ── Seção B: Atributos ── */}
+      <section className={panelStyles.panel}>
+        <span className={styles.sectionTitle}>Atributos</span>
+        <div className={styles.abilityGrid}>
+          {ABILITIES.map((ability) => {
+            const attr = character.attributes.find((a) => a.name === ability.key)
+            const score = attr?.value ?? 10
+            const mod = calcModifier(score)
+            return (
+              <article className={styles.abilityCard} key={ability.key}>
+                <span className={styles.abilityShort}>{ability.short}</span>
+                <strong className={styles.abilityValue}>{score}</strong>
+                <span className={styles.abilityMod}>{fmt(mod)}</span>
+              </article>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* ── Seção C: Recursos gerenciáveis ── */}
+      {sheet.resources.some((r) => (r.max ?? 0) > 0) && (
+        <section className={panelStyles.panel}>
+          <span className={styles.sectionTitle}>Recursos</span>
+          <div className={styles.resourceList}>
+            {sheet.resources
+              .filter((r) => (r.max ?? 0) > 0)
+              .map((resource, index) => {
+                const originalIndex = sheet.resources.indexOf(resource)
+                const current = resource.current ?? 0
+                const max = resource.max ?? 0
+                const restBased = isRestBasedReset(resource.resetOn)
+
+                function spend() {
+                  const next = spendResource({ current, max })
+                  const updated = sheet.resources.map((r, i) =>
+                    i === originalIndex ? { ...r, current: next.current } : r
+                  )
+                  onUpdate({ ...sheet, resources: updated })
+                }
+
+                function restore() {
+                  const next = restoreResource({ current, max })
+                  const updated = sheet.resources.map((r, i) =>
+                    i === originalIndex ? { ...r, current: next.current } : r
+                  )
+                  onUpdate({ ...sheet, resources: updated })
+                }
+
+                function restoreFull() {
+                  const next = restoreResourceFull({ current, max })
+                  const updated = sheet.resources.map((r, i) =>
+                    i === originalIndex ? { ...r, current: next.current } : r
+                  )
+                  onUpdate({ ...sheet, resources: updated })
+                }
+
+                return (
+                  <div className={styles.resourceRow} key={index}>
+                    <span className={styles.resourceName}>{resource.name || '(sem nome)'}</span>
+                    <ManagedResourceControls
+                      current={current}
+                      max={max}
+                      itemName={resource.name || ''}
+                      resourceKind="recurso"
+                      onSpend={spend}
+                      onRestore={restBased ? undefined : restore}
+                      onRestoreFull={restBased ? undefined : restoreFull}
+                      restoreFullText="Recarregar"
+                      meta={
+                        resource.resetOn && resource.resetOn !== 'na'
+                          ? <span className={styles.resetBadge}>{RESET_LABEL[resource.resetOn] ?? resource.resetOn}</span>
+                          : undefined
+                      }
+                    />
+                  </div>
+                )
+              })}
+          </div>
+        </section>
+      )}
     </>
   )
 }
