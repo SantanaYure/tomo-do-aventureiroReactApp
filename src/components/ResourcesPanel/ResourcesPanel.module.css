@@ -78,6 +78,19 @@
   font-size: var(--text-lg);
 }
 
+.maxLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.restHint {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-style: italic;
+  color: var(--ink-faint);
+}
+
 .removeAction {
   display: inline-flex;
   align-items: center;

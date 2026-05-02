@@ -4,8 +4,6 @@ import { calcModifier } from '../../AttributesPanel/AttributesPanel'
 import { ManagedResourceControls } from '../../ManagedResourceControls/ManagedResourceControls'
 import { NumberInput } from '../../NumberInput/NumberInput'
 import {
-    restoreResource,
-    restoreResourceFull,
     setResourceCurrent,
     setResourceMax,
     spendResource,
@@ -161,16 +159,6 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
         updateSpells({ slots: { ...spells.slots, [level]: next } })
     }
 
-    function restoreSlot(level: number) {
-        const next = restoreResource(spells.slots[level] ?? { current: 0, max: 0 })
-        updateSpells({ slots: { ...spells.slots, [level]: next } })
-    }
-
-    function restoreSlotFull(level: number) {
-        const next = restoreResourceFull(spells.slots[level] ?? { current: 0, max: 0 })
-        updateSpells({ slots: { ...spells.slots, [level]: next } })
-    }
-
     const spellsByLevel = SPELL_LEVELS.reduce<Record<number, Array<{ spell: Spell; index: number }>>>(
         (accumulator, level) => {
             accumulator[level] = spells.items.reduce<Array<{ spell: Spell; index: number }>>(
@@ -311,9 +299,6 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
                                             itemName={LEVEL_LABEL[level]}
                                             resourceKind="espaço de magia"
                                             onSpend={() => spendSlot(level)}
-                                            onRestore={() => restoreSlot(level)}
-                                            onRestoreFull={() => restoreSlotFull(level)}
-                                            restoreFullText="Restaurar"
                                         />
                                     </div>
                                 ) : null
@@ -467,7 +452,6 @@ export function MonsterSpellsPanel({ sheet, isEditing, onChange }: MonsterCompon
                                                         itemName={spell.name ?? LEVEL_LABEL[level]}
                                                         resourceKind="magia"
                                                         onSpend={() => spendSlot(level)}
-                                                        onRestore={() => restoreSlot(level)}
                                                     />
                                                 )}
                                                 {spell.description && (

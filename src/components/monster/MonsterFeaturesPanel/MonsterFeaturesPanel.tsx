@@ -14,6 +14,7 @@ import {
     type MonsterComponentProps,
     RECHARGE_OPTIONS,
 } from '../shared'
+import { isRestBasedRecharge } from '../../../utils/restRules'
 import styles from './MonsterFeaturesPanel.module.css'
 
 function createFeature(): MonsterFeature {
@@ -143,6 +144,8 @@ export function MonsterFeaturesPanel({
             return null
         }
 
+        const restBased = isRestBasedRecharge(feature.recharge)
+
         return (
             <ManagedResourceControls
                 current={feature.currentUses}
@@ -150,8 +153,8 @@ export function MonsterFeaturesPanel({
                 itemName={feature.name}
                 resourceKind="habilidade"
                 onSpend={() => spendFeatureUse(index)}
-                onRestore={() => restoreFeatureUse(index)}
-                onRestoreFull={() => resetCurrentUses(index)}
+                onRestore={restBased ? undefined : () => restoreFeatureUse(index)}
+                onRestoreFull={restBased ? undefined : () => resetCurrentUses(index)}
                 restoreFullText="Recarregar"
                 meta={<span className={styles.metaChip}>{getRechargeLabel(feature.recharge)}</span>}
             />
