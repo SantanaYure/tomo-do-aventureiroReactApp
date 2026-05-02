@@ -9,14 +9,6 @@ interface MonsterTableModeProps {
   onChange: (patch: DeepPartial<MonsterSheet>) => void
 }
 
-function fmt(mod: number): string {
-  return mod >= 0 ? `+${mod}` : `${mod}`
-}
-
-function calcModifier(score: number): number {
-  return Math.floor((score - 10) / 2)
-}
-
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Math.trunc(value)))
 }
@@ -54,10 +46,6 @@ export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
 
   const metaParts = [details.species, details.size, details.alignment].filter((v) => v.trim())
   const meta = metaParts.length > 0 ? metaParts.join(' · ') : null
-
-  // Suppress unused-variable warnings for helpers used by future sections
-  void fmt
-  void calcModifier
 
   return (
     <>
