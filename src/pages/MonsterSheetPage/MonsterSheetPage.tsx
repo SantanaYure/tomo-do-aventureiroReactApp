@@ -9,6 +9,7 @@ import { MonsterStatsPanel } from '../../components/monster/MonsterStatsPanel/Mo
 import { MonsterTraitsPanel } from '../../components/monster/MonsterTraitsPanel/MonsterTraitsPanel'
 import type { DeepPartial } from '../../components/monster/shared'
 import { saveMonsterSheet } from '../../store/monsterSheetStore'
+import { applyRestToMonsterSheet } from '../../utils/restRules'
 import { recordOpened } from '../../utils/recentlyOpened'
 import { useAuth } from '../../context/AuthContext'
 import { useMonsterSheet } from '../../hooks/useMonsterSheet'
@@ -112,9 +113,11 @@ export function MonsterSheetPage() {
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isEditing, setIsEditing] = useState(false)
   const [isAtBottom, setIsAtBottom] = useState(false)
+  const [restFeedback, setRestFeedback] = useState<string | null>(null)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const restFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasSheet = sheet !== null
 
   function updateSavingStatus(nextStatus: SavingStatus) {
@@ -169,10 +172,11 @@ export function MonsterSheetPage() {
     window.sessionStorage.setItem(getTabStorageKey(id), activeTab)
   }, [activeTab, id])
 
-  // Cleanup debounce timer on unmount
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
     }
   }, [])
 
@@ -189,6 +193,24 @@ export function MonsterSheetPage() {
     saveTimerRef.current = setTimeout(() => {
       saveMonsterSheet(uid, id, updatedSheet).catch(console.error)
     }, SAVE_DEBOUNCE_MS)
+  }
+
+  function showRestFeedback(message: string) {
+    if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
+    setRestFeedback(message)
+    restFeedbackTimerRef.current = setTimeout(() => setRestFeedback(null), 2000)
+  }
+
+  function handleShortRest() {
+    if (!sheet) return
+    handleSheetChange(applyRestToMonsterSheet(sheet, 'short'))
+    showRestFeedback('Recursos restaurados (descanso curto)')
+  }
+
+  function handleLongRest() {
+    if (!sheet) return
+    handleSheetChange(applyRestToMonsterSheet(sheet, 'long'))
+    showRestFeedback('Recursos restaurados (descanso longo)')
   }
 
   function handleToggleEditMode() {
@@ -322,6 +344,18 @@ export function MonsterSheetPage() {
             </button>
           ))}
         </nav>
+      </div>
+
+      <div className={styles.restBar}>
+        <button type="button" className={styles.restButton} onClick={handleShortRest}>
+          Descanso curto
+        </button>
+        <button type="button" className={styles.restButton} onClick={handleLongRest}>
+          Descanso longo
+        </button>
+        <span aria-live="polite" aria-atomic="true" className={styles.restFeedback}>
+          {restFeedback}
+        </span>
       </div>
 
       <div

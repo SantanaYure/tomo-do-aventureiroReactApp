@@ -1,5 +1,6 @@
 import type { MonsterSheet, RechargeType } from '../../types/system/dnd/monsterSheet'
 
+// 'day' excluído das opções selecionáveis — tipo mantido no RechargeType para compatibilidade com dados antigos
 export const RECHARGE_OPTIONS: ReadonlyArray<{
   value: RechargeType
   label: string
@@ -10,15 +11,20 @@ export const RECHARGE_OPTIONS: ReadonlyArray<{
   { value: 'recharge46', label: 'Recarrega em 4-6' },
   { value: 'short', label: 'Descanso curto' },
   { value: 'long', label: 'Descanso longo' },
-  { value: 'day', label: '1x por dia' },
 ]
 
-const RECHARGE_LABELS: Record<RechargeType, string> = Object.fromEntries(
-  RECHARGE_OPTIONS.map((option) => [option.value, option.label]),
-) as Record<RechargeType, string>
+const RECHARGE_LABELS: Record<RechargeType, string> = {
+  none: 'Sem recarga',
+  turn: 'A cada turno',
+  recharge56: 'Recarrega em 5-6',
+  recharge46: 'Recarrega em 4-6',
+  short: 'Descanso curto',
+  long: 'Descanso longo',
+  day: '1x por dia',
+}
 
 export function getRechargeLabel(recharge: RechargeType): string {
-  return RECHARGE_LABELS[recharge]
+  return RECHARGE_LABELS[recharge] ?? 'Sem recarga'
 }
 
 export type DeepPartial<T> = T extends Array<infer Item>
