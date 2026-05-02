@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { CharacterSheet } from '../../types/system/dnd'
+import type { Attribute, CharacterSheet } from '../../types/system/dnd'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './CharacterTableMode.module.css'
@@ -13,7 +13,7 @@ function fmt(mod: number): string {
   return mod >= 0 ? `+${mod}` : `${mod}`
 }
 
-function getAttrMod(character: CharacterSheet['character'], name: string): number {
+function getAttrMod(character: CharacterSheet['character'], name: Attribute['name']): number {
   const attr = character.attributes.find((a) => a.name === name)
   return attr ? calcModifier(attr.value) : 0
 }
@@ -130,6 +130,7 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
             min={1}
             inputMode="numeric"
             placeholder="Valor"
+            aria-label="Valor para dano, cura ou PV temporário"
             value={actionValue}
             onChange={(e) => setActionValue(e.target.value.replace(/[^\d]/g, ''))}
           />
