@@ -5,9 +5,20 @@ import type {
     MonsterAction,
     MonsterFeature,
 } from '../../../types/system/dnd/monsterSheet'
+import { ManagedResourceControls } from '../../ManagedResourceControls/ManagedResourceControls'
 import { NumberInput } from '../../NumberInput/NumberInput'
+import {
+    restoreResource,
+    restoreResourceFull,
+    setResourceMax,
+    spendResource,
+} from '../../../utils/manageableResource'
 import panelStyles from '../../../styles/panel.module.css'
-import type { MonsterComponentProps } from '../shared'
+import {
+    getRechargeLabel,
+    type MonsterComponentProps,
+    RECHARGE_OPTIONS,
+} from '../shared'
 import styles from './MonsterActionsPanel.module.css'
 
 const ATTACK_TYPES: AttackType[] = ['Corpo-a-corpo', 'Distância', 'Magia']
@@ -33,6 +44,10 @@ function createAction(): MonsterAction {
         id: globalThis.crypto.randomUUID(),
         name: '',
         description: '',
+        hasLimitedUses: false,
+        maxUses: 1,
+        currentUses: 1,
+        recharge: 'none',
         isAttack: false,
         isMultiattack: false,
         attackCount: 1,
@@ -89,8 +104,9 @@ export function MonsterActionsPanel({
     const [collapsedReactionIds, setCollapsedReactionIds] = useState<Set<string>>(new Set())
     const actions = sheet.actions
     const reactions = sheet.reactions
-    const multiattacks = actions.filter((action) => action.isMultiattack)
-    const regularActions = actions.filter((action) => !action.isMultiattack)
+    const indexedActions = actions.map((action, index) => ({ action, index }))
+    const multiattacks = indexedActions.filter(({ action }) => action.isMultiattack)
+    const regularActions = indexedActions.filter(({ action }) => !action.isMultiattack)
 
     function toggleActionCollapse(id: string) {
         setCollapsedActionIds((previous) => {
@@ -142,6 +158,99 @@ export function MonsterActionsPanel({
                 currentIndex === index ? { ...reaction, ...patch } : reaction,
             ),
         )
+    }
+
+    function getNextLimitedUseState(
+        item: Pick<MonsterAction, 'currentUses' | 'maxUses'>,
+        maxUses: number,
+    ) {
+        return setResourceMax(
+            { current: item.currentUses, max: item.maxUses },
+            maxUses,
+            1,
+        )
+    }
+
+    function setActionLimitedUses(index: number, enabled: boolean) {
+        const action = actions[index]
+        const next = getNextLimitedUseState(action, Math.max(1, action.maxUses))
+
+        setAction(index, {
+            hasLimitedUses: enabled,
+            maxUses: next.max,
+            currentUses: next.current,
+        })
+    }
+
+    function setReactionLimitedUses(index: number, enabled: boolean) {
+        const reaction = reactions[index]
+        const next = getNextLimitedUseState(reaction, Math.max(1, reaction.maxUses))
+
+        setReaction(index, {
+            hasLimitedUses: enabled,
+            maxUses: next.max,
+            currentUses: next.current,
+        })
+    }
+
+    function setActionMaxUses(index: number, value: number) {
+        const action = actions[index]
+        const next = getNextLimitedUseState(action, value)
+        setAction(index, { maxUses: next.max, currentUses: next.current })
+    }
+
+    function setReactionMaxUses(index: number, value: number) {
+        const reaction = reactions[index]
+        const next = getNextLimitedUseState(reaction, value)
+        setReaction(index, { maxUses: next.max, currentUses: next.current })
+    }
+
+    function spendActionUse(index: number) {
+        const action = actions[index]
+        if (!action.hasLimitedUses) return
+
+        const next = spendResource({ current: action.currentUses, max: action.maxUses })
+        setAction(index, { currentUses: next.current })
+    }
+
+    function restoreActionUse(index: number) {
+        const action = actions[index]
+        if (!action.hasLimitedUses) return
+
+        const next = restoreResource({ current: action.currentUses, max: action.maxUses })
+        setAction(index, { currentUses: next.current })
+    }
+
+    function resetActionUses(index: number) {
+        const action = actions[index]
+        if (!action.hasLimitedUses) return
+
+        const next = restoreResourceFull({ current: action.currentUses, max: action.maxUses })
+        setAction(index, { currentUses: next.current })
+    }
+
+    function spendReactionUse(index: number) {
+        const reaction = reactions[index]
+        if (!reaction.hasLimitedUses) return
+
+        const next = spendResource({ current: reaction.currentUses, max: reaction.maxUses })
+        setReaction(index, { currentUses: next.current })
+    }
+
+    function restoreReactionUse(index: number) {
+        const reaction = reactions[index]
+        if (!reaction.hasLimitedUses) return
+
+        const next = restoreResource({ current: reaction.currentUses, max: reaction.maxUses })
+        setReaction(index, { currentUses: next.current })
+    }
+
+    function resetReactionUses(index: number) {
+        const reaction = reactions[index]
+        if (!reaction.hasLimitedUses) return
+
+        const next = restoreResourceFull({ current: reaction.currentUses, max: reaction.maxUses })
+        setReaction(index, { currentUses: next.current })
     }
 
     function addAction() {
@@ -217,7 +326,50 @@ export function MonsterActionsPanel({
                                             />
                                             Multiataque?
                                         </label>
+
+                                        <label className={panelStyles.checkboxLabel}>
+                                            <input
+                                                type="checkbox"
+                                                checked={action.hasLimitedUses}
+                                                onChange={(event) =>
+                                                    setActionLimitedUses(index, event.target.checked)
+                                                }
+                                            />
+                                            Usos limitados?
+                                        </label>
                                     </div>
+
+                                    {action.hasLimitedUses && (
+                                        <div className={styles.limitedUsesGrid}>
+                                            <label className={styles.field}>
+                                                Máximo
+                                                <NumberInput
+                                                    min={1}
+                                                    value={action.maxUses}
+                                                    emptyValue={1}
+                                                    onChange={(value) => setActionMaxUses(index, value)}
+                                                />
+                                            </label>
+
+                                            <label className={styles.field}>
+                                                Recarga
+                                                <select
+                                                    value={action.recharge}
+                                                    onChange={(event) =>
+                                                        setAction(index, {
+                                                            recharge: event.target.value as MonsterAction['recharge'],
+                                                        })
+                                                    }
+                                                >
+                                                    {RECHARGE_OPTIONS.map((option) => (
+                                                        <option key={option.value} value={option.value}>
+                                                            {option.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                        </div>
+                                    )}
 
                                     {action.isAttack && (
                                         <div className={styles.grid}>
@@ -369,6 +521,49 @@ export function MonsterActionsPanel({
                                         </button>
                                     </div>
 
+                                    <label className={panelStyles.checkboxLabel}>
+                                        <input
+                                            type="checkbox"
+                                            checked={reaction.hasLimitedUses}
+                                            onChange={(event) =>
+                                                setReactionLimitedUses(index, event.target.checked)
+                                            }
+                                        />
+                                        Usos limitados?
+                                    </label>
+
+                                    {reaction.hasLimitedUses && (
+                                        <div className={styles.limitedUsesGrid}>
+                                            <label className={styles.field}>
+                                                Máximo
+                                                <NumberInput
+                                                    min={1}
+                                                    value={reaction.maxUses}
+                                                    emptyValue={1}
+                                                    onChange={(value) => setReactionMaxUses(index, value)}
+                                                />
+                                            </label>
+
+                                            <label className={styles.field}>
+                                                Recarga
+                                                <select
+                                                    value={reaction.recharge}
+                                                    onChange={(event) =>
+                                                        setReaction(index, {
+                                                            recharge: event.target.value as MonsterFeature['recharge'],
+                                                        })
+                                                    }
+                                                >
+                                                    {RECHARGE_OPTIONS.map((option) => (
+                                                        <option key={option.value} value={option.value}>
+                                                            {option.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                        </div>
+                                    )}
+
                                     <label className={styles.field}>
                                         Descrição
                                         <textarea
@@ -397,7 +592,7 @@ export function MonsterActionsPanel({
                 <div className={styles.layout}>
                     {multiattacks.length > 0 && (
                         <div className={styles.multiattackList}>
-                            {multiattacks.map((action, index) => {
+                            {multiattacks.map(({ action, index }) => {
                                 const actionId = action.id || `multiattack-${index}`
 
                                 return (
@@ -405,6 +600,21 @@ export function MonsterActionsPanel({
                                         <h3 className={styles.multiattackTitle}>
                                             {action.name.trim() || 'Multiataque'}. Realiza {action.attackCount} ataques por turno.
                                         </h3>
+                                        {action.hasLimitedUses && (
+                                            <div className={styles.summaryRow}>
+                                                <ManagedResourceControls
+                                                    current={action.currentUses}
+                                                    max={action.maxUses}
+                                                    itemName={action.name}
+                                                    resourceKind="ação"
+                                                    onSpend={() => spendActionUse(index)}
+                                                    onRestore={() => restoreActionUse(index)}
+                                                    onRestoreFull={() => resetActionUses(index)}
+                                                    restoreFullText="Recarregar"
+                                                    meta={<span className={styles.metaChip}>{getRechargeLabel(action.recharge)}</span>}
+                                                />
+                                            </div>
+                                        )}
                                         {action.description.trim() ? (
                                             <p className={styles.description}>{action.description}</p>
                                         ) : null}
@@ -416,7 +626,7 @@ export function MonsterActionsPanel({
 
                     {regularActions.length > 0 ? (
                         <div className={styles.list}>
-                            {regularActions.map((action, index) => {
+                            {regularActions.map(({ action, index }) => {
                                 const actionId = action.id || `action-${index}`
                                 const isCollapsed = collapsedActionIds.has(actionId)
                                 const summary = formatActionSummary(action)
@@ -431,6 +641,11 @@ export function MonsterActionsPanel({
                                         >
                                             <span className={styles.cardTitle}>{action.name || '(sem nome)'}</span>
                                             {summary && <span className={styles.cardMeta}>{summary}</span>}
+                                            {action.hasLimitedUses && (
+                                                <span className={styles.cardMeta}>
+                                                    usos: {action.currentUses}/{action.maxUses}
+                                                </span>
+                                            )}
                                             <span className={styles.collapseIcon}>{isCollapsed ? '▸' : '▾'}</span>
                                         </button>
 
@@ -453,6 +668,22 @@ export function MonsterActionsPanel({
                                                         <span className={styles.metaChip}>Alcance {action.reach}</span>
                                                     )}
                                                 </div>
+
+                                                {action.hasLimitedUses && (
+                                                    <div className={styles.summaryRow}>
+                                                        <ManagedResourceControls
+                                                            current={action.currentUses}
+                                                            max={action.maxUses}
+                                                            itemName={action.name}
+                                                            resourceKind="ação"
+                                                            onSpend={() => spendActionUse(index)}
+                                                            onRestore={() => restoreActionUse(index)}
+                                                            onRestoreFull={() => resetActionUses(index)}
+                                                            restoreFullText="Recarregar"
+                                                            meta={<span className={styles.metaChip}>{getRechargeLabel(action.recharge)}</span>}
+                                                        />
+                                                    </div>
+                                                )}
 
                                                 <p className={action.description.trim() ? styles.description : styles.emptyText}>
                                                     {action.description.trim() || 'Sem descrição adicional.'}
@@ -487,11 +718,32 @@ export function MonsterActionsPanel({
                                                 aria-expanded={!isCollapsed}
                                             >
                                                 <span className={styles.cardTitle}>{reaction.name || '(sem nome)'}</span>
+                                                {reaction.hasLimitedUses && (
+                                                    <span className={styles.cardMeta}>
+                                                        usos: {reaction.currentUses}/{reaction.maxUses}
+                                                    </span>
+                                                )}
                                                 <span className={styles.collapseIcon}>{isCollapsed ? '▸' : '▾'}</span>
                                             </button>
 
                                             {!isCollapsed && (
                                                 <div className={styles.cardBody}>
+                                                    {reaction.hasLimitedUses && (
+                                                        <div className={styles.summaryRow}>
+                                                            <ManagedResourceControls
+                                                                current={reaction.currentUses}
+                                                                max={reaction.maxUses}
+                                                                itemName={reaction.name}
+                                                                resourceKind="reação"
+                                                                onSpend={() => spendReactionUse(index)}
+                                                                onRestore={() => restoreReactionUse(index)}
+                                                                onRestoreFull={() => resetReactionUses(index)}
+                                                                restoreFullText="Recarregar"
+                                                                meta={<span className={styles.metaChip}>{getRechargeLabel(reaction.recharge)}</span>}
+                                                            />
+                                                        </div>
+                                                    )}
+
                                                     <p className={reaction.description.trim() ? styles.description : styles.emptyText}>
                                                         {reaction.description.trim() || 'Sem descrição adicional.'}
                                                     </p>

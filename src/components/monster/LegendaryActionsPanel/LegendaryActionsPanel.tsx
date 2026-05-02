@@ -1,10 +1,15 @@
 import { useState } from 'react'
 import type { LegendaryAction } from '../../../types/system/dnd/monsterSheet'
+import { ManagedResourceControls } from '../../ManagedResourceControls/ManagedResourceControls'
 import { NumberInput } from '../../NumberInput/NumberInput'
+import {
+    restoreResource,
+    restoreResourceFull,
+    setResourceMax,
+    spendResource,
+} from '../../../utils/manageableResource'
 import panelStyles from '../../../styles/panel.module.css'
 import {
-    clampTrackerValue,
-    MAX_TRACKER_DOTS,
     type MonsterComponentProps,
 } from '../shared'
 import styles from './LegendaryActionsPanel.module.css'
@@ -70,36 +75,53 @@ export function LegendaryActionsPanel({
         updateActions(actions.filter((_, currentIndex) => currentIndex !== index))
     }
 
-    function setPointsUsed(value: number) {
-        updateLegendary({ pointsUsed: clampTrackerValue(value, legendary.pointsPerRound) })
+    function getLegendaryResource() {
+        return {
+            current: Math.max(0, legendary.pointsPerRound - legendary.pointsUsed),
+            max: legendary.pointsPerRound,
+        }
     }
 
-    function adjustPointsUsed(delta: number) {
-        setPointsUsed(legendary.pointsUsed + delta)
+    function setPointsPerRound(value: number) {
+        const next = setResourceMax(getLegendaryResource(), value)
+        updateLegendary({
+            pointsPerRound: next.max,
+            pointsUsed: next.max - next.current,
+        })
+    }
+
+    function spendLegendaryPoints(amount = 1) {
+        const next = spendResource(getLegendaryResource(), amount)
+        updateLegendary({ pointsUsed: next.max - next.current })
+    }
+
+    function restoreLegendaryPoints(amount = 1) {
+        const next = restoreResource(getLegendaryResource(), amount)
+        updateLegendary({ pointsUsed: next.max - next.current })
+    }
+
+    function resetLegendaryPoints() {
+        const next = restoreResourceFull(getLegendaryResource())
+        updateLegendary({ pointsUsed: next.max - next.current })
     }
 
     function renderPointsTracker() {
-        if (legendary.pointsPerRound > MAX_TRACKER_DOTS) {
-            return <span className={styles.pointsSummary}>{legendary.pointsUsed} / {legendary.pointsPerRound} pontos usados</span>
-        }
+        const resource = getLegendaryResource()
 
         return (
-            <div className={styles.usageTracker}>
-                {Array.from({ length: legendary.pointsPerRound }, (_, dotIndex) => {
-                    const isFilled = dotIndex < legendary.pointsUsed
-
-                    return (
-                        <button
-                            key={`legendary-points-${dotIndex}`}
-                            type="button"
-                            className={isFilled ? `${styles.usageDot} ${styles.usageDotFilled}` : styles.usageDot}
-                            onClick={() => adjustPointsUsed(isFilled ? -1 : 1)}
-                            aria-label={isFilled ? 'Remover um ponto gasto' : 'Marcar um ponto gasto'}
-                            aria-pressed={isFilled}
-                        />
-                    )
-                })}
-            </div>
+            <ManagedResourceControls
+                current={resource.current}
+                max={resource.max}
+                itemName="pontos lendários"
+                resourceKind="ação lendária"
+                spendAriaLabel="Gastar ponto de ação lendária"
+                restoreAriaLabel="Restaurar ponto de ação lendária"
+                restoreFullAriaLabel="Restaurar todos os pontos de ação lendária"
+                onSpend={() => spendLegendaryPoints()}
+                onRestore={() => restoreLegendaryPoints()}
+                onRestoreFull={resetLegendaryPoints}
+                restoreFullText="Resetar turno"
+            />
         )
     }
 
@@ -132,11 +154,7 @@ export function LegendaryActionsPanel({
                             <NumberInput
                                 min={0}
                                 value={legendary.pointsPerRound}
-                                onChange={(value) =>
-                                    updateLegendary({
-                                        pointsPerRound: Math.max(0, Math.trunc(value)),
-                                    })
-                                }
+                                onChange={setPointsPerRound}
                             />
                         </label>
 
@@ -227,17 +245,10 @@ export function LegendaryActionsPanel({
                         <div className={styles.trackerSummary}>
                             {renderPointsTracker()}
                             <span className={styles.pointsSummary}>
-                                {legendary.pointsUsed} / {legendary.pointsPerRound} pontos usados
+                                {getLegendaryResource().current} / {legendary.pointsPerRound} pontos disponíveis
                             </span>
                         </div>
 
-                        <button
-                            type="button"
-                            className={styles.rechargeButton}
-                            onClick={() => setPointsUsed(0)}
-                        >
-                            Resetar turno
-                        </button>
                     </div>
 
                     <div className={styles.list}>
@@ -263,6 +274,19 @@ export function LegendaryActionsPanel({
 
                                     {!isCollapsed && (
                                         <div className={styles.cardBody}>
+                                            <div className={styles.actionResourceRow}>
+                                                <ManagedResourceControls
+                                                    current={getLegendaryResource().current}
+                                                    max={legendary.pointsPerRound}
+                                                    itemName={action.name}
+                                                    resourceKind="ação lendária"
+                                                    spendAmount={action.cost}
+                                                    restoreAmount={action.cost}
+                                                    onSpend={() => spendLegendaryPoints(action.cost)}
+                                                    onRestore={() => restoreLegendaryPoints(action.cost)}
+                                                />
+                                            </div>
+
                                             <p className={action.description.trim() ? styles.description : styles.emptyText}>
                                                 {action.description.trim() || 'Sem descrição adicional.'}
                                             </p>

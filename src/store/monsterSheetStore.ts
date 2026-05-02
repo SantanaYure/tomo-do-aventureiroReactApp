@@ -11,6 +11,7 @@ import type {
     CreatureSize,
     DamageType,
     LegendaryAction,
+    LimitedUseResource,
     MonsterAction,
     MonsterFeature,
     MonsterKind,
@@ -155,6 +156,10 @@ function createDefaultMonsterAction(id = ''): MonsterAction {
         id,
         name: '',
         description: '',
+        hasLimitedUses: false,
+        maxUses: 1,
+        currentUses: 1,
+        recharge: 'none',
         isAttack: false,
         isMultiattack: false,
         attackCount: 1,
@@ -183,24 +188,42 @@ function normalizeRechargeType(value: unknown): RechargeType {
     return isOneOf(value, RECHARGE_TYPES) ? value : 'none'
 }
 
+type LimitedUseResourceInput = {
+    hasLimitedUses?: unknown
+    maxUses?: unknown
+    currentUses?: unknown
+    recharge?: unknown
+}
+
+function normalizeLimitedUseResource(
+    value: LimitedUseResourceInput,
+    fallback: LimitedUseResource,
+): LimitedUseResource {
+    const maxUses = normalizeInteger(value.maxUses, fallback.maxUses, 0)
+    const currentUses = normalizeInteger(value.currentUses, fallback.currentUses, 0)
+
+    return {
+        hasLimitedUses:
+            typeof value.hasLimitedUses === 'boolean'
+                ? value.hasLimitedUses
+                : fallback.hasLimitedUses,
+        maxUses,
+        currentUses: Math.min(currentUses, maxUses),
+        recharge: normalizeRechargeType(value.recharge),
+    }
+}
+
 function normalizeMonsterFeature(value: unknown, fallbackId: string): MonsterFeature {
     const defaultFeature = createDefaultMonsterFeature(fallbackId)
     const nextValue = isRecord(value) ? value : defaultFeature
-    const maxUses = normalizeInteger(nextValue.maxUses, defaultFeature.maxUses, 0)
-    const currentUses = normalizeInteger(nextValue.currentUses, defaultFeature.currentUses, 0)
+    const limitedUses = normalizeLimitedUseResource(nextValue, defaultFeature)
 
     return {
         ...defaultFeature,
+        ...limitedUses,
         id: normalizeNestedId(nextValue.id, fallbackId),
         name: normalizeString(nextValue.name),
         description: normalizeString(nextValue.description),
-        hasLimitedUses:
-            typeof nextValue.hasLimitedUses === 'boolean'
-                ? nextValue.hasLimitedUses
-                : defaultFeature.hasLimitedUses,
-        maxUses,
-        currentUses: Math.min(currentUses, maxUses),
-        recharge: normalizeRechargeType(nextValue.recharge),
         duration: normalizeString(nextValue.duration),
         range: normalizeString(nextValue.range),
         requirements: normalizeString(nextValue.requirements),
@@ -222,9 +245,11 @@ function normalizeMonsterMovement(value: unknown, fallbackId: string) {
 function normalizeMonsterAction(value: unknown, fallbackId: string): MonsterAction {
     const defaultAction = createDefaultMonsterAction(fallbackId)
     const nextValue = isRecord(value) ? value : defaultAction
+    const limitedUses = normalizeLimitedUseResource(nextValue, defaultAction)
 
     return {
         ...defaultAction,
+        ...limitedUses,
         id: normalizeNestedId(nextValue.id, fallbackId),
         name: normalizeString(nextValue.name),
         description: normalizeString(nextValue.description),
