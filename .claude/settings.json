@@ -3,7 +3,9 @@
     "allow": [
       "Edit(/.claude/skills/tomo-repository-analysis/**)",
       "Bash(echo \"EXIT_CODE=$?\")",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(Get-ChildItem -Path \"d:\\\\OneDrive\\\\Área de Trabalho\\\\_projetos-programacao\\\\Projetos Pessoais\\\\tomo-do-aventureiro\\\\src\" -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)"
     ]
   }
 }
