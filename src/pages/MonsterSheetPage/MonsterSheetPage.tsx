@@ -7,6 +7,7 @@ import { LegendaryActionsPanel } from '../../components/monster/LegendaryActions
 import { MonsterSpellsPanel } from '../../components/monster/MonsterSpellsPanel/MonsterSpellsPanel'
 import { MonsterStatsPanel } from '../../components/monster/MonsterStatsPanel/MonsterStatsPanel'
 import { MonsterTraitsPanel } from '../../components/monster/MonsterTraitsPanel/MonsterTraitsPanel'
+import { MonsterTableMode } from '../../components/monster/MonsterTableMode/MonsterTableMode'
 import type { DeepPartial } from '../../components/monster/shared'
 import { saveMonsterSheet } from '../../store/monsterSheetStore'
 import { applyRestToMonsterSheet } from '../../utils/restRules'
@@ -17,7 +18,7 @@ import type { SavingStatus } from '../../types/savingStatus'
 import type { MonsterSheet } from '../../types/system/dnd/monsterSheet'
 import styles from './MonsterSheetPage.module.css'
 
-const TABS = ['Detalhes', 'Combate', 'Habilidades', 'Ações', 'Magias', 'Lendárias'] as const
+const TABS = ['Mesa', 'Detalhes', 'Combate', 'Habilidades', 'Ações', 'Magias', 'Lendárias'] as const
 
 type Tab = (typeof TABS)[number]
 
@@ -29,6 +30,7 @@ const DEFAULT_TAB: Tab = 'Detalhes'
 const SAVE_DEBOUNCE_MS = 800
 
 const TAB_PANEL_IDS: Record<Tab, string> = {
+  Mesa: 'monster-sheet-panel-mesa',
   Detalhes: 'monster-sheet-panel-detalhes',
   Combate: 'monster-sheet-panel-combate',
   Habilidades: 'monster-sheet-panel-habilidades',
@@ -38,6 +40,7 @@ const TAB_PANEL_IDS: Record<Tab, string> = {
 }
 
 const TAB_BUTTON_IDS: Record<Tab, string> = {
+  Mesa: 'monster-sheet-tab-mesa',
   Detalhes: 'monster-sheet-tab-detalhes',
   Combate: 'monster-sheet-tab-combate',
   Habilidades: 'monster-sheet-tab-habilidades',
@@ -304,6 +307,13 @@ export function MonsterSheetPage() {
 
   function renderActiveTab(tab: Tab) {
     switch (tab) {
+      case 'Mesa':
+        return (
+          <MonsterTableMode
+            sheet={currentSheet}
+            onChange={handleSheetChange}
+          />
+        )
       case 'Detalhes':
         return renderDetailsTab()
       case 'Combate':
