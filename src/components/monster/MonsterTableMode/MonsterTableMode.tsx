@@ -85,6 +85,28 @@ export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
     onChange({ reactions: updated })
   }
 
+  function getLegendaryResource() {
+    const { pointsPerRound, pointsUsed } = sheet.legendary
+    return {
+      current: Math.max(0, pointsPerRound - pointsUsed),
+      max: pointsPerRound,
+    }
+  }
+
+  function spendLegendaryPoints(amount: number) {
+    const next = spendResource(getLegendaryResource(), amount)
+    onChange({ legendary: { pointsUsed: sheet.legendary.pointsPerRound - next.current } })
+  }
+
+  function restoreLegendaryPoints(amount: number) {
+    const next = restoreResource(getLegendaryResource(), amount)
+    onChange({ legendary: { pointsUsed: sheet.legendary.pointsPerRound - next.current } })
+  }
+
+  function resetLegendaryPoints() {
+    onChange({ legendary: { pointsUsed: 0 } })
+  }
+
   const effectiveHpMax = Math.max(0, Math.trunc(stats.maxHp))
   const displayedCurrentHp = clamp(stats.hpCurrent, 0, effectiveHpMax)
   const displayedTempHp = Math.max(0, Math.trunc(stats.hpTemp))
@@ -452,6 +474,74 @@ export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
                 })}
               </>
             )}
+          </div>
+        </section>
+      )}
+
+      {/* ── Seção F: Ações Lendárias ── */}
+      {sheet.legendary.actions.length > 0 && (
+        <section className={panelStyles.panel}>
+          <span className={styles.sectionTitle}>Ações Lendárias</span>
+
+          <div className={styles.legendaryTracker}>
+            <ManagedResourceControls
+              current={getLegendaryResource().current}
+              max={sheet.legendary.pointsPerRound}
+              itemName="pontos lendários"
+              resourceKind="ação lendária"
+              onSpend={() => spendLegendaryPoints(1)}
+              onRestore={() => restoreLegendaryPoints(1)}
+              onRestoreFull={resetLegendaryPoints}
+              restoreFullText="Resetar turno"
+            />
+            <span className={styles.legendaryPoints}>
+              {getLegendaryResource().current}/{sheet.legendary.pointsPerRound} pontos disponíveis
+            </span>
+          </div>
+
+          {sheet.legendary.description.trim() && (
+            <p className={styles.description}>{sheet.legendary.description}</p>
+          )}
+
+          <div className={styles.itemList}>
+            {sheet.legendary.actions.map((action, index) => {
+              const id = action.id || `legendary-${index}`
+              const isCollapsed = collapsedIds.has(id)
+              const resource = getLegendaryResource()
+
+              return (
+                <article className={styles.itemCard} key={id}>
+                  <button
+                    type="button"
+                    className={styles.itemToggle}
+                    onClick={() => toggleCollapse(id)}
+                    aria-expanded={!isCollapsed}
+                  >
+                    <span className={styles.itemTitle}>{action.name || '(sem nome)'}</span>
+                    <span className={styles.itemMeta}>{action.cost} ponto{action.cost === 1 ? '' : 's'}</span>
+                    <span className={styles.collapseIcon}>{isCollapsed ? '▸' : '▾'}</span>
+                  </button>
+
+                  {!isCollapsed && (
+                    <div className={styles.itemBody}>
+                      <ManagedResourceControls
+                        current={resource.current}
+                        max={sheet.legendary.pointsPerRound}
+                        itemName={action.name}
+                        resourceKind="ação lendária"
+                        spendAmount={action.cost}
+                        restoreAmount={action.cost}
+                        onSpend={() => spendLegendaryPoints(action.cost)}
+                        onRestore={() => restoreLegendaryPoints(action.cost)}
+                      />
+                      <p className={action.description.trim() ? styles.description : styles.emptyText}>
+                        {action.description.trim() || 'Sem descrição.'}
+                      </p>
+                    </div>
+                  )}
+                </article>
+              )
+            })}
           </div>
         </section>
       )}
