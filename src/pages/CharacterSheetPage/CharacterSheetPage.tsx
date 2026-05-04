@@ -18,10 +18,12 @@ import { AttacksPanel } from '../../components/AttacksPanel/AttacksPanel'
 import { SpellsPanel } from '../../components/SpellsPanel/SpellsPanel'
 import { InventoryPanel } from '../../components/InventoryPanel/InventoryPanel'
 import { CharacterDetailsPanel } from '../../components/CharacterDetailsPanel/CharacterDetailsPanel'
+import { CharacterTableMode } from '../../components/CharacterTableMode/CharacterTableMode'
 import type { SavingStatus } from '../../types/savingStatus'
 import styles from './CharacterSheetPage.module.css'
 
 const TABS = [
+  'Mesa',
   'Principal',
   'Combate',
   'Magias',
@@ -35,6 +37,7 @@ type Tab = (typeof TABS)[number]
 const DEFAULT_TAB: Tab = 'Principal'
 
 const TAB_PANEL_IDS: Record<Tab, string> = {
+  Mesa: 'character-sheet-panel-mesa',
   Principal: 'character-sheet-panel-principal',
   Combate: 'character-sheet-panel-combate',
   Magias: 'character-sheet-panel-magias',
@@ -44,6 +47,7 @@ const TAB_PANEL_IDS: Record<Tab, string> = {
 }
 
 const TAB_BUTTON_IDS: Record<Tab, string> = {
+  Mesa: 'character-sheet-tab-mesa',
   Principal: 'character-sheet-tab-principal',
   Combate: 'character-sheet-tab-combate',
   Magias: 'character-sheet-tab-magias',
@@ -331,6 +335,13 @@ export function CharacterSheetPage() {
 
   function renderActiveTab(tab: Tab) {
     switch (tab) {
+      case 'Mesa':
+        return (
+          <CharacterTableMode
+            sheet={currentSheet}
+            onUpdate={handleUpdate}
+          />
+        )
       case 'Principal':
         return renderPrincipalTab()
       case 'Combate':
