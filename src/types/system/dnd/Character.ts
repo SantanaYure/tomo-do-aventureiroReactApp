@@ -55,4 +55,5 @@ export interface Character {
   savingThrows: SavingThrows
   skills: Skills
   attributes: Attribute[]
+  spellDcBonusExtra: number
 }

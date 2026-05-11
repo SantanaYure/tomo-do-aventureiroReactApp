@@ -4,7 +4,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import type { CharacterSheet } from '../../types/system/dnd'
-import { saveCharacterSheet } from '../../store/characterSheetStore'
+import {
+  saveCharacterSheet,
+  exportCharacterSheetAsJSON,
+  type StoredCharacterSheet,
+} from '../../store/characterSheetStore'
+import { normalizeFileName, downloadJsonFile } from '../../utils/exportSheet'
 import { recordOpened } from '../../utils/recentlyOpened'
 import { applyRestToCharacterSheet, hasWarlockClass } from '../../utils/restRules'
 import { useAuth } from '../../context/AuthContext'
@@ -166,6 +171,13 @@ export function CharacterSheetPage() {
         .then(() => updateSavingStatus('saved'))
         .catch(() => updateSavingStatus('error'))
     }, SAVE_DEBOUNCE_MS)
+  }
+
+  function handleExport() {
+    if (!sheet || !storedSheet || !id) return
+    const stored: StoredCharacterSheet = { ...storedSheet, data: sheet }
+    const json = exportCharacterSheetAsJSON(stored)
+    downloadJsonFile(json, normalizeFileName(sheet.character.name.trim() || id, id, 'pj'))
   }
 
   function handleToggleEditMode() {
@@ -371,13 +383,23 @@ export function CharacterSheetPage() {
     <div className={styles.page} data-saving-status={savingStatus}>
       <div className={styles.topBar}>
         <Link className={styles.backLink} to="/">← Voltar</Link>
-        {savingStatus !== 'idle' && (
-          <span className={styles.savingIndicator} data-status={savingStatus}>
-            {savingStatus === 'saving' && 'Salvando...'}
-            {savingStatus === 'saved' && 'Salvo'}
-            {savingStatus === 'error' && 'Erro ao salvar'}
-          </span>
-        )}
+        <div className={styles.topBarRight}>
+          <button
+            type="button"
+            className={styles.exportBtn}
+            onClick={handleExport}
+            disabled={!sheet}
+          >
+            Exportar PJ
+          </button>
+          {savingStatus !== 'idle' && (
+            <span className={styles.savingIndicator} data-status={savingStatus}>
+              {savingStatus === 'saving' && 'Salvando...'}
+              {savingStatus === 'saved' && 'Salvo'}
+              {savingStatus === 'error' && 'Erro ao salvar'}
+            </span>
+          )}
+        </div>
       </div>
 
       <CharacterHeader
@@ -412,7 +434,9 @@ export function CharacterSheetPage() {
         </nav>
       </div>
 
-      <CharacterCombatSummary sheet={currentSheet} onUpdate={handleUpdate} />
+      {(activeTab === 'Principal' || activeTab === 'Mesa') && (
+        <CharacterCombatSummary sheet={currentSheet} onUpdate={handleUpdate} />
+      )}
 
       <div
         id={TAB_PANEL_IDS[activeTab]}

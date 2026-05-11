@@ -218,13 +218,20 @@ export function SkillsPanel({
 
 									<div className={styles.skillValueGroup}>
 										{isEditMode ? (
-											<NumberInput
-												aria-label={`Modificador extra de ${SKILL_LABEL[skill]}`}
-												className={styles.miscInput}
-												title="Modificador extra"
-												value={misc}
-												onChange={(value) => setMisc(skill, value)}
-											/>
+											<span className={styles.miscGroup} title="Bônus extra (itens, talentos ou regras especiais)">
+												<span className={styles.miscPrefix}>+</span>
+												<NumberInput
+													aria-label={`Bônus extra de ${SKILL_LABEL[skill]}`}
+													className={styles.miscInput}
+													title="Bônus extra (itens, talentos ou regras especiais)"
+													value={misc}
+													onChange={(value) => setMisc(skill, value)}
+												/>
+											</span>
+										) : misc !== 0 ? (
+											<span className={styles.miscBadge} title={`Bônus extra: ${formatModifier(misc)}`}>
+												{formatModifier(misc)}
+											</span>
 										) : null}
 
 										<strong className={styles.skillBonus}>{formatModifier(total)}</strong>

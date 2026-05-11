@@ -10,7 +10,12 @@ import { MonsterTraitsPanel } from '../../components/monster/MonsterTraitsPanel/
 import { MonsterTableMode } from '../../components/monster/MonsterTableMode/MonsterTableMode'
 import { MonsterCombatSummary } from '../../components/monster/MonsterCombatSummary/MonsterCombatSummary'
 import type { DeepPartial } from '../../components/monster/shared'
-import { saveMonsterSheet } from '../../store/monsterSheetStore'
+import {
+  saveMonsterSheet,
+  exportMonsterSheetAsJSON,
+  type StoredMonsterSheet,
+} from '../../store/monsterSheetStore'
+import { normalizeFileName, downloadJsonFile } from '../../utils/exportSheet'
 import { applyRestToMonsterSheet } from '../../utils/restRules'
 import { recordOpened } from '../../utils/recentlyOpened'
 import { useAuth } from '../../context/AuthContext'
@@ -212,6 +217,14 @@ export function MonsterSheetPage() {
     restFeedbackTimerRef.current = setTimeout(() => setRestFeedback(null), 2000)
   }
 
+  function handleExport() {
+    if (!sheet || !storedMonster || !id) return
+    const stored: StoredMonsterSheet = { ...storedMonster, data: sheet }
+    const json = exportMonsterSheetAsJSON(stored)
+    const prefix = sheet.details.kind === 'npc' ? 'npc' : 'monstro'
+    downloadJsonFile(json, normalizeFileName(sheet.details.name.trim() || id, id, prefix))
+  }
+
   function handleShortRest() {
     if (!sheet) return
     handleSheetChange(applyRestToMonsterSheet(sheet, 'short'))
@@ -343,7 +356,17 @@ export function MonsterSheetPage() {
 
   return (
     <div className={styles.page} data-saving-status={savingStatus}>
-      <Link className={styles.backLink} to="/">← Voltar</Link>
+      <div className={styles.topBar}>
+        <Link className={styles.backLink} to="/">← Voltar</Link>
+        <button
+          type="button"
+          className={styles.exportBtn}
+          onClick={handleExport}
+          disabled={!sheet}
+        >
+          {sheet?.details.kind === 'npc' ? 'Exportar NPC' : 'Exportar Monstro'}
+        </button>
+      </div>
 
       <div ref={tabBarRef} className={styles.tabBarShell}>
         <nav className={styles.tabBar} aria-label="Seções da ficha de monstro" role="tablist">
