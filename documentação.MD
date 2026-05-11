@@ -1,5 +1,22 @@
 # Documentação Completa do Sistema
 
+> **⚠️ DOCUMENTO LEGADO — NÃO USAR COMO REFERÊNCIA DE ARQUITETURA**
+>
+> Este arquivo descreve uma versão anterior do sistema que usava `localStorage` como persistência e não tinha autenticação. A arquitetura atual é fundamentalmente diferente:
+>
+> - **Persistência**: Firebase Firestore (em nuvem, por usuário autenticado)
+> - **Autenticação**: Firebase Auth (e-mail/senha + Google, com verificação de e-mail obrigatória)
+> - **Deploy**: Vercel (SPA com fallback para `index.html`)
+> - **Fichas de monstro/NPC**: coleção separada (`monsterSheets`), tipo separado (`MonsterSheet`), página separada (`MonsterSheetPage`)
+> - **Nomenclatura UI**: fichas de jogador são chamadas de "PJ" (não "Personagem") na interface
+> - **Painéis persistentes**: `CharacterCombatSummary` e `MonsterCombatSummary` exibem stats acima das abas em todas as visualizações
+>
+> **Use [`CLAUDE.md`](CLAUDE.md) como referência autoritativa da arquitetura atual.**
+>
+> O conteúdo abaixo é mantido apenas como registro histórico.
+
+---
+
 ## 1. Visão Geral
 
 **Tomo do Aventureiro** é uma aplicação web SPA para criação, edição, visualização, armazenamento local, importação e exportação de fichas de personagem. O foco atual do sistema está em fichas inspiradas em D&D 5e, com interface em português, persistência local no navegador e organização visual em estilo pergaminho.
