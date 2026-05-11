@@ -5,6 +5,14 @@
     padding: 0.425rem;
 }
 
+.topBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
 .backLink {
     display: inline-flex;
     align-items: center;
@@ -13,13 +21,44 @@
     font-size: var(--text-sm);
     font-family: var(--font-display);
     letter-spacing: 0.03em;
-    margin-bottom: var(--space-4);
     padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border-light);
     border-radius: 999px;
     background: var(--parchment-light);
     transition: all var(--transition);
     text-decoration: none;
+}
+
+.exportBtn {
+    display: inline-flex;
+    align-items: center;
+    color: var(--ink-muted);
+    font-size: var(--text-sm);
+    font-family: var(--font-display);
+    letter-spacing: 0.03em;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    background: var(--parchment-light);
+    cursor: pointer;
+    transition: all var(--transition);
+    white-space: nowrap;
+}
+
+.exportBtn:hover:not(:disabled) {
+    color: var(--accent);
+    border-color: var(--border);
+    background: var(--parchment-dark);
+}
+
+.exportBtn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.exportBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 
 .backLink:hover {

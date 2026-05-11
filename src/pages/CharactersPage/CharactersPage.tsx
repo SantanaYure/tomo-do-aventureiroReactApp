@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { normalizeFileName, downloadJsonFile } from '../../utils/exportSheet'
 import {
   createCharacterSheet,
   deleteCharacterSheet,
@@ -746,26 +747,6 @@ export function CharactersPage() {
       await deleteMonster(uid, pendingDelete.id)
     }
     setPendingDelete(null)
-  }
-
-  function normalizeFileName(rawName: string, fallbackId: string, prefix: string): string {
-    const normalizedName = rawName
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-    return `${prefix}-${normalizedName || fallbackId}.json`
-  }
-
-  function downloadJsonFile(json: string, fileName: string) {
-    const blob = new Blob([json], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = fileName
-    a.click()
-    URL.revokeObjectURL(url)
   }
 
   function handleExportSheet(sheet: StoredCharacterSheet) {
