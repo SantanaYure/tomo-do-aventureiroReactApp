@@ -84,6 +84,7 @@ export function createDefaultCharacterSheet(): CharacterSheet {
       hpCurrent: 0,
       hpTemp: 0,
       passivePerceptionBonus: 0,
+      spellDcBonusExtra: 0,
       savingThrows: {
         str: 0,
         dex: 0,

@@ -434,7 +434,9 @@ export function CharacterSheetPage() {
         </nav>
       </div>
 
-      <CharacterCombatSummary sheet={currentSheet} onUpdate={handleUpdate} />
+      {(activeTab === 'Principal' || activeTab === 'Mesa') && (
+        <CharacterCombatSummary sheet={currentSheet} onUpdate={handleUpdate} />
+      )}
 
       <div
         id={TAB_PANEL_IDS[activeTab]}

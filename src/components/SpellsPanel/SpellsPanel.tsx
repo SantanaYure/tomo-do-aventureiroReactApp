@@ -90,9 +90,11 @@ export function SpellsPanel({
   const [materialDrafts, setMaterialDrafts] = useState<Record<number, string>>({})
   const proficiencyBonus = calcProficiencyBonus(character.classes)
   const spellcastingModifier = getSpellcastingModifier(character)
+  const spellDcBonusExtra = character.spellDcBonusExtra ?? 0
   const spellAttackBonus =
     spellcastingModifier === null ? null : proficiencyBonus + spellcastingModifier
-  const spellSaveDc = spellcastingModifier === null ? null : 8 + proficiencyBonus + spellcastingModifier
+  const spellSaveDc =
+    spellcastingModifier === null ? null : 8 + proficiencyBonus + spellcastingModifier + spellDcBonusExtra
 
   function setSpellcastingAbility(value: SpellcastingAbility) {
     onChangeCharacter({ ...character, spellcastingAbility: value })
@@ -214,6 +216,20 @@ export function SpellsPanel({
           <span className={styles.spellStatValueLg}>
             {spellSaveDc === null ? '—' : spellSaveDc}
           </span>
+          {isEditMode && (
+            <div className={styles.spellDcBonusRow}>
+              <span className={styles.spellDcBonusLabel}>Bônus extra</span>
+              <NumberInput
+                aria-label="Bônus extra à CD das magias"
+                className={styles.spellDcBonusInput}
+                title="Bônus extra de artefatos mágicos, talentos ou regras da campanha"
+                value={spellDcBonusExtra}
+                onChange={(value) =>
+                  onChangeCharacter({ ...character, spellDcBonusExtra: value })
+                }
+              />
+            </div>
+          )}
         </div>
       </div>
 

@@ -179,12 +179,12 @@ export function AttributesPanel({
             return (
               <div className={styles.savingRow} key={saveKey}>
                 <span
-                  aria-label={`Proficiência em ${attribute.name}: ${isProficient ? 'ativada' : 'desativada'}`}
+                  aria-label={`Proficiência no teste de resistência de ${attribute.name}: ${isProficient ? 'ativada' : 'desativada'}`}
                   aria-pressed={isEditMode ? isProficient : undefined}
                   className={`${styles.profIcon}${isEditMode ? ` ${styles.profIconClickable}` : ''}`}
                   role={isEditMode ? 'button' : undefined}
                   tabIndex={isEditMode ? 0 : undefined}
-                  title={isEditMode ? `Clique para alternar proficiência em ${attribute.name}` : undefined}
+                  title={isEditMode ? `Clique para marcar proficiência no teste de resistência de ${attribute.name}` : `Teste de resistência de ${attribute.name}: ${isProficient ? 'proficiente' : 'sem proficiência'}`}
                   onClick={isEditMode ? () => cycleSavingThrowProf(saveKey) : undefined}
                   onKeyDown={isEditMode ? (event) => handleSavingThrowKeyDown(event, saveKey) : undefined}
                 >

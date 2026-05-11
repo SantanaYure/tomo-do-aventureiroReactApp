@@ -1,9 +1,44 @@
+import type { Character } from '../types/system/dnd/Character'
 import type { CharacterSheet } from '../types/system/dnd/CharacterSheet'
 import type { Class } from '../types/system/dnd/Class'
 import type { Resource, ResourceReset } from '../types/system/dnd/Resource'
 import type { SpellSlots } from '../types/system/dnd/Spell'
 import type { LimitedUseResource, MonsterSheet, RechargeType } from '../types/system/dnd/monsterSheet'
 import { restoreResourceFull } from './manageableResource'
+
+// ── HP max calculation (mirrors CombatPanel, kept here to avoid component→util dependency) ──
+
+function parseHitDieForRest(hitDice: string): number {
+  const match = /d(\d+)/i.exec(hitDice)
+  const parsed = match ? Number(match[1]) : 0
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function calcEffectiveHpMaxForRest(character: Character): number {
+  if (!character.hpAutoCalc) {
+    return Math.max(0, Math.trunc(character.hpMax))
+  }
+  const conAttr = character.attributes.find((a) => a.name === 'Constituição')
+  const conMod = conAttr ? Math.floor((conAttr.value - 10) / 2) : 0
+  let total = 0
+  let consumedFirstLevel = false
+  for (const cls of character.classes) {
+    const levels = Math.max(0, Math.trunc(cls.level))
+    const hitDie = parseHitDieForRest(cls.hitDice)
+    const avgHitDie = hitDie > 0 ? Math.floor(hitDie / 2) + 1 : 0
+    if (levels === 0 || hitDie === 0) continue
+    for (let lvl = 0; lvl < levels; lvl++) {
+      const base = consumedFirstLevel ? avgHitDie : hitDie
+      total += Math.max(1, base + conMod)
+      consumedFirstLevel = true
+    }
+  }
+  const bonusTotal = character.hpBonusEntries.reduce((sum, e) => {
+    const v = Number(e.value)
+    return sum + (Number.isFinite(v) ? Math.trunc(v) : 0)
+  }, 0)
+  return Math.max(0, total + bonusTotal)
+}
 
 export type RestType = 'short' | 'long'
 
@@ -93,9 +128,22 @@ export function applyRestToCharacterSheet(
   sheet: CharacterSheet,
   restType: RestType,
 ): CharacterSheet {
-  return {
+  const recovered: CharacterSheet = {
     ...sheet,
     resources: recoverResources(sheet.resources, restType),
     spellSlots: recoverSpellSlots(sheet.spellSlots, restType, sheet.character.classes),
   }
+
+  if (restType === 'long') {
+    const hpMax = calcEffectiveHpMaxForRest(recovered.character)
+    return {
+      ...recovered,
+      character: {
+        ...recovered.character,
+        hpCurrent: hpMax,
+      },
+    }
+  }
+
+  return recovered
 }
