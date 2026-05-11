@@ -224,7 +224,7 @@ export function CharacterSheetPage() {
   if (!sheet) {
     return (
       <div className={styles.page}>
-        <section className={styles.loading}>Abrindo o tomo e restaurando os dados do personagem...</section>
+        <section className={styles.loading}>Abrindo o tomo e restaurando os dados do PJ...</section>
       </div>
     )
   }

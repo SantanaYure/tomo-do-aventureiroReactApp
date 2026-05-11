@@ -42,7 +42,7 @@ const TYPE_ICON: Record<string, string> = {
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  character: 'Personagem',
+  character: 'PJ',
   monster: 'Monstro',
   npc: 'NPC',
 }
@@ -181,7 +181,7 @@ export function Home() {
           Bem-vindo, <span className={styles.greetingName}>{firstName}</span>
         </h1>
         <p className={styles.greetingSubtitle}>
-          Suas fichas de personagem, monstros e NPCs
+          Suas fichas de PJ, monstros e NPCs
         </p>
         <div className={styles.ornament} aria-hidden="true">✦ ✦ ✦</div>
       </section>
@@ -189,7 +189,7 @@ export function Home() {
       {/* Contadores */}
       <section className={styles.counters} aria-label="Resumo da coleção">
         <CounterCard
-          label="Personagens"
+          label="PJs"
           value={totalCharacters}
           icon="⚔"
           loading={isLoading}

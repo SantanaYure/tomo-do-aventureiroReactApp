@@ -14,7 +14,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Home', icon: '⌂', exact: true },
-  { to: '/fichas', label: 'Personagens', icon: '⚔' },
+  { to: '/fichas', label: 'Fichas', icon: '⚔' },
 ]
 
 function UserAvatar({ photoURL, displayName }: { photoURL: string | null; displayName: string | null }) {
