@@ -24,6 +24,16 @@
   --input-bg: #fffdf4;
   --input-border: #c4a06a;
 
+  /* ── Acento tonal envelhecido — diferenciação funcional ── */
+  /* Usado para ações com semântica de perda (dano), ganho (cura) e defesa (temporário) */
+  /* Todos derivam da paleta de metais e pigmentos antigos, sem cores saturadas modernas */
+  --rust:          #7a3018;           /* ferrugem / cobre escuro — ações de perda */
+  --rust-faint:    rgba(122, 48, 24, 0.09);
+  --bronze:        #6e5010;           /* bronze / dourado gasto — ações de recuperação */
+  --bronze-faint:  rgba(110, 80, 16, 0.09);
+  --pewter:        #625a4a;           /* chumbo sépia / ardósia quente — ações neutras/defensivas */
+  --pewter-faint:  rgba(98, 90, 74, 0.08);
+
   /* ── Tipografia ── */
   --font-display: 'Cinzel', 'Palatino Linotype', Georgia, serif;
   --font-body: 'Crimson Text', 'Palatino Linotype', Georgia, serif;

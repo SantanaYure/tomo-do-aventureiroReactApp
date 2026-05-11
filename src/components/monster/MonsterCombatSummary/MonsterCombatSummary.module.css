@@ -87,12 +87,12 @@
   transition: background var(--transition);
 }
 
-.btnDamage { composes: hpBtn; background: rgba(180,40,40,0.08); color: #8b1a1a; }
-.btnDamage:hover { background: rgba(180,40,40,0.16); }
-.btnHeal   { composes: hpBtn; background: rgba(40,140,60,0.08); color: #1a6b2e; }
-.btnHeal:hover { background: rgba(40,140,60,0.16); }
-.btnTemp   { composes: hpBtn; background: rgba(60,90,180,0.08); color: #1a3680; }
-.btnTemp:hover { background: rgba(60,90,180,0.16); }
+.btnDamage { composes: hpBtn; background: var(--rust-faint); color: var(--rust); border-color: rgba(122, 48, 24, 0.28); }
+.btnDamage:hover { background: rgba(122, 48, 24, 0.16); }
+.btnHeal   { composes: hpBtn; background: var(--bronze-faint); color: var(--bronze); border-color: rgba(110, 80, 16, 0.28); }
+.btnHeal:hover { background: rgba(110, 80, 16, 0.16); }
+.btnTemp   { composes: hpBtn; background: var(--pewter-faint); color: var(--pewter); border-color: rgba(98, 90, 74, 0.25); }
+.btnTemp:hover { background: rgba(98, 90, 74, 0.15); }
 
 .chipGroup {
   display: flex;
@@ -136,9 +136,12 @@
   padding: 2px var(--space-2);
 }
 
-.chipResist  { composes: chip; background: rgba(40,140,60,0.08);  border-color: rgba(40,140,60,0.25);  color: #1a6b2e; }
-.chipImmune  { composes: chip; background: rgba(60,90,180,0.08);  border-color: rgba(60,90,180,0.25);  color: #1a3680; }
-.chipCondIm  { composes: chip; background: rgba(130,50,180,0.08); border-color: rgba(130,50,180,0.25); color: #5b1a80; }
+/* Chips de resistência e imunidade — paleta pergaminho envelhecido.
+   A diferenciação semântica (resistir vs imune vs condição) vem dos rótulos de grupo acima;
+   a variação visual é de peso/tom, não de cor. */
+.chipResist { composes: chip; }
+.chipImmune { composes: chip; background: var(--parchment-shadow); border-color: var(--border-light); font-weight: 600; }
+.chipCondIm { composes: chip; background: var(--parchment-shadow); border-color: var(--border-light); font-style: italic; }
 
 @media (min-width: 480px) {
   .statCardHp { grid-column: span 1; }

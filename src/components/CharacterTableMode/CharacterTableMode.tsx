@@ -1,4 +1,5 @@
-import type { CharacterSheet } from '../../types/system/dnd'
+import { useState } from 'react'
+import type { CharacterSheet, Currency } from '../../types/system/dnd'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
 import { ManagedResourceControls } from '../ManagedResourceControls/ManagedResourceControls'
 import { spendResource, restoreResource, restoreResourceFull } from '../../utils/manageableResource'
@@ -22,12 +23,31 @@ const RESET_LABEL: Record<string, string> = {
   na:           'N/A',
 }
 
+const ORIGIN_LABEL: Record<string, string> = {
+  class:        'Classe',
+  subclass:     'Subclasse',
+  species:      'Espécie',
+  background:   'Antecedente',
+  feat:         'Talento',
+  'magic-item': 'Item Mágico',
+  homebrew:     'Homebrew',
+}
+
 const ATTR_NAME_BY_KEY: Record<string, string> = {
   str: 'Força', dex: 'Destreza', con: 'Constituição',
   int: 'Inteligência', wis: 'Sabedoria', cha: 'Carisma',
 }
 
-function calcAttackBonus(attack: CharacterSheet['attacks'][number], character: CharacterSheet['character']): number {
+const CURRENCY_LABEL: Record<keyof Currency, string> = {
+  cp: 'PC', sp: 'PP', ep: 'PE', gp: 'PO', pp: 'Plat',
+}
+
+const CURRENCY_ORDER: (keyof Currency)[] = ['cp', 'sp', 'ep', 'gp', 'pp']
+
+function calcAttackBonus(
+  attack: CharacterSheet['attacks'][number],
+  character: CharacterSheet['character'],
+): number {
   const profBonus = calcProficiencyBonus(character.classes)
   if (attack.attributeKey === 'manual' || !attack.attributeKey) return attack.attackBonus ?? 0
   const attrName = ATTR_NAME_BY_KEY[attack.attributeKey]
@@ -35,8 +55,38 @@ function calcAttackBonus(attack: CharacterSheet['attacks'][number], character: C
   return (attr ? calcModifier(attr.value) : 0) + (attack.useProficiency ? profBonus : 0)
 }
 
+function totalWeight(items: CharacterSheet['inventory']): number {
+  return items.reduce((sum, item) => sum + (item.weight ?? 0) * (item.quantity ?? 1), 0)
+}
+
 export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps) {
   const { character } = sheet
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+
+  function toggleExpanded(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) { next.delete(id) } else { next.add(id) }
+      return next
+    })
+  }
+
+  function updateInventory(updated: CharacterSheet['inventory']) {
+    onUpdate({ ...sheet, inventory: updated })
+  }
+
+  function changeItemQty(index: number, delta: number) {
+    const item = sheet.inventory[index]
+    const next = Math.max(0, (item.quantity ?? 1) + delta)
+    updateInventory(sheet.inventory.map((it, i) => i === index ? { ...it, quantity: next } : it))
+  }
+
+  function toggleItemEquipped(index: number) {
+    const item = sheet.inventory[index]
+    updateInventory(sheet.inventory.map((it, i) => i === index ? { ...it, equipped: !it.equipped } : it))
+  }
+
+  const hasCoins = CURRENCY_ORDER.some((k) => (character.currency[k] ?? 0) > 0)
 
   return (
     <>
@@ -44,14 +94,29 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
       {sheet.resources.some((r) => (r.max ?? 0) > 0) && (
         <section className={panelStyles.panel}>
           <span className={styles.sectionTitle}>Recursos</span>
-          <div className={styles.resourceList}>
+          <div className={styles.itemList}>
             {sheet.resources
               .map((resource, originalIndex) => ({ resource, originalIndex }))
               .filter(({ resource: r }) => (r.max ?? 0) > 0)
               .map(({ resource, originalIndex }) => {
+                const id = `resource-${originalIndex}`
+                const isExpanded = expandedIds.has(id)
                 const current = resource.current ?? 0
                 const max = resource.max ?? 0
                 const restBased = isRestBasedReset(resource.resetOn)
+
+                const hasBody =
+                  Boolean(resource.description?.trim()) ||
+                  Boolean(resource.action?.trim()) ||
+                  Boolean(resource.range?.trim()) ||
+                  Boolean(resource.duration?.trim())
+
+                const origin =
+                  resource.allowCustomOrigin && resource.customOrigin?.trim()
+                    ? resource.customOrigin
+                    : resource.origin
+                    ? (ORIGIN_LABEL[resource.origin] ?? resource.origin)
+                    : null
 
                 function spend() {
                   const next = spendResource({ current, max })
@@ -78,24 +143,65 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
                 }
 
                 return (
-                  <div className={styles.resourceRow} key={originalIndex}>
-                    <span className={styles.resourceName}>{resource.name || '(sem nome)'}</span>
-                    <ManagedResourceControls
-                      current={current}
-                      max={max}
-                      itemName={resource.name || ''}
-                      resourceKind="recurso"
-                      onSpend={spend}
-                      onRestore={restBased ? undefined : restore}
-                      onRestoreFull={restBased ? undefined : restoreFull}
-                      restoreFullText="Recarregar"
-                      meta={
-                        resource.resetOn && resource.resetOn !== 'na'
-                          ? <span className={styles.resetBadge}>{RESET_LABEL[resource.resetOn] ?? resource.resetOn}</span>
-                          : undefined
-                      }
-                    />
-                  </div>
+                  <article className={styles.itemCard} key={originalIndex}>
+                    <div className={styles.resourceCardHeader}>
+                      <span className={styles.itemTitle}>{resource.name || '(sem nome)'}</span>
+                      <div className={styles.resourceHeaderRight}>
+                        {resource.resetOn && resource.resetOn !== 'na' && (
+                          <span className={styles.resetBadge}>
+                            {RESET_LABEL[resource.resetOn] ?? resource.resetOn}
+                          </span>
+                        )}
+                        {hasBody && (
+                          <button
+                            type="button"
+                            className={styles.detailToggle}
+                            onClick={() => toggleExpanded(id)}
+                            aria-expanded={isExpanded}
+                            aria-label={isExpanded ? 'Recolher detalhes' : 'Ver detalhes'}
+                          >
+                            {isExpanded ? '▾' : '▸'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className={styles.resourceControls}>
+                      <ManagedResourceControls
+                        current={current}
+                        max={max}
+                        itemName={resource.name || ''}
+                        resourceKind="recurso"
+                        onSpend={spend}
+                        onRestore={restBased ? undefined : restore}
+                        onRestoreFull={restBased ? undefined : restoreFull}
+                        restoreFullText="Recarregar"
+                      />
+                    </div>
+                    {isExpanded && (
+                      <div className={styles.itemBody}>
+                        {resource.description?.trim() && (
+                          <p className={styles.description}>{resource.description}</p>
+                        )}
+                        {(resource.action?.trim() ||
+                          resource.range?.trim() ||
+                          resource.duration?.trim() ||
+                          origin) && (
+                          <div className={styles.metaRow}>
+                            {resource.action?.trim() && (
+                              <span className={styles.metaChip}>Ação: {resource.action}</span>
+                            )}
+                            {resource.range?.trim() && (
+                              <span className={styles.metaChip}>Alcance: {resource.range}</span>
+                            )}
+                            {resource.duration?.trim() && (
+                              <span className={styles.metaChip}>Duração: {resource.duration}</span>
+                            )}
+                            {origin && <span className={styles.metaChip}>{origin}</span>}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </article>
                 )
               })}
           </div>
@@ -106,28 +212,57 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
       {sheet.attacks.length > 0 && (
         <section className={panelStyles.panel}>
           <span className={styles.sectionTitle}>Ataques</span>
-          <table className={styles.attackTable}>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Bônus</th>
-                <th>Dano</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sheet.attacks.map((attack, index) => {
-                const bonus = calcAttackBonus(attack, character)
-                const damage = [attack.damage, attack.damageType].filter(Boolean).join(' ')
-                return (
-                  <tr key={index}>
-                    <td className={styles.attackName}>{attack.name || '(sem nome)'}</td>
-                    <td>{fmt(bonus)}</td>
-                    <td>{damage || '—'}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+          <div className={styles.itemList}>
+            {sheet.attacks.map((attack, index) => {
+              const id = `attack-${index}`
+              const isExpanded = expandedIds.has(id)
+              const bonus = calcAttackBonus(attack, character)
+              const damage = [attack.damage, attack.damageType].filter(Boolean).join(' ')
+              const hasBody = Boolean(attack.range?.trim() || attack.notes?.trim())
+
+              const attrSource =
+                attack.attributeKey && attack.attributeKey !== 'manual'
+                  ? `${ATTR_NAME_BY_KEY[attack.attributeKey] ?? attack.attributeKey}${attack.useProficiency ? ' + Prof.' : ''}`
+                  : null
+
+              return (
+                <article className={styles.itemCard} key={index}>
+                  {hasBody ? (
+                    <button
+                      type="button"
+                      className={styles.itemToggle}
+                      onClick={() => toggleExpanded(id)}
+                      aria-expanded={isExpanded}
+                    >
+                      <span className={styles.itemTitle}>{attack.name || '(sem nome)'}</span>
+                      <span className={styles.itemMeta}>{fmt(bonus)}</span>
+                      {damage && <span className={styles.itemMeta}>{damage}</span>}
+                      <span className={styles.collapseIcon}>{isExpanded ? '▾' : '▸'}</span>
+                    </button>
+                  ) : (
+                    <div className={styles.itemRow}>
+                      <span className={styles.itemTitle}>{attack.name || '(sem nome)'}</span>
+                      <span className={styles.itemMeta}>{fmt(bonus)}</span>
+                      {damage && <span className={styles.itemMeta}>{damage}</span>}
+                    </div>
+                  )}
+                  {isExpanded && hasBody && (
+                    <div className={styles.itemBody}>
+                      <div className={styles.metaRow}>
+                        {attrSource && <span className={styles.metaChip}>{attrSource}</span>}
+                        {attack.range?.trim() && (
+                          <span className={styles.metaChip}>Alcance: {attack.range}</span>
+                        )}
+                      </div>
+                      {attack.notes?.trim() && (
+                        <p className={styles.description}>{attack.notes}</p>
+                      )}
+                    </div>
+                  )}
+                </article>
+              )
+            })}
+          </div>
         </section>
       )}
 
@@ -191,6 +326,96 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
             </section>
           )
         })()
+      )}
+
+      {/* ── Seção F: Inventário ── */}
+      {(sheet.inventory.length > 0 || hasCoins) && (
+        <section className={panelStyles.panel}>
+          <div className={styles.inventoryHeader}>
+            <span className={styles.sectionTitle}>Inventário</span>
+            {sheet.inventory.length > 0 && (
+              <span className={styles.weightNote}>
+                Peso: {totalWeight(sheet.inventory).toFixed(1)} kg
+              </span>
+            )}
+          </div>
+
+          {hasCoins && (
+            <div className={styles.coinRow}>
+              {CURRENCY_ORDER.filter((k) => (character.currency[k] ?? 0) > 0).map((key) => (
+                <div key={key} className={styles.coinChip}>
+                  <span className={styles.coinLabel}>{CURRENCY_LABEL[key]}</span>
+                  <span className={styles.coinValue}>{character.currency[key]}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {sheet.inventory.length > 0 && (
+            <div className={styles.itemList}>
+              {sheet.inventory.map((item, idx) => {
+                const id = `item-${idx}`
+                const isExpanded = expandedIds.has(id)
+                const hasDesc = Boolean(item.description?.trim())
+
+                return (
+                  <article
+                    className={`${styles.inventoryCard} ${item.equipped ? styles.inventoryCardEquipped : ''}`}
+                    key={String(item.id ?? idx)}
+                  >
+                    <div className={styles.inventoryRow}>
+                      <input
+                        type="checkbox"
+                        className={styles.equippedCheck}
+                        checked={item.equipped ?? false}
+                        onChange={() => toggleItemEquipped(idx)}
+                        aria-label={`${item.name || 'Item'} equipado`}
+                      />
+                      <span className={styles.inventoryName}>{item.name || '—'}</span>
+                      <div className={styles.qtyControls}>
+                        <button
+                          type="button"
+                          className={styles.qtyBtn}
+                          onClick={() => changeItemQty(idx, -1)}
+                          disabled={(item.quantity ?? 1) <= 0}
+                          aria-label="Reduzir quantidade"
+                        >
+                          −
+                        </button>
+                        <span className={styles.qtyValue}>{item.quantity ?? 1}</span>
+                        <button
+                          type="button"
+                          className={styles.qtyBtn}
+                          onClick={() => changeItemQty(idx, 1)}
+                          aria-label="Aumentar quantidade"
+                        >
+                          +
+                        </button>
+                      </div>
+                      {(item.weight ?? 0) > 0 && (
+                        <span className={styles.weightChip}>{item.weight} kg</span>
+                      )}
+                      {hasDesc && (
+                        <button
+                          type="button"
+                          className={styles.detailToggle}
+                          onClick={() => toggleExpanded(id)}
+                          aria-expanded={isExpanded}
+                          aria-label={isExpanded ? 'Recolher descrição' : 'Ver descrição'}
+                        >
+                          {isExpanded ? '▾' : '▸'}
+                        </button>
+                      )}
+                    </div>
+                    {isExpanded && hasDesc && (
+                      <p className={styles.description}>{item.description}</p>
+                    )}
+                  </article>
+                )
+              })}
+            </div>
+          )}
+        </section>
       )}
     </>
   )
