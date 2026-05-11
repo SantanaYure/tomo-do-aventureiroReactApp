@@ -8,6 +8,7 @@ import { MonsterSpellsPanel } from '../../components/monster/MonsterSpellsPanel/
 import { MonsterStatsPanel } from '../../components/monster/MonsterStatsPanel/MonsterStatsPanel'
 import { MonsterTraitsPanel } from '../../components/monster/MonsterTraitsPanel/MonsterTraitsPanel'
 import { MonsterTableMode } from '../../components/monster/MonsterTableMode/MonsterTableMode'
+import { MonsterCombatSummary } from '../../components/monster/MonsterCombatSummary/MonsterCombatSummary'
 import type { DeepPartial } from '../../components/monster/shared'
 import { saveMonsterSheet } from '../../store/monsterSheetStore'
 import { applyRestToMonsterSheet } from '../../utils/restRules'
@@ -182,6 +183,13 @@ export function MonsterSheetPage() {
       if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
     }
   }, [])
+
+  useEffect(() => {
+    if (!sheet) return
+    const name = sheet.details.name.trim()
+    document.title = name || 'Tomo do Aventureiro'
+    return () => { document.title = 'Tomo do Aventureiro' }
+  }, [sheet?.details.name])
 
   function handleSheetChange(patch: DeepPartial<MonsterSheet>) {
     if (!sheet || !id || !uid) {
@@ -367,6 +375,8 @@ export function MonsterSheetPage() {
           {restFeedback}
         </span>
       </div>
+
+      <MonsterCombatSummary sheet={currentSheet} onChange={handleSheetChange} />
 
       <div
         id={TAB_PANEL_IDS[activeTab]}

@@ -6,7 +6,6 @@ import { useState } from 'react'
 import type { Character, Class } from '../../types/system/dnd'
 import { AvatarCropper } from '../AvatarCropper/AvatarCropper'
 import { NumberInput } from '../NumberInput/NumberInput'
-import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './CharacterHeader.module.css'
 
@@ -31,54 +30,7 @@ function totalLevel(classes: Class[]): number {
   return classes.reduce((sum, currentClass) => sum + currentClass.level, 0)
 }
 
-function fmt(mod: number): string {
-  return mod >= 0 ? `+${mod}` : `${mod}`
-}
-
-function getAttrMod(character: Character, name: string): number {
-  const attr = character.attributes.find((a) => a.name === name)
-  return attr ? calcModifier(attr.value) : 0
-}
-
-function calcEffectiveHpMax(character: Character): number {
-  if (!character.hpAutoCalc) return Math.max(0, Math.trunc(character.hpMax))
-  const conMod = getAttrMod(character, 'Constituição')
-  let total = 0
-  let firstLevel = false
-  for (const cls of character.classes) {
-    const levels = Math.max(0, Math.trunc(cls.level))
-    const match = /d(\d+)/i.exec(cls.hitDice)
-    const sides = match ? Number(match[1]) : 0
-    if (levels === 0 || sides === 0) continue
-    const avg = Math.floor(sides / 2) + 1
-    for (let i = 0; i < levels; i++) {
-      total += Math.max(1, (firstLevel ? avg : sides) + conMod)
-      firstLevel = true
-    }
-  }
-  const bonus = character.hpBonusEntries.reduce((sum, e) => {
-    const v = Number(e.value)
-    return sum + (Number.isFinite(v) ? Math.trunc(v) : 0)
-  }, 0)
-  return Math.max(0, total + bonus)
-}
-
-function calcPassivePerception(character: Character, profBonus: number): number {
-  const wisMod = getAttrMod(character, 'Sabedoria')
-  const perc = character.skills.perception
-  const profLevel = Math.max(0, Math.min(2, Math.trunc(perc?.proficiency ?? 0)))
-  return 10 + wisMod + profLevel * profBonus + (perc?.misc ?? 0) + (character.passivePerceptionBonus ?? 0)
-}
-
 function ViewLayout({ character }: { character: Character }) {
-  const profBonus = calcProficiencyBonus(character.classes)
-  const ac = Math.max(0, Math.trunc(character.armorClassBase))
-  const initiative = getAttrMod(character, 'Destreza') + character.initiativeBonusExtra
-  const hpMax = calcEffectiveHpMax(character)
-  const hpCurrent = Math.min(Math.max(0, character.hpCurrent), hpMax)
-  const hpTemp = Math.max(0, character.hpTemp)
-  const passivePerception = calcPassivePerception(character, profBonus)
-
   return (
     <div className={styles.viewLayout}>
       {character.avatar && (
@@ -97,50 +49,6 @@ function ViewLayout({ character }: { character: Character }) {
           {formatClasses(character.classes)} · Nível {totalLevel(character.classes)}
           {character.xp > 0 && <span className={styles.viewXp}> · XP {character.xp}</span>}
         </p>
-
-        <div className={styles.statsGrid}>
-          <div className={styles.statChip}>
-            <span className={styles.statLabel}>CA</span>
-            <strong className={styles.statValue}>{ac}</strong>
-          </div>
-
-          <div className={`${styles.statChip} ${styles.statChipHp}`}>
-            <span className={styles.statLabel}>PV</span>
-            <strong className={styles.statValue}>
-              {hpCurrent}<span className={styles.statMax}>/{hpMax}</span>
-            </strong>
-            {hpTemp > 0 && <span className={styles.statSub}>+{hpTemp} temp</span>}
-          </div>
-
-          <div className={styles.statChip}>
-            <span className={styles.statLabel}>Iniciativa</span>
-            <strong className={styles.statValue}>{fmt(initiative)}</strong>
-          </div>
-
-          <div className={styles.statChip}>
-            <span className={styles.statLabel}>Deslocamento</span>
-            <strong className={styles.statValue}>{character.speed || '—'}</strong>
-          </div>
-
-          <div className={styles.statChip}>
-            <span className={styles.statLabel}>Proficiência</span>
-            <strong className={styles.statValue}>{fmt(profBonus)}</strong>
-          </div>
-
-          <div className={styles.statChip}>
-            <span className={styles.statLabel}>Percep. Passiva</span>
-            <strong className={styles.statValue}>{passivePerception}</strong>
-          </div>
-
-          {character.spellcastingAbility && (
-            <div className={styles.statChip}>
-              <span className={styles.statLabel}>Conjuração</span>
-              <strong className={styles.statValue}>
-                {character.spellcastingAbility.slice(0, 3).toUpperCase()}
-              </strong>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   )

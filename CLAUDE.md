@@ -34,7 +34,10 @@ src/
   assets/         → brandLogo.ts (URL da logo), imagem PNG do logotipo
   components/     → componentes de UI por painel/domínio
     monster/      → componentes exclusivos da ficha de monstro
+                     MonsterCombatSummary/ ← painel persistente de stats do monstro/NPC
     session/      → VAZIO — feature de sessão não implementada
+    CharacterCombatSummary/ ← painel persistente de stats e atributos do PJ (visível em todas as abas)
+    CharacterTableMode/     ← modo mesa do PJ: apenas Seções C/D/E (recursos, ataques, espaços de magia)
     AttacksPanel/ CharacterHeader/ CombatPanel/ InventoryPanel/
     ResourcesPanel/ SkillsPanel/ SpellsPanel/ CharacterDetailsPanel/
     AttributesPanel/ SkillPanel/ Sidebar/ UserMenu/
@@ -51,9 +54,9 @@ src/
     useFirestoreSearch.ts  → busca prefixada no Firestore com debounce (300ms)
   pages/
     Home/             → página inicial
-    CharactersPage/   → lista de personagens, monstros e NPCs
-    CharacterSheetPage/  → ficha completa do personagem (abas)
-    MonsterSheetPage/    → ficha completa do monstro (abas)
+    CharactersPage/   → lista de PJs, monstros e NPCs
+    CharacterSheetPage/  → ficha completa do PJ (abas + CharacterCombatSummary persistente)
+    MonsterSheetPage/    → ficha completa do monstro/NPC (abas + MonsterCombatSummary persistente)
     NewMonsterPage/      → redirecionamento legado (não implementado como página)
     NewCharacterPage/    → não utilizado (criação é feita direto na CharactersPage)
     LoginPage/ RegisterPage/ EmailVerificationPage/ VerifyEmailPage/
@@ -100,6 +103,8 @@ src/
 | [src/styles/theme.css](src/styles/theme.css) | Design tokens: cores, tipografia, espaçamentos, sombras |
 | [src/types/system/dnd/CharacterSheet.ts](src/types/system/dnd/CharacterSheet.ts) | Tipo raiz da ficha de personagem |
 | [src/types/system/dnd/monsterSheet.ts](src/types/system/dnd/monsterSheet.ts) | Tipos da ficha de monstro |
+| [src/components/CharacterCombatSummary/CharacterCombatSummary.tsx](src/components/CharacterCombatSummary/CharacterCombatSummary.tsx) | Painel persistente de stats (CA, PV, iniciativa, atributos) da ficha de PJ |
+| [src/components/monster/MonsterCombatSummary/MonsterCombatSummary.tsx](src/components/monster/MonsterCombatSummary/MonsterCombatSummary.tsx) | Painel persistente de stats da ficha de monstro/NPC |
 | [firestore.rules](firestore.rules) | Regras de segurança do Firestore |
 | [vercel.json](vercel.json) | Configuração de deploy: fallback para index.html (SPA) |
 | [.env](\.env) | Credenciais Firebase — **não commitado, não expor** |
@@ -133,9 +138,19 @@ src/
 
 ### Importação/exportação
 - Fichas são exportadas como JSON via download no browser
-- Importação lê um arquivo JSON, detecta o tipo (personagem/monstro/NPC) e chama a função de import correspondente
+- Importação lê um arquivo JSON, detecta o tipo (PJ/monstro/NPC) e chama a função de import correspondente
 - Fichas com ID já existente são ignoradas (sem sobrescrita)
 - Limite de 2MB por arquivo de importação
+- Nomes dos arquivos exportados: `pj-{nome}.json`, `monstro-{nome}.json`, `npc-{nome}.json`
+
+### Painéis persistentes (visíveis em todas as abas)
+- `CharacterCombatSummary` é renderizado **fora** do `role="tabpanel"`, entre a barra de abas e o conteúdo da aba ativa, na `CharacterSheetPage`. Exibe: CA, PV (com gestor de HP), iniciativa, deslocamento, bônus de proficiência, percepção passiva, atributo de conjuração e grid de 6 atributos (FOR/DES/CON/INT/SAB/CAR).
+- `MonsterCombatSummary` segue o mesmo padrão na `MonsterSheetPage`. Exibe: CA, PV (com gestor de HP), chips de movimento, resistências a dano, imunidades a dano e imunidades a condições.
+- Ambos os componentes recebem a ficha completa e um callback de atualização — alterações no HP são salvas com o mesmo debounce de 800ms.
+
+### Título da página (document.title)
+- `CharacterSheetPage` define `document.title` com o nome do personagem assim que a ficha carrega; restaura `'Tomo do Aventureiro'` ao desmontar.
+- `MonsterSheetPage` faz o mesmo com o nome do monstro/NPC.
 
 ---
 
@@ -329,7 +344,9 @@ Não remover essas pastas sem confirmar com o dono do projeto — podem represen
 
 ## Observações para futuras sessões do Claude Code
 
-- O arquivo `documentação.MD` na raiz está **desatualizado**: descreve um sistema baseado em `localStorage` sem autenticação, que foi substituído pelo Firebase. Não usar como referência de arquitetura atual.
+- O arquivo `documentação.MD` na raiz é um **documento legado**: foi mantido como registro histórico mas pode conter informações desatualizadas sobre a arquitetura anterior (ex: sistema sem Firebase). Usar `CLAUDE.md` como referência autoritativa.
+- **Nomenclatura UI — "PJ" vs "personagem"**: na interface visual (labels, botões, títulos, mensagens) o tipo de ficha de jogador é chamado de **PJ**. Internamente (tipos TypeScript, coleções Firestore, rotas, nomes de função) o termo `character`/`characterSheet` permanece inalterado. Nunca exibir "Personagem" em labels visíveis ao usuário para se referir a fichas de PJ.
+- **`SpellsPanel` — espaços de magia**: tanto `onSpend` quanto `onRestore` devem ser passados ao `ManagedResourceControls` dos níveis de magia. Sem `onRestore`, os dots vazios ficam permanentemente desabilitados (bug corrigido).
 - O ESLint está configurado apenas para `.js/.jsx`. Para verificar `.ts/.tsx`, usar `npx tsc --noEmit`.
 - Não há testes automatizados. Toda verificação é manual no browser.
 - O projeto usa `"type": "module"` no `package.json` — todos os arquivos são ESM por padrão.

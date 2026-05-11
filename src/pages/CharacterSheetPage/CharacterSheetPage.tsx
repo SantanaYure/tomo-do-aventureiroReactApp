@@ -19,6 +19,7 @@ import { SpellsPanel } from '../../components/SpellsPanel/SpellsPanel'
 import { InventoryPanel } from '../../components/InventoryPanel/InventoryPanel'
 import { CharacterDetailsPanel } from '../../components/CharacterDetailsPanel/CharacterDetailsPanel'
 import { CharacterTableMode } from '../../components/CharacterTableMode/CharacterTableMode'
+import { CharacterCombatSummary } from '../../components/CharacterCombatSummary/CharacterCombatSummary'
 import type { SavingStatus } from '../../types/savingStatus'
 import styles from './CharacterSheetPage.module.css'
 
@@ -139,6 +140,13 @@ export function CharacterSheetPage() {
     window.sessionStorage.setItem(getTabStorageKey(id), activeTab)
   }, [activeTab, id])
 
+  useEffect(() => {
+    if (!sheet) return
+    const name = sheet.character.name.trim()
+    document.title = name || 'Tomo do Aventureiro'
+    return () => { document.title = 'Tomo do Aventureiro' }
+  }, [sheet?.character.name])
+
   // Cleanup debounce timer on unmount
   useEffect(() => {
     return () => {
@@ -216,7 +224,7 @@ export function CharacterSheetPage() {
   if (!sheet) {
     return (
       <div className={styles.page}>
-        <section className={styles.loading}>Abrindo o tomo e restaurando os dados do personagem...</section>
+        <section className={styles.loading}>Abrindo o tomo e restaurando os dados do PJ...</section>
       </div>
     )
   }
@@ -403,6 +411,8 @@ export function CharacterSheetPage() {
           ))}
         </nav>
       </div>
+
+      <CharacterCombatSummary sheet={currentSheet} onUpdate={handleUpdate} />
 
       <div
         id={TAB_PANEL_IDS[activeTab]}

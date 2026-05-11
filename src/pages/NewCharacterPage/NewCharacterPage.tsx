@@ -31,12 +31,12 @@ export function NewCharacterPage() {
 
       <div className={styles.optionsGrid}>
         <section className={styles.card}>
-          <h2 className={styles.optionTitle}>Personagem D&amp;D</h2>
+          <h2 className={styles.optionTitle}>PJ D&amp;D</h2>
           <p className={styles.description}>
-            Cria uma ficha em branco de personagem para preencher atributos, recursos, inventário e magias.
+            Cria uma ficha em branco de PJ para preencher atributos, recursos, inventário e magias.
           </p>
           <button className={styles.submitBtn} onClick={handleCreateCharacter} disabled={isCreating}>
-            {isCreating ? 'Criando...' : 'Criar Personagem'}
+            {isCreating ? 'Criando...' : 'Criar PJ'}
           </button>
         </section>
 

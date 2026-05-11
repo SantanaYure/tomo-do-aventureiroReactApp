@@ -770,12 +770,13 @@ export function CharactersPage() {
 
   function handleExportSheet(sheet: StoredCharacterSheet) {
     const json = exportCharacterSheetAsJSON(sheet)
-    downloadJsonFile(json, normalizeFileName(sheet.data.character.name.trim() || sheet.id, sheet.id, 'tomo-personagem'))
+    downloadJsonFile(json, normalizeFileName(sheet.data.character.name.trim() || sheet.id, sheet.id, 'pj'))
   }
 
   function handleExportMonster(monster: StoredMonsterSheet) {
     const json = exportMonsterSheetAsJSON(monster)
-    downloadJsonFile(json, normalizeFileName(monster.data.details.name.trim() || monster.id, monster.id, 'tomo-monstro'))
+    const prefix = monster.data.details.kind === 'npc' ? 'npc' : 'monstro'
+    downloadJsonFile(json, normalizeFileName(monster.data.details.name.trim() || monster.id, monster.id, prefix))
   }
 
   function handleImportClick() {
@@ -835,17 +836,22 @@ export function CharactersPage() {
   function feedbackMessage(feedback: ImportFeedback): string {
     const label =
       feedback.scope === 'character'
-        ? 'Personagem'
+        ? 'PJ'
         : feedback.scope === 'npc'
           ? 'NPC'
           : feedback.scope === 'monster'
             ? 'Monstro'
             : 'Arquivo'
 
+    const labelLow =
+      feedback.scope === 'character' || feedback.scope === 'npc'
+        ? label
+        : label.toLowerCase()
+
     if (feedback.result.imported > 0) return `${label} importado com sucesso.`
-    if (feedback.result.skipped > 0) return `Esse ${label.toLowerCase()} já existe e não foi sobrescrito.`
+    if (feedback.result.skipped > 0) return `Esse ${labelLow} já existe e não foi sobrescrito.`
     if (feedback.result.errors > 0) return 'Não foi possível importar o arquivo selecionado.'
-    return `Nenhum ${label.toLowerCase()} foi importado.`
+    return `Nenhum ${labelLow} foi importado.`
   }
 
   function clearFilters() {
@@ -952,14 +958,14 @@ export function CharactersPage() {
 
       <header className={styles.pageTop}>
         <div className={styles.pageTitleRow}>
-          <h1 className={styles.pageTitle}>Personagens</h1>
+          <h1 className={styles.pageTitle}>Fichas</h1>
           <div className={styles.createActions}>
             <button
               type="button"
               className={styles.createSecondary}
               onClick={handleImportClick}
             >
-              ↑ Importar Personagem
+              ↑ Importar PJ
             </button>
             <button
               type="button"
@@ -967,7 +973,7 @@ export function CharactersPage() {
               onClick={handleCreateCharacter}
               disabled={isCreatingCharacter}
             >
-              {isCreatingCharacter ? 'Criando...' : '+ Novo Personagem'}
+              {isCreatingCharacter ? 'Criando...' : '+ Novo PJ'}
             </button>
             <button
               type="button"
@@ -1028,7 +1034,7 @@ export function CharactersPage() {
 
       {showCharSection && (
         <SheetSection
-          title="Personagens"
+          title="PJs"
           items={sortedSheets}
           loading={loadingSheets}
           skeletonCount={skeletonCount}
@@ -1047,7 +1053,7 @@ export function CharactersPage() {
               onDragEnd={!isSearchMode ? handleCharacterDragEnd : undefined}
             />
           )}
-          emptyMessage={isFiltered ? 'Nenhuma ficha encontrada.' : 'Nenhum personagem encontrado.'}
+          emptyMessage={isFiltered ? 'Nenhuma ficha encontrada.' : 'Nenhum PJ encontrado.'}
         />
       )}
 
@@ -1161,7 +1167,7 @@ export function CharactersPage() {
                     <span>Tipo</span>
                     <select value={draftTypeFilter} onChange={(event) => setDraftTypeFilter(event.target.value as SheetFilterType)}>
                       <option value="all">Todos</option>
-                      <option value="character">Personagem</option>
+                      <option value="character">PJ</option>
                       <option value="monster">Monstro</option>
                       <option value="npc">NPC</option>
                     </select>
