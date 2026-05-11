@@ -770,12 +770,13 @@ export function CharactersPage() {
 
   function handleExportSheet(sheet: StoredCharacterSheet) {
     const json = exportCharacterSheetAsJSON(sheet)
-    downloadJsonFile(json, normalizeFileName(sheet.data.character.name.trim() || sheet.id, sheet.id, 'tomo-personagem'))
+    downloadJsonFile(json, normalizeFileName(sheet.data.character.name.trim() || sheet.id, sheet.id, 'personagem'))
   }
 
   function handleExportMonster(monster: StoredMonsterSheet) {
     const json = exportMonsterSheetAsJSON(monster)
-    downloadJsonFile(json, normalizeFileName(monster.data.details.name.trim() || monster.id, monster.id, 'tomo-monstro'))
+    const prefix = monster.data.details.kind === 'npc' ? 'npc' : 'monstro'
+    downloadJsonFile(json, normalizeFileName(monster.data.details.name.trim() || monster.id, monster.id, prefix))
   }
 
   function handleImportClick() {

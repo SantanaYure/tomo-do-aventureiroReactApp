@@ -7,6 +7,7 @@ import {
   setResourceCurrent,
   setResourceMax,
   spendResource,
+  restoreResource,
 } from '../../utils/manageableResource'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './SpellsPanel.module.css'
@@ -159,6 +160,11 @@ export function SpellsPanel({
     onChangeSlotsData({ ...slotsData, [level]: next })
   }
 
+  function restoreSlot(level: number) {
+    const next = restoreResource(slotsData[level] ?? { current: 0, max: 0 })
+    onChangeSlotsData({ ...slotsData, [level]: next })
+  }
+
   const spellsByLevel = SPELL_LEVELS.reduce<Record<number, Spell[]>>((acc, level) => {
     acc[level] = spells.filter((s) => (s.level ?? 0) === level); return acc
   }, {})
@@ -253,6 +259,7 @@ export function SpellsPanel({
                       itemName={LEVEL_LABEL[level]}
                       resourceKind="espaço de magia"
                       onSpend={() => spendSlot(level)}
+                      onRestore={() => restoreSlot(level)}
                     />
                   </div>
                 ) : null

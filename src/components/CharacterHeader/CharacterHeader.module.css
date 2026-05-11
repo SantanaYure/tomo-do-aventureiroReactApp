@@ -139,64 +139,6 @@
   color: var(--ink-faint);
 }
 
-/* ── Cards de stats ── */
-
-.statsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr));
-  gap: var(--space-2);
-  margin-top: var(--space-1);
-}
-
-.statChip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
-  padding: var(--space-2) var(--space-1);
-  background: rgba(255, 252, 240, 0.65);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius);
-  text-align: center;
-  min-width: 0;
-}
-
-.statChipHp {
-  grid-column: span 2;
-}
-
-.statLabel {
-  font-family: var(--font-display);
-  font-size: 0.62rem;
-  color: var(--ink-faint);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-.statValue {
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  color: var(--ink);
-  line-height: 1;
-}
-
-.statMax {
-  font-size: var(--text-sm);
-  color: var(--ink-muted);
-  font-weight: 400;
-}
-
-.statSub {
-  font-size: var(--text-xs);
-  color: var(--accent-light);
-  font-family: var(--font-body);
-}
-
 @media (max-width: 820px) {
   .identityRow {
     grid-template-columns: 1fr;
@@ -216,18 +158,11 @@
     justify-content: flex-start;
   }
 
-  .statChipHp {
-    grid-column: span 1;
-  }
 }
 
 @media (max-width: 560px) {
   .viewLayout {
     grid-template-columns: 1fr;
-  }
-
-  .statsGrid {
-    grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
   }
 }
 
