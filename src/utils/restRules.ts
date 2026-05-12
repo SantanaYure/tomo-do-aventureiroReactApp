@@ -14,7 +14,7 @@ function parseHitDieForRest(hitDice: string): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-function calcEffectiveHpMaxForRest(character: Character): number {
+export function calcEffectiveHpMaxForRest(character: Character): number {
   if (!character.hpAutoCalc) {
     return Math.max(0, Math.trunc(character.hpMax))
   }

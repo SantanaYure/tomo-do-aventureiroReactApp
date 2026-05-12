@@ -11,7 +11,7 @@ import {
 } from '../../store/characterSheetStore'
 import { normalizeFileName, downloadJsonFile } from '../../utils/exportSheet'
 import { recordOpened } from '../../utils/recentlyOpened'
-import { applyRestToCharacterSheet, hasWarlockClass } from '../../utils/restRules'
+import { applyRestToCharacterSheet, calcEffectiveHpMaxForRest, hasWarlockClass } from '../../utils/restRules'
 import { useAuth } from '../../context/AuthContext'
 import { useCharacterSheet } from '../../hooks/useCharacterSheet'
 import { CharacterHeader } from '../../components/CharacterHeader/CharacterHeader'
@@ -25,6 +25,7 @@ import { InventoryPanel } from '../../components/InventoryPanel/InventoryPanel'
 import { CharacterDetailsPanel } from '../../components/CharacterDetailsPanel/CharacterDetailsPanel'
 import { CharacterTableMode } from '../../components/CharacterTableMode/CharacterTableMode'
 import { CharacterCombatSummary } from '../../components/CharacterCombatSummary/CharacterCombatSummary'
+import { ShortRestModal } from '../../components/ShortRestModal/ShortRestModal'
 import type { SavingStatus } from '../../types/savingStatus'
 import styles from './CharacterSheetPage.module.css'
 
@@ -96,6 +97,7 @@ export function CharacterSheetPage() {
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isAtBottom, setIsAtBottom] = useState(false)
   const [restFeedback, setRestFeedback] = useState<string | null>(null)
+  const [showShortRestModal, setShowShortRestModal] = useState(false)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -248,13 +250,37 @@ export function CharacterSheetPage() {
   }
 
   function handleShortRest() {
-    handleUpdate(applyRestToCharacterSheet(currentSheet, 'short'))
-    const warlock = hasWarlockClass(currentSheet.character.classes)
-    showRestFeedback(
-      warlock
-        ? 'Recursos restaurados — Bruxo recuperou os espaços de magia'
-        : 'Recursos restaurados (descanso curto)',
-    )
+    setShowShortRestModal(true)
+  }
+
+  function handleShortRestConfirm(hpHealed: number, diceSpent: number) {
+    setShowShortRestModal(false)
+    const rested = applyRestToCharacterSheet(currentSheet, 'short')
+    const hpMax = calcEffectiveHpMaxForRest(rested.character)
+    const newHp = Math.min(hpMax, rested.character.hpCurrent + hpHealed)
+    const withUpdates = {
+      ...rested,
+      character: {
+        ...rested.character,
+        hpCurrent: newHp,
+        hitDiceSpent: (rested.character.hitDiceSpent ?? 0) + diceSpent,
+      },
+    }
+    handleUpdate(withUpdates)
+    const warlock = hasWarlockClass(withUpdates.character.classes)
+    if (diceSpent > 0) {
+      showRestFeedback(
+        warlock
+          ? `Descanso curto: +${hpHealed} PV | Espaços de bruxo restaurados`
+          : `Descanso curto: +${hpHealed} PV recuperados`,
+      )
+    } else {
+      showRestFeedback(
+        warlock
+          ? 'Recursos restaurados — Bruxo recuperou os espaços de magia'
+          : 'Recursos restaurados (descanso curto)',
+      )
+    }
   }
 
   function handleLongRest() {
@@ -381,6 +407,14 @@ export function CharacterSheetPage() {
 
   return (
     <div className={styles.page} data-saving-status={savingStatus}>
+      {showShortRestModal && (
+        <ShortRestModal
+          character={currentSheet.character}
+          hpMax={calcEffectiveHpMaxForRest(currentSheet.character)}
+          onConfirm={handleShortRestConfirm}
+          onCancel={() => setShowShortRestModal(false)}
+        />
+      )}
       <div className={styles.topBar}>
         <Link className={styles.backLink} to="/">← Voltar</Link>
         <div className={styles.topBarRight}>
