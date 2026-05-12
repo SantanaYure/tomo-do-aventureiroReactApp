@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type {
     AttackType,
     DamagePart,
-    DamageType,
     MonsterAction,
     MonsterFeature,
 } from '../../../types/system/dnd/monsterSheet'
@@ -26,22 +25,6 @@ import { rollDamages, formatRollLine, type DamageRollSummary } from '../../../ut
 import styles from './MonsterActionsPanel.module.css'
 
 const ATTACK_TYPES: AttackType[] = ['Corpo-a-corpo', 'Distância', 'Magia']
-
-const DAMAGE_TYPES: DamageType[] = [
-    'Ácido',
-    'Frio',
-    'Fogo',
-    'Elétrico',
-    'Trovão',
-    'Veneno',
-    'Necrótico',
-    'Radiante',
-    'Psíquico',
-    'Força',
-    'Concussão',
-    'Perfuração',
-    'Corte',
-]
 
 function createAction(): MonsterAction {
     return {
@@ -87,20 +70,21 @@ function formatActionSummary(action: MonsterAction): string {
         return ''
     }
 
-    const summaryParts: string[] = []
-    const attackBonus = action.attackBonus.trim()
-    const damage = action.damage.trim()
-    const damageType = action.damageType.trim()
+    return action.attackType || ''
+}
 
-    if (attackBonus) {
-        summaryParts.push(attackBonus)
+function formatDamagePartLabel(part: DamagePart): string {
+    const dice = part.dice.trim()
+    const type = part.type.trim()
+    const bonus = part.bonus.trim()
+    if (!dice && !type && !bonus) return ''
+
+    let main = dice
+    if (bonus) {
+        const needsSign = !bonus.startsWith('+') && !bonus.startsWith('-')
+        main = dice ? `${dice}${needsSign ? '+' : ''}${bonus}` : `${needsSign ? '+' : ''}${bonus}`
     }
-
-    if (damage) {
-        summaryParts.push(damageType ? `${damage} ${damageType}` : damage)
-    }
-
-    return summaryParts.join(' | ')
+    return type ? `${main} ${type}`.trim() : main
 }
 
 export function MonsterActionsPanel({
@@ -411,49 +395,6 @@ export function MonsterActionsPanel({
                                             </label>
 
                                             <label className={styles.field}>
-                                                Bônus
-                                                <input
-                                                    type="text"
-                                                    value={action.attackBonus}
-                                                    onChange={(event) =>
-                                                        setAction(index, { attackBonus: event.target.value })
-                                                    }
-                                                    placeholder="+5"
-                                                />
-                                            </label>
-
-                                            <label className={styles.field}>
-                                                Dano
-                                                <input
-                                                    type="text"
-                                                    value={action.damage}
-                                                    onChange={(event) =>
-                                                        setAction(index, { damage: event.target.value })
-                                                    }
-                                                    placeholder="2d6+3"
-                                                />
-                                            </label>
-
-                                            <label className={styles.field}>
-                                                Tipo de dano
-                                                <select
-                                                    value={action.damageType}
-                                                    onChange={(event) =>
-                                                        setAction(index, {
-                                                            damageType: event.target.value as DamageType | '',
-                                                        })
-                                                    }
-                                                >
-                                                    <option value="">Selecione</option>
-                                                    {DAMAGE_TYPES.map((damageType) => (
-                                                        <option key={damageType} value={damageType}>
-                                                            {damageType}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </label>
-
-                                            <label className={styles.field}>
                                                 Alcance
                                                 <input
                                                     type="text"
@@ -716,18 +657,18 @@ export function MonsterActionsPanel({
                                                     {action.isAttack && action.attackType && (
                                                         <span className={styles.metaChip}>{action.attackType}</span>
                                                     )}
-                                                    {action.isAttack && action.attackBonus.trim() && (
-                                                        <span className={styles.metaChip}>Bônus {action.attackBonus}</span>
-                                                    )}
-                                                    {action.isAttack && action.damage.trim() && (
-                                                        <span className={styles.metaChip}>
-                                                            Dano {action.damage}
-                                                            {action.damageType ? ` ${action.damageType}` : ''}
-                                                        </span>
-                                                    )}
                                                     {action.reach.trim() && (
                                                         <span className={styles.metaChip}>Alcance {action.reach}</span>
                                                     )}
+                                                    {(action.damages ?? []).map((part, partIndex) => {
+                                                        const label = formatDamagePartLabel(part)
+                                                        if (!label) return null
+                                                        return (
+                                                            <span key={partIndex} className={styles.metaChip}>
+                                                                Dano {label}
+                                                            </span>
+                                                        )
+                                                    })}
                                                 </div>
 
                                                 {action.hasLimitedUses && (
@@ -809,9 +750,20 @@ export function MonsterActionsPanel({
 
                                             {!isCollapsed && (
                                                 <div className={styles.cardBody}>
-                                                    {(reaction.castingTime ?? '').trim() && (
+                                                    {((reaction.castingTime ?? '').trim() || (reaction.damages ?? []).length > 0) && (
                                                         <div className={styles.metaRow}>
-                                                            <span className={styles.metaChip}>Tempo: {reaction.castingTime}</span>
+                                                            {(reaction.castingTime ?? '').trim() && (
+                                                                <span className={styles.metaChip}>Tempo: {reaction.castingTime}</span>
+                                                            )}
+                                                            {(reaction.damages ?? []).map((part, partIndex) => {
+                                                                const label = formatDamagePartLabel(part)
+                                                                if (!label) return null
+                                                                return (
+                                                                    <span key={partIndex} className={styles.metaChip}>
+                                                                        Dano {label}
+                                                                    </span>
+                                                                )
+                                                            })}
                                                         </div>
                                                     )}
 

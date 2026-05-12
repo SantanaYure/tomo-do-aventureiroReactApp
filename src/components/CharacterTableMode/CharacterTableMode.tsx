@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import type { CharacterSheet, Currency } from '../../types/system/dnd'
+import type { CharacterSheet, Currency, DamagePart } from '../../types/system/dnd'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
 import { ManagedResourceControls } from '../ManagedResourceControls/ManagedResourceControls'
 import { spendResource, restoreResource, restoreResourceFull } from '../../utils/manageableResource'
 import { isRestBasedReset } from '../../utils/restRules'
+import { rollDamages, formatRollLine, type DamageRollSummary } from '../../utils/diceRoller'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './CharacterTableMode.module.css'
 
@@ -62,6 +63,7 @@ function totalWeight(items: CharacterSheet['inventory']): number {
 export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps) {
   const { character } = sheet
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [rollResults, setRollResults] = useState<Map<string, DamageRollSummary>>(new Map())
 
   function toggleExpanded(id: string) {
     setExpandedIds((prev) => {
@@ -69,6 +71,10 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
       if (next.has(id)) { next.delete(id) } else { next.add(id) }
       return next
     })
+  }
+
+  function handleRollDamage(id: string, damages: DamagePart[]) {
+    setRollResults((prev) => new Map(prev).set(id, rollDamages(damages)))
   }
 
   function updateInventory(updated: CharacterSheet['inventory']) {
@@ -109,7 +115,8 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
                   Boolean(resource.description?.trim()) ||
                   Boolean(resource.action?.trim()) ||
                   Boolean(resource.range?.trim()) ||
-                  Boolean(resource.duration?.trim())
+                  Boolean(resource.duration?.trim()) ||
+                  (resource.damages ?? []).length > 0
 
                 const origin =
                   resource.allowCustomOrigin && resource.customOrigin?.trim()
@@ -199,6 +206,25 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
                             {origin && <span className={styles.metaChip}>{origin}</span>}
                           </div>
                         )}
+                        {(resource.damages ?? []).length > 0 && (
+                          <div className={styles.rollArea}>
+                            <button
+                              type="button"
+                              className={styles.rollBtn}
+                              onClick={() => handleRollDamage(id, resource.damages ?? [])}
+                            >
+                              🎲 Rolar dano
+                            </button>
+                            {rollResults.has(id) && (
+                              <div className={styles.rollResult}>
+                                {rollResults.get(id)!.results.map((r, i) => (
+                                  <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
+                                ))}
+                                <span className={styles.rollTotal}>Total: {rollResults.get(id)!.total}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </article>
@@ -218,7 +244,9 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
               const isExpanded = expandedIds.has(id)
               const bonus = calcAttackBonus(attack, character)
               const damage = [attack.damage, attack.damageType].filter(Boolean).join(' ')
-              const hasBody = Boolean(attack.range?.trim() || attack.notes?.trim())
+              const hasBody =
+                Boolean(attack.range?.trim() || attack.notes?.trim()) ||
+                (attack.damages ?? []).length > 0
 
               const attrSource =
                 attack.attributeKey && attack.attributeKey !== 'manual'
@@ -256,6 +284,25 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
                       </div>
                       {attack.notes?.trim() && (
                         <p className={styles.description}>{attack.notes}</p>
+                      )}
+                      {(attack.damages ?? []).length > 0 && (
+                        <div className={styles.rollArea}>
+                          <button
+                            type="button"
+                            className={styles.rollBtn}
+                            onClick={() => handleRollDamage(id, attack.damages ?? [])}
+                          >
+                            🎲 Rolar dano
+                          </button>
+                          {rollResults.has(id) && (
+                            <div className={styles.rollResult}>
+                              {rollResults.get(id)!.results.map((r, i) => (
+                                <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
+                              ))}
+                              <span className={styles.rollTotal}>Total: {rollResults.get(id)!.total}</span>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
