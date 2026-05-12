@@ -27,7 +27,6 @@ import { CharacterDetailsPanel } from '../../components/CharacterDetailsPanel/Ch
 import { CharacterTableMode } from '../../components/CharacterTableMode/CharacterTableMode'
 import { CharacterCombatSummary } from '../../components/CharacterCombatSummary/CharacterCombatSummary'
 import { ShortRestModal } from '../../components/ShortRestModal/ShortRestModal'
-import { GroupSelector } from '../../components/GroupSelector/GroupSelector'
 import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
 import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
@@ -452,15 +451,6 @@ export function CharacterSheetPage() {
       )}
       <div className={styles.topBar}>
         <Link className={styles.backLink} to="/">← Voltar</Link>
-        <div className={styles.topBarCenter}>
-          <GroupSelector
-            groups={groups}
-            value={currentSheet.groupId ?? ''}
-            onChange={handleGroupChange}
-            onManage={() => setShowGroupManager(true)}
-            loading={isLoadingGroups}
-          />
-        </div>
         <div className={styles.topBarActions}>
           {savingStatus !== 'idle' && (
             <span className={styles.savingIndicator} data-status={savingStatus}>
@@ -486,6 +476,11 @@ export function CharacterSheetPage() {
         onShortRest={handleShortRest}
         onLongRest={handleLongRest}
         restFeedback={restFeedback}
+        groups={groups}
+        groupId={currentSheet.groupId ?? ''}
+        onGroupChange={handleGroupChange}
+        onManage={() => setShowGroupManager(true)}
+        isLoadingGroups={isLoadingGroups}
       />
 
       <div ref={tabBarRef} className={styles.tabBarShell}>

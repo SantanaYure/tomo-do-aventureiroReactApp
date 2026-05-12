@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { CreatureSize, MonsterKind, MonsterSheet } from '../../../types/system/dnd/monsterSheet'
+import type { SheetGroup } from '../../../types/system/dnd/SheetGroup'
 import { AvatarCropper } from '../../AvatarCropper/AvatarCropper'
+import { GroupSelector } from '../../GroupSelector/GroupSelector'
 import panelStyles from '../../../styles/panel.module.css'
 import type { DeepPartial, MonsterComponentProps } from '../shared'
 import styles from './MonsterHeader.module.css'
@@ -27,7 +29,26 @@ function buildMeta(details: MonsterSheet['details']): string {
   return parts.length > 0 ? parts.join(' · ') : 'Espécie, tamanho e alinhamento não informados'
 }
 
-export function MonsterHeader({ sheet, isEditing, onChange }: MonsterComponentProps) {
+interface MonsterHeaderProps extends MonsterComponentProps {
+  groups?: SheetGroup[]
+  groupId?: string
+  onGroupChange?: (id: string) => void
+  onManage?: () => void
+  isLoadingGroups?: boolean
+}
+
+const MANAGE_VALUE = '__manage__'
+
+export function MonsterHeader({
+  sheet,
+  isEditing,
+  onChange,
+  groups = [],
+  groupId = '',
+  onGroupChange,
+  onManage,
+  isLoadingGroups,
+}: MonsterHeaderProps) {
   const { details } = sheet
   const [showCropper, setShowCropper] = useState(false)
 
@@ -136,15 +157,41 @@ export function MonsterHeader({ sheet, isEditing, onChange }: MonsterComponentPr
             </label>
           </div>
 
-          <label className={styles.field}>
-            Classe
-            <input
-              type="text"
-              value={details.creatureClass}
-              onChange={(event) => updateDetails({ creatureClass: event.target.value })}
-              placeholder="Soldado veterano, arcanista, caçador..."
-            />
-          </label>
+          <div className={styles.classeRow}>
+            <label className={styles.field}>
+              Classe
+              <input
+                type="text"
+                value={details.creatureClass}
+                onChange={(event) => updateDetails({ creatureClass: event.target.value })}
+                placeholder="Soldado veterano, arcanista, caçador..."
+              />
+            </label>
+            {onGroupChange && (
+              <label className={styles.field}>
+                Mesa
+                <select
+                  value={groupId && groups.some((g) => g.id === groupId) ? groupId : ''}
+                  onChange={(event) => {
+                    if (event.target.value === MANAGE_VALUE) {
+                      onManage?.()
+                      return
+                    }
+                    onGroupChange(event.target.value)
+                  }}
+                  disabled={isLoadingGroups}
+                >
+                  <option value="">Personagem Independente</option>
+                  {groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                  {onManage && <option value={MANAGE_VALUE}>Gerenciar mesas...</option>}
+                </select>
+              </label>
+            )}
+          </div>
 
           <label className={styles.field}>
             Descrição
@@ -188,6 +235,18 @@ export function MonsterHeader({ sheet, isEditing, onChange }: MonsterComponentPr
           {details.creatureClass.trim().length > 0 ? (
             <p className={styles.classification}>{details.creatureClass}</p>
           ) : null}
+
+          {onGroupChange && (
+            <div className={styles.groupSelectorView}>
+              <GroupSelector
+                groups={groups}
+                value={groupId}
+                onChange={onGroupChange}
+                onManage={onManage}
+                loading={isLoadingGroups}
+              />
+            </div>
+          )}
 
           {contentSections.map((section) => (
             <div key={section.title} className={styles.textSection}>

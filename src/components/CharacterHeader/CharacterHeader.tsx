@@ -1,10 +1,8 @@
-// src/components/CharacterHeader/CharacterHeader.tsx
-// Cabeçalho da ficha: nome, raça, classes, alinhamento, XP
-// Edição via isEditMode — toggle global
-
 import { useState } from 'react'
 import type { Character, Class } from '../../types/system/dnd'
+import type { SheetGroup } from '../../types/system/dnd/SheetGroup'
 import { AvatarCropper } from '../AvatarCropper/AvatarCropper'
+import { GroupSelector } from '../GroupSelector/GroupSelector'
 import { NumberInput } from '../NumberInput/NumberInput'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './CharacterHeader.module.css'
@@ -18,6 +16,11 @@ interface CharacterHeaderProps {
   onShortRest: () => void
   onLongRest: () => void
   restFeedback?: string | null
+  groups?: SheetGroup[]
+  groupId?: string
+  onGroupChange?: (id: string) => void
+  onManage?: () => void
+  isLoadingGroups?: boolean
 }
 
 function formatClasses(classes: Class[]): string {
@@ -61,6 +64,11 @@ export function CharacterHeader({
   onShortRest,
   onLongRest,
   restFeedback,
+  groups = [],
+  groupId = '',
+  onGroupChange,
+  onManage,
+  isLoadingGroups,
 }: CharacterHeaderProps) {
   const [showCropper, setShowCropper] = useState(false)
 
@@ -130,6 +138,17 @@ export function CharacterHeader({
         <span aria-live="polite" aria-atomic="true" className={styles.restFeedback}>
           {restFeedback}
         </span>
+        {onGroupChange && (
+          <div className={styles.groupSelectorSlot}>
+            <GroupSelector
+              groups={groups}
+              value={groupId}
+              onChange={onGroupChange}
+              onManage={onManage}
+              loading={isLoadingGroups}
+            />
+          </div>
+        )}
       </div>
 
       {isEditMode ? (

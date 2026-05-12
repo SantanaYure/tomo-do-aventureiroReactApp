@@ -9,7 +9,6 @@ import { MonsterStatsPanel } from '../../components/monster/MonsterStatsPanel/Mo
 import { MonsterTraitsPanel } from '../../components/monster/MonsterTraitsPanel/MonsterTraitsPanel'
 import { MonsterTableMode } from '../../components/monster/MonsterTableMode/MonsterTableMode'
 import { MonsterCombatSummary } from '../../components/monster/MonsterCombatSummary/MonsterCombatSummary'
-import { GroupSelector } from '../../components/GroupSelector/GroupSelector'
 import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
 import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
@@ -324,7 +323,18 @@ export function MonsterSheetPage() {
   const currentSheet = sheet
 
   function renderDetailsTab() {
-    return <MonsterHeader sheet={currentSheet} isEditing={isEditing} onChange={handleSheetChange} />
+    return (
+      <MonsterHeader
+        sheet={currentSheet}
+        isEditing={isEditing}
+        onChange={handleSheetChange}
+        groups={groups}
+        groupId={currentSheet.groupId ?? ''}
+        onGroupChange={(nextGroupId) => handleSheetChange({ groupId: nextGroupId })}
+        onManage={() => setShowGroupManager(true)}
+        isLoadingGroups={isLoadingGroups}
+      />
+    )
   }
 
   function renderCombatTab() {
@@ -388,15 +398,6 @@ export function MonsterSheetPage() {
     <div className={styles.page} data-saving-status={savingStatus}>
       <div className={styles.topBar}>
         <Link className={styles.backLink} to="/">← Voltar</Link>
-        <div className={styles.topBarCenter}>
-          <GroupSelector
-            groups={groups}
-            value={currentSheet.groupId ?? ''}
-            onChange={(nextGroupId) => handleSheetChange({ groupId: nextGroupId })}
-            onManage={() => setShowGroupManager(true)}
-            loading={isLoadingGroups}
-          />
-        </div>
         <div className={styles.topBarActions}>
           <SheetActionsMenu
             onExport={handleExport}

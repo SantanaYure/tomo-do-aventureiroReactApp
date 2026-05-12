@@ -14,27 +14,12 @@
   margin-bottom: var(--space-4);
 }
 
-.topBarCenter {
-  flex: 1 1 auto;
-  display: flex;
-  justify-content: center;
-  min-width: 0;
-}
-
 .topBarActions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex-shrink: 0;
-}
-
-@media (max-width: 599px) {
-  .topBarCenter {
-    order: 3;
-    width: 100%;
-    flex-basis: 100%;
-    justify-content: flex-start;
-  }
+  margin-left: auto;
 }
 
 .savingIndicator {
