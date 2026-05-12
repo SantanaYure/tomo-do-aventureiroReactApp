@@ -1,6 +1,7 @@
 import type { Spell } from './Spell'
 import type { SpellcastingAbility } from './Attribute'
-export type { Spell, SpellcastingAbility }
+import type { DamagePart } from './DamagePart'
+export type { Spell, SpellcastingAbility, DamagePart }
 
 export type CreatureSize =
     | 'Minúsculo'
@@ -74,6 +75,8 @@ export interface MonsterAction extends LimitedUseResource {
     damage: string
     damageType: DamageType | ''
     reach: string
+    castingTime: string
+    damages: DamagePart[]
 }
 
 export interface LegendaryAction {
@@ -90,6 +93,8 @@ export interface MonsterFeature extends LimitedUseResource {
     duration: string
     range: string
     requirements: string
+    castingTime: string
+    damages: DamagePart[]
 }
 
 export interface MonsterMovement {

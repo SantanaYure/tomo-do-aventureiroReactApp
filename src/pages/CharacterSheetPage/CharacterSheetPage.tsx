@@ -6,12 +6,13 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import type { CharacterSheet } from '../../types/system/dnd'
 import {
   saveCharacterSheet,
+  deleteCharacterSheet,
   exportCharacterSheetAsJSON,
   type StoredCharacterSheet,
 } from '../../store/characterSheetStore'
 import { normalizeFileName, downloadJsonFile } from '../../utils/exportSheet'
 import { recordOpened } from '../../utils/recentlyOpened'
-import { applyRestToCharacterSheet, hasWarlockClass } from '../../utils/restRules'
+import { applyRestToCharacterSheet, calcEffectiveHpMaxForRest, hasWarlockClass } from '../../utils/restRules'
 import { useAuth } from '../../context/AuthContext'
 import { useCharacterSheet } from '../../hooks/useCharacterSheet'
 import { CharacterHeader } from '../../components/CharacterHeader/CharacterHeader'
@@ -25,6 +26,7 @@ import { InventoryPanel } from '../../components/InventoryPanel/InventoryPanel'
 import { CharacterDetailsPanel } from '../../components/CharacterDetailsPanel/CharacterDetailsPanel'
 import { CharacterTableMode } from '../../components/CharacterTableMode/CharacterTableMode'
 import { CharacterCombatSummary } from '../../components/CharacterCombatSummary/CharacterCombatSummary'
+import { ShortRestModal } from '../../components/ShortRestModal/ShortRestModal'
 import type { SavingStatus } from '../../types/savingStatus'
 import styles from './CharacterSheetPage.module.css'
 
@@ -96,6 +98,9 @@ export function CharacterSheetPage() {
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isAtBottom, setIsAtBottom] = useState(false)
   const [restFeedback, setRestFeedback] = useState<string | null>(null)
+  const [showShortRestModal, setShowShortRestModal] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -185,6 +190,27 @@ export function CharacterSheetPage() {
     handleUpdate({ ...sheet, isEditMode: !sheet.isEditMode })
   }
 
+  function handleRequestDelete() {
+    setShowDeleteDialog(true)
+  }
+
+  async function handleConfirmDelete() {
+    if (!uid || !id || isDeleting) return
+    setIsDeleting(true)
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    try {
+      await deleteCharacterSheet(uid, id)
+      setShowDeleteDialog(false)
+      navigate('/')
+    } catch (deleteError) {
+      console.error('Erro ao excluir ficha:', deleteError)
+      setIsDeleting(false)
+    }
+  }
+
   function handleTabChange(tab: Tab) {
     if (tab === activeTab) return
 
@@ -248,13 +274,37 @@ export function CharacterSheetPage() {
   }
 
   function handleShortRest() {
-    handleUpdate(applyRestToCharacterSheet(currentSheet, 'short'))
-    const warlock = hasWarlockClass(currentSheet.character.classes)
-    showRestFeedback(
-      warlock
-        ? 'Recursos restaurados — Bruxo recuperou os espaços de magia'
-        : 'Recursos restaurados (descanso curto)',
-    )
+    setShowShortRestModal(true)
+  }
+
+  function handleShortRestConfirm(hpHealed: number, diceSpent: number) {
+    setShowShortRestModal(false)
+    const rested = applyRestToCharacterSheet(currentSheet, 'short')
+    const hpMax = calcEffectiveHpMaxForRest(rested.character)
+    const newHp = Math.min(hpMax, rested.character.hpCurrent + hpHealed)
+    const withUpdates = {
+      ...rested,
+      character: {
+        ...rested.character,
+        hpCurrent: newHp,
+        hitDiceSpent: (rested.character.hitDiceSpent ?? 0) + diceSpent,
+      },
+    }
+    handleUpdate(withUpdates)
+    const warlock = hasWarlockClass(withUpdates.character.classes)
+    if (diceSpent > 0) {
+      showRestFeedback(
+        warlock
+          ? `Descanso curto: +${hpHealed} PV | Espaços de bruxo restaurados`
+          : `Descanso curto: +${hpHealed} PV recuperados`,
+      )
+    } else {
+      showRestFeedback(
+        warlock
+          ? 'Recursos restaurados — Bruxo recuperou os espaços de magia'
+          : 'Recursos restaurados (descanso curto)',
+      )
+    }
   }
 
   function handleLongRest() {
@@ -381,6 +431,14 @@ export function CharacterSheetPage() {
 
   return (
     <div className={styles.page} data-saving-status={savingStatus}>
+      {showShortRestModal && (
+        <ShortRestModal
+          character={currentSheet.character}
+          hpMax={calcEffectiveHpMaxForRest(currentSheet.character)}
+          onConfirm={handleShortRestConfirm}
+          onCancel={() => setShowShortRestModal(false)}
+        />
+      )}
       <div className={styles.topBar}>
         <Link className={styles.backLink} to="/">← Voltar</Link>
         <div className={styles.topBarRight}>
@@ -391,6 +449,14 @@ export function CharacterSheetPage() {
             disabled={!sheet}
           >
             Exportar PJ
+          </button>
+          <button
+            type="button"
+            className={styles.deleteBtn}
+            onClick={handleRequestDelete}
+            disabled={!sheet || isDeleting}
+          >
+            Excluir PJ
           </button>
           {savingStatus !== 'idle' && (
             <span className={styles.savingIndicator} data-status={savingStatus}>
@@ -434,9 +500,7 @@ export function CharacterSheetPage() {
         </nav>
       </div>
 
-      {(activeTab === 'Principal' || activeTab === 'Mesa') && (
-        <CharacterCombatSummary sheet={currentSheet} onUpdate={handleUpdate} />
-      )}
+      <CharacterCombatSummary sheet={currentSheet} onUpdate={handleUpdate} />
 
       <div
         id={TAB_PANEL_IDS[activeTab]}
@@ -460,6 +524,44 @@ export function CharacterSheetPage() {
         </div>
       </div>
       <div className={styles.editToggleSentinel} ref={sentinelRef} />
+
+      {showDeleteDialog && (
+        <div
+          className={styles.dialogOverlay}
+          onClick={() => { if (!isDeleting) setShowDeleteDialog(false) }}
+          role="presentation"
+        >
+          <div
+            className={styles.dialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-sheet-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p id="delete-sheet-title" className={styles.dialogTitle}>
+              Tem certeza que deseja excluir esta ficha? Essa ação não pode ser desfeita.
+            </p>
+            <div className={styles.dialogActions}>
+              <button
+                type="button"
+                className={styles.confirmDeleteBtn}
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Excluindo...' : 'Confirmar exclusão'}
+              </button>
+              <button
+                type="button"
+                className={styles.cancelDeleteBtn}
+                onClick={() => setShowDeleteDialog(false)}
+                disabled={isDeleting}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

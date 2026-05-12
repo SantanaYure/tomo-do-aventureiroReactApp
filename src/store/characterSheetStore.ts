@@ -11,6 +11,7 @@ import type {
   AttunementItem,
   Character,
   CharacterSheet,
+  DamagePart,
   Resource,
   ResourceOrigin,
   SpellSlots,
@@ -69,6 +70,17 @@ function createDefaultAttunementItem(name = ''): AttunementItem {
   }
 }
 
+function normalizeDamageParts(value: unknown): DamagePart[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
+    .map((item) => ({
+      dice: typeof item.dice === 'string' ? item.dice : '',
+      type: typeof item.type === 'string' ? item.type : '',
+      bonus: typeof item.bonus === 'string' ? item.bonus : '',
+    }))
+}
+
 function createDefaultAttack(): Attack {
   return {
     name: '',
@@ -79,6 +91,8 @@ function createDefaultAttack(): Attack {
     damageType: '',
     range: '',
     notes: '',
+    castingTime: '',
+    damages: [],
   }
 }
 
@@ -125,6 +139,9 @@ function normalizeAttack(attack: unknown): Attack {
         : defaultAttack.damageType,
     range: typeof nextAttack.range === 'string' ? nextAttack.range : defaultAttack.range,
     notes: typeof nextAttack.notes === 'string' ? nextAttack.notes : defaultAttack.notes,
+    castingTime:
+      typeof nextAttack.castingTime === 'string' ? nextAttack.castingTime : '',
+    damages: normalizeDamageParts(nextAttack.damages),
   }
 }
 
@@ -140,6 +157,8 @@ function createDefaultResource(): Resource {
     resetOn: 'long-rest',
     customOrigin: '',
     allowCustomOrigin: false,
+    castingTime: '',
+    damages: [],
   }
 }
 
@@ -222,6 +241,9 @@ function normalizeResource(resource: Resource | undefined): Resource {
     origin,
     customOrigin: resolvedCustomOrigin,
     allowCustomOrigin,
+    castingTime:
+      typeof nextResource.castingTime === 'string' ? nextResource.castingTime : '',
+    damages: normalizeDamageParts(nextResource.damages),
   }
 }
 

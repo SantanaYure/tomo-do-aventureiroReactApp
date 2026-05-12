@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import type {
     AttackType,
-    DamageType,
+    DamagePart,
     MonsterAction,
     MonsterFeature,
 } from '../../../types/system/dnd/monsterSheet'
 import { ManagedResourceControls } from '../../ManagedResourceControls/ManagedResourceControls'
 import { NumberInput } from '../../NumberInput/NumberInput'
+import { DamagesEditor } from '../../DamagesEditor/DamagesEditor'
 import {
     restoreResource,
     restoreResourceFull,
@@ -20,25 +21,10 @@ import {
     RECHARGE_OPTIONS,
 } from '../shared'
 import { isRestBasedRecharge } from '../../../utils/restRules'
+import { rollDamages, formatRollLine, type DamageRollSummary } from '../../../utils/diceRoller'
 import styles from './MonsterActionsPanel.module.css'
 
 const ATTACK_TYPES: AttackType[] = ['Corpo-a-corpo', 'Distância', 'Magia']
-
-const DAMAGE_TYPES: DamageType[] = [
-    'Ácido',
-    'Frio',
-    'Fogo',
-    'Elétrico',
-    'Trovão',
-    'Veneno',
-    'Necrótico',
-    'Radiante',
-    'Psíquico',
-    'Força',
-    'Concussão',
-    'Perfuração',
-    'Corte',
-]
 
 function createAction(): MonsterAction {
     return {
@@ -57,6 +43,8 @@ function createAction(): MonsterAction {
         damage: '',
         damageType: '',
         reach: '',
+        castingTime: '',
+        damages: [],
     }
 }
 
@@ -72,6 +60,8 @@ function createReaction(): MonsterFeature {
         duration: '',
         range: '',
         requirements: '',
+        castingTime: '',
+        damages: [],
     }
 }
 
@@ -80,20 +70,21 @@ function formatActionSummary(action: MonsterAction): string {
         return ''
     }
 
-    const summaryParts: string[] = []
-    const attackBonus = action.attackBonus.trim()
-    const damage = action.damage.trim()
-    const damageType = action.damageType.trim()
+    return action.attackType || ''
+}
 
-    if (attackBonus) {
-        summaryParts.push(attackBonus)
+function formatDamagePartLabel(part: DamagePart): string {
+    const dice = part.dice.trim()
+    const type = part.type.trim()
+    const bonus = part.bonus.trim()
+    if (!dice && !type && !bonus) return ''
+
+    let main = dice
+    if (bonus) {
+        const needsSign = !bonus.startsWith('+') && !bonus.startsWith('-')
+        main = dice ? `${dice}${needsSign ? '+' : ''}${bonus}` : `${needsSign ? '+' : ''}${bonus}`
     }
-
-    if (damage) {
-        summaryParts.push(damageType ? `${damage} ${damageType}` : damage)
-    }
-
-    return summaryParts.join(' | ')
+    return type ? `${main} ${type}`.trim() : main
 }
 
 export function MonsterActionsPanel({
@@ -103,6 +94,16 @@ export function MonsterActionsPanel({
 }: MonsterComponentProps) {
     const [collapsedActionIds, setCollapsedActionIds] = useState<Set<string>>(new Set())
     const [collapsedReactionIds, setCollapsedReactionIds] = useState<Set<string>>(new Set())
+    const [actionRollResults, setActionRollResults] = useState<Map<string, DamageRollSummary>>(new Map())
+    const [reactionRollResults, setReactionRollResults] = useState<Map<string, DamageRollSummary>>(new Map())
+
+    function handleRollAction(id: string, damages: DamagePart[]) {
+        setActionRollResults((previous) => new Map(previous).set(id, rollDamages(damages)))
+    }
+
+    function handleRollReaction(id: string, damages: DamagePart[]) {
+        setReactionRollResults((previous) => new Map(previous).set(id, rollDamages(damages)))
+    }
     const actions = sheet.actions
     const reactions = sheet.reactions
     const indexedActions = actions.map((action, index) => ({ action, index }))
@@ -394,49 +395,6 @@ export function MonsterActionsPanel({
                                             </label>
 
                                             <label className={styles.field}>
-                                                Bônus
-                                                <input
-                                                    type="text"
-                                                    value={action.attackBonus}
-                                                    onChange={(event) =>
-                                                        setAction(index, { attackBonus: event.target.value })
-                                                    }
-                                                    placeholder="+5"
-                                                />
-                                            </label>
-
-                                            <label className={styles.field}>
-                                                Dano
-                                                <input
-                                                    type="text"
-                                                    value={action.damage}
-                                                    onChange={(event) =>
-                                                        setAction(index, { damage: event.target.value })
-                                                    }
-                                                    placeholder="2d6+3"
-                                                />
-                                            </label>
-
-                                            <label className={styles.field}>
-                                                Tipo de dano
-                                                <select
-                                                    value={action.damageType}
-                                                    onChange={(event) =>
-                                                        setAction(index, {
-                                                            damageType: event.target.value as DamageType | '',
-                                                        })
-                                                    }
-                                                >
-                                                    <option value="">Selecione</option>
-                                                    {DAMAGE_TYPES.map((damageType) => (
-                                                        <option key={damageType} value={damageType}>
-                                                            {damageType}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </label>
-
-                                            <label className={styles.field}>
                                                 Alcance
                                                 <input
                                                     type="text"
@@ -465,6 +423,26 @@ export function MonsterActionsPanel({
                                             />
                                         </label>
                                     )}
+
+                                    <label className={styles.field}>
+                                        Tempo de Conjuração
+                                        <input
+                                            type="text"
+                                            value={action.castingTime ?? ''}
+                                            onChange={(event) =>
+                                                setAction(index, { castingTime: event.target.value })
+                                            }
+                                            placeholder="1 ação, 1 ação bônus, 1 reação..."
+                                        />
+                                    </label>
+
+                                    <div className={styles.field}>
+                                        <span className={styles.sectionLabel}>Danos</span>
+                                        <DamagesEditor
+                                            damages={action.damages ?? []}
+                                            onChange={(updated) => setAction(index, { damages: updated })}
+                                        />
+                                    </div>
 
                                     <label className={styles.field}>
                                         Descrição
@@ -566,6 +544,26 @@ export function MonsterActionsPanel({
                                     )}
 
                                     <label className={styles.field}>
+                                        Tempo de Conjuração
+                                        <input
+                                            type="text"
+                                            value={reaction.castingTime ?? ''}
+                                            onChange={(event) =>
+                                                setReaction(index, { castingTime: event.target.value })
+                                            }
+                                            placeholder="1 ação, 1 ação bônus, 1 reação..."
+                                        />
+                                    </label>
+
+                                    <div className={styles.field}>
+                                        <span className={styles.sectionLabel}>Danos</span>
+                                        <DamagesEditor
+                                            damages={reaction.damages ?? []}
+                                            onChange={(updated) => setReaction(index, { damages: updated })}
+                                        />
+                                    </div>
+
+                                    <label className={styles.field}>
                                         Descrição
                                         <textarea
                                             rows={4}
@@ -653,21 +651,24 @@ export function MonsterActionsPanel({
                                         {!isCollapsed && (
                                             <div className={styles.cardBody}>
                                                 <div className={styles.metaRow}>
+                                                    {(action.castingTime ?? '').trim() && (
+                                                        <span className={styles.metaChip}>Tempo: {action.castingTime}</span>
+                                                    )}
                                                     {action.isAttack && action.attackType && (
                                                         <span className={styles.metaChip}>{action.attackType}</span>
-                                                    )}
-                                                    {action.isAttack && action.attackBonus.trim() && (
-                                                        <span className={styles.metaChip}>Bônus {action.attackBonus}</span>
-                                                    )}
-                                                    {action.isAttack && action.damage.trim() && (
-                                                        <span className={styles.metaChip}>
-                                                            Dano {action.damage}
-                                                            {action.damageType ? ` ${action.damageType}` : ''}
-                                                        </span>
                                                     )}
                                                     {action.reach.trim() && (
                                                         <span className={styles.metaChip}>Alcance {action.reach}</span>
                                                     )}
+                                                    {(action.damages ?? []).map((part, partIndex) => {
+                                                        const label = formatDamagePartLabel(part)
+                                                        if (!label) return null
+                                                        return (
+                                                            <span key={partIndex} className={styles.metaChip}>
+                                                                Dano {label}
+                                                            </span>
+                                                        )
+                                                    })}
                                                 </div>
 
                                                 {action.hasLimitedUses && (
@@ -689,6 +690,26 @@ export function MonsterActionsPanel({
                                                 <p className={action.description.trim() ? styles.description : styles.emptyText}>
                                                     {action.description.trim() || 'Sem descrição adicional.'}
                                                 </p>
+
+                                                {(action.damages ?? []).length > 0 && (
+                                                    <div className={styles.rollArea}>
+                                                        <button
+                                                            type="button"
+                                                            className={styles.rollBtn}
+                                                            onClick={() => handleRollAction(actionId, action.damages ?? [])}
+                                                        >
+                                                            🎲 Rolar dano
+                                                        </button>
+                                                        {actionRollResults.has(actionId) && (
+                                                            <div className={styles.rollResult}>
+                                                                {actionRollResults.get(actionId)!.results.map((r, i) => (
+                                                                    <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
+                                                                ))}
+                                                                <span className={styles.rollTotal}>Total: {actionRollResults.get(actionId)!.total}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </article>
@@ -729,6 +750,23 @@ export function MonsterActionsPanel({
 
                                             {!isCollapsed && (
                                                 <div className={styles.cardBody}>
+                                                    {((reaction.castingTime ?? '').trim() || (reaction.damages ?? []).length > 0) && (
+                                                        <div className={styles.metaRow}>
+                                                            {(reaction.castingTime ?? '').trim() && (
+                                                                <span className={styles.metaChip}>Tempo: {reaction.castingTime}</span>
+                                                            )}
+                                                            {(reaction.damages ?? []).map((part, partIndex) => {
+                                                                const label = formatDamagePartLabel(part)
+                                                                if (!label) return null
+                                                                return (
+                                                                    <span key={partIndex} className={styles.metaChip}>
+                                                                        Dano {label}
+                                                                    </span>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    )}
+
                                                     {reaction.hasLimitedUses && (
                                                         <div className={styles.summaryRow}>
                                                             <ManagedResourceControls
@@ -748,6 +786,26 @@ export function MonsterActionsPanel({
                                                     <p className={reaction.description.trim() ? styles.description : styles.emptyText}>
                                                         {reaction.description.trim() || 'Sem descrição adicional.'}
                                                     </p>
+
+                                                    {(reaction.damages ?? []).length > 0 && (
+                                                        <div className={styles.rollArea}>
+                                                            <button
+                                                                type="button"
+                                                                className={styles.rollBtn}
+                                                                onClick={() => handleRollReaction(reactionId, reaction.damages ?? [])}
+                                                            >
+                                                                🎲 Rolar dano
+                                                            </button>
+                                                            {reactionRollResults.has(reactionId) && (
+                                                                <div className={styles.rollResult}>
+                                                                    {reactionRollResults.get(reactionId)!.results.map((r, i) => (
+                                                                        <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
+                                                                    ))}
+                                                                    <span className={styles.rollTotal}>Total: {reactionRollResults.get(reactionId)!.total}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </article>

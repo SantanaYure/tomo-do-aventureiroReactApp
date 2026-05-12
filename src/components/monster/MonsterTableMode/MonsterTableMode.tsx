@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import type { MonsterSheet, MonsterKind } from '../../../types/system/dnd/monsterSheet'
+import type { DamagePart, MonsterSheet, MonsterKind } from '../../../types/system/dnd/monsterSheet'
 import type { DeepPartial } from '../shared'
 import { getRechargeLabel } from '../shared'
 import { isRestBasedRecharge } from '../../../utils/restRules'
 import { spendResource, restoreResource, restoreResourceFull } from '../../../utils/manageableResource'
+import { rollDamages, formatRollLine, type DamageRollSummary } from '../../../utils/diceRoller'
 import { ManagedResourceControls } from '../../ManagedResourceControls/ManagedResourceControls'
 import panelStyles from '../../../styles/panel.module.css'
 import styles from './MonsterTableMode.module.css'
@@ -56,6 +57,7 @@ function calcPassivePerception(sheet: MonsterSheet): number {
 export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
   const { details, stats, traits } = sheet
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+  const [rollResults, setRollResults] = useState<Map<string, DamageRollSummary>>(new Map())
 
   function toggleCollapse(id: string) {
     setCollapsedIds((prev) => {
@@ -63,6 +65,10 @@ export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
       if (next.has(id)) { next.delete(id) } else { next.add(id) }
       return next
     })
+  }
+
+  function handleRollDamage(id: string, damages: DamagePart[]) {
+    setRollResults((prev) => new Map(prev).set(id, rollDamages(damages)))
   }
 
   function updateFeature(index: number, patch: Partial<MonsterSheet['features'][number]>) {
@@ -235,6 +241,25 @@ export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
                       <p className={feature.description.trim() ? styles.description : styles.emptyText}>
                         {feature.description.trim() || 'Sem descrição.'}
                       </p>
+                      {(feature.damages ?? []).length > 0 && (
+                        <div className={styles.rollArea}>
+                          <button
+                            type="button"
+                            className={styles.rollBtn}
+                            onClick={() => handleRollDamage(id, feature.damages ?? [])}
+                          >
+                            🎲 Rolar dano
+                          </button>
+                          {rollResults.has(id) && (
+                            <div className={styles.rollResult}>
+                              {rollResults.get(id)!.results.map((r, i) => (
+                                <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
+                              ))}
+                              <span className={styles.rollTotal}>Total: {rollResults.get(id)!.total}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </article>
@@ -324,6 +349,25 @@ export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
                         <p className={action.description.trim() ? styles.description : styles.emptyText}>
                           {action.description.trim() || 'Sem descrição.'}
                         </p>
+                        {(action.damages ?? []).length > 0 && (
+                          <div className={styles.rollArea}>
+                            <button
+                              type="button"
+                              className={styles.rollBtn}
+                              onClick={() => handleRollDamage(id, action.damages ?? [])}
+                            >
+                              🎲 Rolar dano
+                            </button>
+                            {rollResults.has(id) && (
+                              <div className={styles.rollResult}>
+                                {rollResults.get(id)!.results.map((r, i) => (
+                                  <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
+                                ))}
+                                <span className={styles.rollTotal}>Total: {rollResults.get(id)!.total}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </article>
@@ -381,6 +425,25 @@ export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
                           <p className={reaction.description.trim() ? styles.description : styles.emptyText}>
                             {reaction.description.trim() || 'Sem descrição.'}
                           </p>
+                          {(reaction.damages ?? []).length > 0 && (
+                            <div className={styles.rollArea}>
+                              <button
+                                type="button"
+                                className={styles.rollBtn}
+                                onClick={() => handleRollDamage(id, reaction.damages ?? [])}
+                              >
+                                🎲 Rolar dano
+                              </button>
+                              {rollResults.has(id) && (
+                                <div className={styles.rollResult}>
+                                  {rollResults.get(id)!.results.map((r, i) => (
+                                    <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
+                                  ))}
+                                  <span className={styles.rollTotal}>Total: {rollResults.get(id)!.total}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
                     </article>

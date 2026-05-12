@@ -2,6 +2,8 @@
 // Descrição: recursos adicionais (ki, sorcery points, etc)
 // Tipo: interface/type
 
+import type { DamagePart } from './DamagePart'
+
 export type ResourceReset = 'short-rest' | 'long-rest' | 'manual' | 'na'
 export type ResourceOrigin =
   | 'class'
@@ -25,4 +27,6 @@ export interface Resource {
   origin?: ResourceOrigin
   customOrigin?: string
   allowCustomOrigin?: boolean
+  castingTime?: string
+  damages?: DamagePart[]
 }

@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import type { Resource, ResourceOrigin, ResourceReset } from '../../types/system/dnd'
+import type { DamagePart, Resource, ResourceOrigin, ResourceReset } from '../../types/system/dnd'
 import { ManagedResourceControls } from '../ManagedResourceControls/ManagedResourceControls'
 import { ResourceDots } from '../ResourceDots/ResourceDots'
 import { NumberInput } from '../NumberInput/NumberInput'
+import { DamagesEditor } from '../DamagesEditor/DamagesEditor'
 import {
   restoreResource,
   restoreResourceFull,
@@ -10,6 +11,7 @@ import {
   spendResource,
 } from '../../utils/manageableResource'
 import { isRestBasedReset } from '../../utils/restRules'
+import { rollDamages, formatRollLine, type DamageRollSummary } from '../../utils/diceRoller'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './ResourcesPanel.module.css'
 
@@ -52,6 +54,8 @@ function createResource(): Resource {
     resetOn: 'long-rest',
     customOrigin: '',
     allowCustomOrigin: false,
+    castingTime: '',
+    damages: [],
   }
 }
 
@@ -80,7 +84,12 @@ export function ResourcesPanel({
   onChangeResources,
 }: ResourcesPanelProps) {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+  const [rollResults, setRollResults] = useState<Map<string, DamageRollSummary>>(new Map())
   const resourceIds = resources.map((_, index) => `resource-${index}`)
+
+  function handleRollDamage(resourceId: string, damages: DamagePart[]) {
+    setRollResults((previous) => new Map(previous).set(resourceId, rollDamages(damages)))
+  }
 
   const areAllCollapsed =
     resourceIds.length > 0 && resourceIds.every((resourceId) => collapsedIds.has(resourceId))
@@ -293,6 +302,17 @@ export function ResourcesPanel({
                     </button>
                   </div>
 
+                  {/* Linha 3: Tempo de Conjuração */}
+                  <div className={styles.editRow}>
+                    <input
+                      className={styles.editFieldMd}
+                      type="text"
+                      value={resource.castingTime ?? ''}
+                      placeholder="Tempo de Conjuração"
+                      onChange={(event) => setResource(index, { castingTime: event.target.value })}
+                    />
+                  </div>
+
                   <textarea
                     className={styles.descriptionInput}
                     rows={3}
@@ -300,6 +320,14 @@ export function ResourcesPanel({
                     placeholder="Descrição"
                     onChange={(event) => setResource(index, { description: event.target.value })}
                   />
+
+                  <div className={styles.field}>
+                    <span className={styles.sectionLabel}>Danos</span>
+                    <DamagesEditor
+                      damages={resource.damages ?? []}
+                      onChange={(updated) => setResource(index, { damages: updated })}
+                    />
+                  </div>
 
                   <div className={styles.editRow}>
                     <span className={styles.maxLabel}>Máximo de usos</span>
@@ -389,6 +417,9 @@ export function ResourcesPanel({
                         {typeof resource.level === 'number' && Number.isFinite(resource.level) && (
                           <span className={styles.resourceMeta}>Nível: {resource.level}</span>
                         )}
+                        {(resource.castingTime ?? '').trim() && (
+                          <span className={styles.resourceMeta}>Tempo: {resource.castingTime}</span>
+                        )}
                         {resource.duration?.trim() && (
                           <span className={styles.resourceMeta}>Duração: {resource.duration}</span>
                         )}
@@ -405,6 +436,26 @@ export function ResourcesPanel({
 
                       {resource.description?.trim() && (
                         <p className={styles.resourceDescription}>{resource.description}</p>
+                      )}
+
+                      {(resource.damages ?? []).length > 0 && (
+                        <div className={styles.rollArea}>
+                          <button
+                            type="button"
+                            className={styles.rollBtn}
+                            onClick={() => handleRollDamage(resourceId, resource.damages ?? [])}
+                          >
+                            🎲 Rolar dano
+                          </button>
+                          {rollResults.has(resourceId) && (
+                            <div className={styles.rollResult}>
+                              {rollResults.get(resourceId)!.results.map((r, i) => (
+                                <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
+                              ))}
+                              <span className={styles.rollTotal}>Total: {rollResults.get(resourceId)!.total}</span>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}

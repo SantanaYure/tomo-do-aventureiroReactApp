@@ -9,6 +9,7 @@ import {
 import type {
     AttackType,
     CreatureSize,
+    DamagePart,
     DamageType,
     LegendaryAction,
     LimitedUseResource,
@@ -128,6 +129,17 @@ function normalizeTypedArray<T extends string>(
         : []
 }
 
+function normalizeDamageParts(value: unknown): DamagePart[] {
+    if (!Array.isArray(value)) return []
+    return value
+        .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
+        .map((item) => ({
+            dice: typeof item.dice === 'string' ? item.dice : '',
+            type: typeof item.type === 'string' ? item.type : '',
+            bonus: typeof item.bonus === 'string' ? item.bonus : '',
+        }))
+}
+
 function createDefaultMonsterFeature(id = ''): MonsterFeature {
     return {
         id,
@@ -140,6 +152,8 @@ function createDefaultMonsterFeature(id = ''): MonsterFeature {
         duration: '',
         range: '',
         requirements: '',
+        castingTime: '',
+        damages: [],
     }
 }
 
@@ -168,6 +182,8 @@ function createDefaultMonsterAction(id = ''): MonsterAction {
         damage: '',
         damageType: '',
         reach: '',
+        castingTime: '',
+        damages: [],
     }
 }
 
@@ -227,6 +243,8 @@ function normalizeMonsterFeature(value: unknown, fallbackId: string): MonsterFea
         duration: normalizeString(nextValue.duration),
         range: normalizeString(nextValue.range),
         requirements: normalizeString(nextValue.requirements),
+        castingTime: normalizeString(nextValue.castingTime),
+        damages: normalizeDamageParts(nextValue.damages),
     }
 }
 
@@ -262,6 +280,8 @@ function normalizeMonsterAction(value: unknown, fallbackId: string): MonsterActi
         damage: normalizeString(nextValue.damage),
         damageType: isOneOf(nextValue.damageType, DAMAGE_TYPES) ? nextValue.damageType : '',
         reach: normalizeString(nextValue.reach),
+        castingTime: normalizeString(nextValue.castingTime),
+        damages: normalizeDamageParts(nextValue.damages),
     }
 }
 

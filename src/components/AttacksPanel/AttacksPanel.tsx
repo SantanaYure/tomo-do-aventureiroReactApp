@@ -1,6 +1,9 @@
-import type { Attack, AttackAttributeKey, Character } from '../../types/system/dnd'
+import { useState, Fragment } from 'react'
+import type { Attack, AttackAttributeKey, Character, DamagePart } from '../../types/system/dnd'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
 import { NumberInput } from '../NumberInput/NumberInput'
+import { DamagesEditor } from '../DamagesEditor/DamagesEditor'
+import { rollDamages, formatRollLine, type DamageRollSummary } from '../../utils/diceRoller'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './AttacksPanel.module.css'
 
@@ -60,6 +63,8 @@ function createAttack(): Attack {
     damageType: '',
     range: '',
     notes: '',
+    castingTime: '',
+    damages: [],
   }
 }
 
@@ -76,6 +81,25 @@ export function AttacksPanel({
   isEditMode,
   onChangeAttacks,
 }: AttacksPanelProps) {
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set())
+  const [rollResults, setRollResults] = useState<Map<number, DamageRollSummary>>(new Map())
+
+  function toggleRow(index: number) {
+    setExpandedRows((previous) => {
+      const next = new Set(previous)
+      if (next.has(index)) {
+        next.delete(index)
+      } else {
+        next.add(index)
+      }
+      return next
+    })
+  }
+
+  function handleRollDamage(index: number, damages: DamagePart[]) {
+    setRollResults((previous) => new Map(previous).set(index, rollDamages(damages)))
+  }
+
   function setAttack(index: number, partial: Partial<Attack>) {
     onChangeAttacks(attacks.map((attack, currentIndex) => (
       currentIndex === index ? { ...attack, ...partial } : attack
@@ -114,14 +138,18 @@ export function AttacksPanel({
                 <th className={styles.rangeTd}>Alcance</th>
                 {isEditMode && <th className={styles.notesTd}>Notas</th>}
                 {isEditMode && <th className={styles.actionTd}></th>}
+                <th className={styles.expandTd} aria-label="Detalhes"></th>
               </tr>
             </thead>
             <tbody>
               {attacks.map((attack, i) => {
                 const bonus = calcAttackBonus(attack, character)
+                const isExpanded = expandedRows.has(i)
+                const colSpan = isEditMode ? 10 : 8
 
                 return (
-                  <tr key={i}>
+                  <Fragment key={i}>
+                  <tr>
                     <td className={styles.nameTd} data-label="Nome">
                       {isEditMode ? (
                         <input
@@ -236,7 +264,75 @@ export function AttacksPanel({
                         </button>
                       </td>
                     )}
+                    <td className={styles.expandTd} data-label="">
+                      <button
+                        type="button"
+                        className={styles.expandBtn}
+                        onClick={() => toggleRow(i)}
+                        aria-expanded={isExpanded}
+                        aria-label={isExpanded ? 'Recolher detalhes' : 'Expandir detalhes'}
+                      >
+                        {isExpanded ? '▾' : '▸'}
+                      </button>
+                    </td>
                   </tr>
+                  {isExpanded && (
+                    <tr className={styles.detailRow}>
+                      <td colSpan={colSpan}>
+                        {isEditMode ? (
+                          <div className={styles.detailContent}>
+                            <label className={styles.detailField}>
+                              Tempo de Conjuração
+                              <input
+                                type="text"
+                                value={attack.castingTime ?? ''}
+                                placeholder="1 ação, 1 ação bônus, 1 reação..."
+                                onChange={(event) => setAttack(i, { castingTime: event.target.value })}
+                              />
+                            </label>
+                            <div>
+                              <span className={styles.detailSectionLabel}>Danos</span>
+                              <DamagesEditor
+                                damages={attack.damages ?? []}
+                                onChange={(updated) => setAttack(i, { damages: updated })}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className={styles.detailContent}>
+                            {(attack.castingTime ?? '').trim() && (
+                              <span className={styles.castingChip}>Tempo: {attack.castingTime}</span>
+                            )}
+                            {(attack.damages ?? []).length > 0 && (
+                              <div className={styles.rollArea}>
+                                <button
+                                  type="button"
+                                  className={styles.rollBtn}
+                                  onClick={() => handleRollDamage(i, attack.damages ?? [])}
+                                >
+                                  🎲 Rolar dano
+                                </button>
+                                {rollResults.has(i) && (
+                                  <div className={styles.rollResult}>
+                                    {rollResults.get(i)!.results.map((r, ri) => (
+                                      <span key={ri} className={styles.rollLine}>{formatRollLine(r)}</span>
+                                    ))}
+                                    <span className={styles.rollTotal}>Total: {rollResults.get(i)!.total}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {!(attack.castingTime ?? '').trim() && !(attack.damages ?? []).length && (
+                              <span className={styles.emptyDetail}>
+                                Nenhum tempo de conjuração ou dano extra cadastrado.
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 )
               })}
             </tbody>
