@@ -13,6 +13,10 @@ export interface DamageRollSummary {
   total: number
 }
 
+interface DamagePartLabelOptions {
+  includeType?: boolean
+}
+
 function parseDice(notation: string): { count: number; sides: number } | null {
   const match = /^(\d+)d(\d+)$/i.exec(notation.trim())
   if (!match) return null
@@ -28,6 +32,13 @@ function parseBonus(raw: string): number {
   const cleaned = trimmed.replace(/^\+/, '')
   const parsed = parseInt(cleaned, 10)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+function formatBonusLabel(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  if (trimmed.startsWith('+') || trimmed.startsWith('-')) return trimmed
+  return `+${trimmed}`
 }
 
 function rollDie(sides: number): number {
@@ -57,6 +68,23 @@ export function formatRollLine(result: DamageRollResult): string {
   const label = [result.dice, result.type].filter((part) => part && part.trim()).join(' ').trim()
   const prefix = label || '(sem dado)'
   if (result.bonus === 0) return `${prefix}: ${result.rawRoll}`
-  const sign = result.bonus > 0 ? `+ ${result.bonus}` : `− ${Math.abs(result.bonus)}`
+  const sign = result.bonus > 0 ? `+ ${result.bonus}` : `- ${Math.abs(result.bonus)}`
   return `${prefix}: ${result.rawRoll} ${sign} = ${result.subtotal}`
 }
+
+export function formatDamagePartLabel(
+  part: DamagePart,
+  { includeType = true }: DamagePartLabelOptions = {},
+): string {
+  const diceLabel = [part.dice.trim(), formatBonusLabel(part.bonus)].filter(Boolean).join(' ')
+  if (!includeType) return diceLabel
+  return [diceLabel, part.type.trim()].filter(Boolean).join(' ')
+}
+
+export function formatDamagePartsSummary(
+  damages: DamagePart[],
+  options?: DamagePartLabelOptions,
+): string {
+  return damages.map((part) => formatDamagePartLabel(part, options)).filter(Boolean).join(', ')
+}
+

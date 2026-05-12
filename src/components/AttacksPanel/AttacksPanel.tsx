@@ -133,205 +133,223 @@ export function AttacksPanel({
                 <th className={styles.attrTd}>Atributo</th>
                 <th className={styles.profTd}>Prof.</th>
                 <th className={styles.bonusTd}>Bônus</th>
-                <th className={styles.damageTd}>Dano</th>
-                <th className={styles.typeTd}>Tipo</th>
-                <th className={styles.rangeTd}>Alcance</th>
-                {isEditMode && <th className={styles.notesTd}>Notas</th>}
-                {isEditMode && <th className={styles.actionTd}></th>}
-                <th className={styles.expandTd} aria-label="Detalhes"></th>
+                <th className={styles.actionTd} aria-label="Ações"></th>
               </tr>
             </thead>
             <tbody>
               {attacks.map((attack, i) => {
                 const bonus = calcAttackBonus(attack, character)
                 const isExpanded = expandedRows.has(i)
-                const colSpan = isEditMode ? 10 : 8
+                const colSpan = 5
+                const legacyDamageLabel = [attack.damage, attack.damageType]
+                  .map((part) => part?.trim() ?? '')
+                  .filter(Boolean)
+                  .join(' ')
+                const hasStructuredDamages = (attack.damages ?? []).length > 0
+                const hasLegacyDamageFallback = legacyDamageLabel.length > 0 && !hasStructuredDamages
+                const hasCastingTime = Boolean((attack.castingTime ?? '').trim())
+                const hasRange = Boolean((attack.range ?? '').trim())
+                const hasNotes = Boolean((attack.notes ?? '').trim())
+                const hasViewDetail =
+                  hasCastingTime ||
+                  hasRange ||
+                  hasNotes ||
+                  hasStructuredDamages ||
+                  hasLegacyDamageFallback
 
                 return (
                   <Fragment key={i}>
-                  <tr>
-                    <td className={styles.nameTd} data-label="Nome">
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          value={attack.name ?? ''}
-                          placeholder="Nome"
-                          onChange={(event) => setAttack(i, { name: event.target.value })}
-                        />
-                      ) : (
-                        attack.name || '—'
-                      )}
-                    </td>
-                    <td className={styles.attrTd} data-label="Atributo">
-                      {isEditMode ? (
-                        <select
-                          value={attack.attributeKey ?? 'manual'}
-                          onChange={(event) =>
-                            setAttack(i, {
-                              attributeKey: event.target.value as AttackAttributeKey,
-                            })
-                          }
-                        >
-                          {ATTACK_ATTRIBUTE_KEYS.map((attributeKey) => (
-                            <option key={attributeKey} value={attributeKey}>
-                              {ATTR_KEY_LABEL[attributeKey]}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        ATTR_KEY_LABEL[attack.attributeKey ?? 'manual']
-                      )}
-                    </td>
-                    <td className={styles.profTd} data-label="Prof.">
-                      <input
-                        className={styles.profCheckbox}
-                        type="checkbox"
-                        checked={attack.useProficiency ?? false}
-                        disabled={!isEditMode}
-                        onChange={(event) =>
-                          setAttack(i, { useProficiency: event.target.checked })
-                        }
-                      />
-                    </td>
-                    <td className={styles.bonusTd} data-label="Bônus">
-                      {attack.attributeKey === 'manual' && isEditMode ? (
-                        <NumberInput
-                          className={styles.manualBonusInput}
-                          value={attack.attackBonus ?? 0}
-                          onChange={(value) => setAttack(i, { attackBonus: value })}
-                        />
-                      ) : (
-                        <span className={styles.bonusDisplay}>{formatBonus(bonus)}</span>
-                      )}
-                    </td>
-                    <td className={styles.damageTd} data-label="Dano">
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          value={attack.damage ?? ''}
-                          placeholder="1d8+3"
-                          onChange={(event) => setAttack(i, { damage: event.target.value })}
-                        />
-                      ) : (
-                        attack.damage || '—'
-                      )}
-                    </td>
-                    <td className={styles.typeTd} data-label="Tipo">
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          value={attack.damageType ?? ''}
-                          placeholder="Cortante"
-                          onChange={(event) =>
-                            setAttack(i, { damageType: event.target.value })
-                          }
-                        />
-                      ) : (
-                        attack.damageType || '—'
-                      )}
-                    </td>
-                    <td className={styles.rangeTd} data-label="Alcance">
-                      {isEditMode ? (
-                        <input
-                          type="text"
-                          value={attack.range ?? ''}
-                          placeholder="1,5m"
-                          onChange={(event) => setAttack(i, { range: event.target.value })}
-                        />
-                      ) : (
-                        attack.range || '—'
-                      )}
-                    </td>
-                    {isEditMode && (
-                      <td className={styles.notesTd} data-label="Notas">
-                        <input
-                          type="text"
-                          value={attack.notes ?? ''}
-                          placeholder="Observações"
-                          onChange={(event) => setAttack(i, { notes: event.target.value })}
-                        />
-                      </td>
-                    )}
-                    {isEditMode && (
-                      <td className={styles.actionTd} data-label="Ações">
-                        <button
-                          type="button"
-                          className={panelStyles.removeButton}
-                          aria-label={`Remover ataque ${attack.name || i + 1}`}
-                          onClick={() => removeAttack(i)}
-                        >
-                          ✕
-                        </button>
-                      </td>
-                    )}
-                    <td className={styles.expandTd} data-label="">
-                      <button
-                        type="button"
-                        className={styles.expandBtn}
-                        onClick={() => toggleRow(i)}
-                        aria-expanded={isExpanded}
-                        aria-label={isExpanded ? 'Recolher detalhes' : 'Expandir detalhes'}
-                      >
-                        {isExpanded ? '▾' : '▸'}
-                      </button>
-                    </td>
-                  </tr>
-                  {isExpanded && (
-                    <tr className={styles.detailRow}>
-                      <td colSpan={colSpan}>
+                    <tr>
+                      <td className={styles.nameTd} data-label="Nome">
                         {isEditMode ? (
-                          <div className={styles.detailContent}>
-                            <label className={styles.detailField}>
-                              Tempo de Conjuração
-                              <input
-                                type="text"
-                                value={attack.castingTime ?? ''}
-                                placeholder="1 ação, 1 ação bônus, 1 reação..."
-                                onChange={(event) => setAttack(i, { castingTime: event.target.value })}
-                              />
-                            </label>
-                            <div>
-                              <span className={styles.detailSectionLabel}>Danos</span>
-                              <DamagesEditor
-                                damages={attack.damages ?? []}
-                                onChange={(updated) => setAttack(i, { damages: updated })}
-                              />
-                            </div>
-                          </div>
+                          <input
+                            type="text"
+                            value={attack.name ?? ''}
+                            placeholder="Nome"
+                            onChange={(event) => setAttack(i, { name: event.target.value })}
+                          />
                         ) : (
-                          <div className={styles.detailContent}>
-                            {(attack.castingTime ?? '').trim() && (
-                              <span className={styles.castingChip}>Tempo: {attack.castingTime}</span>
-                            )}
-                            {(attack.damages ?? []).length > 0 && (
-                              <div className={styles.rollArea}>
-                                <button
-                                  type="button"
-                                  className={styles.rollBtn}
-                                  onClick={() => handleRollDamage(i, attack.damages ?? [])}
-                                >
-                                  🎲 Rolar dano
-                                </button>
-                                {rollResults.has(i) && (
-                                  <div className={styles.rollResult}>
-                                    {rollResults.get(i)!.results.map((r, ri) => (
-                                      <span key={ri} className={styles.rollLine}>{formatRollLine(r)}</span>
-                                    ))}
-                                    <span className={styles.rollTotal}>Total: {rollResults.get(i)!.total}</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            {!(attack.castingTime ?? '').trim() && !(attack.damages ?? []).length && (
-                              <span className={styles.emptyDetail}>
-                                Nenhum tempo de conjuração ou dano extra cadastrado.
-                              </span>
-                            )}
-                          </div>
+                          attack.name || '—'
                         )}
                       </td>
+                      <td className={styles.attrTd} data-label="Atributo">
+                        {isEditMode ? (
+                          <select
+                            value={attack.attributeKey ?? 'manual'}
+                            onChange={(event) =>
+                              setAttack(i, {
+                                attributeKey: event.target.value as AttackAttributeKey,
+                              })
+                            }
+                          >
+                            {ATTACK_ATTRIBUTE_KEYS.map((attributeKey) => (
+                              <option key={attributeKey} value={attributeKey}>
+                                {ATTR_KEY_LABEL[attributeKey]}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          ATTR_KEY_LABEL[attack.attributeKey ?? 'manual']
+                        )}
+                      </td>
+                      <td className={styles.profTd} data-label="Prof.">
+                        <input
+                          className={styles.profCheckbox}
+                          type="checkbox"
+                          checked={attack.useProficiency ?? false}
+                          disabled={!isEditMode}
+                          onChange={(event) =>
+                            setAttack(i, { useProficiency: event.target.checked })
+                          }
+                        />
+                      </td>
+                      <td className={styles.bonusTd} data-label="Bônus">
+                        {attack.attributeKey === 'manual' && isEditMode ? (
+                          <NumberInput
+                            className={styles.manualBonusInput}
+                            value={attack.attackBonus ?? 0}
+                            onChange={(value) => setAttack(i, { attackBonus: value })}
+                          />
+                        ) : (
+                          <span className={styles.bonusDisplay}>{formatBonus(bonus)}</span>
+                        )}
+                      </td>
+                      <td className={styles.actionTd} data-label="Ações">
+                        <div className={styles.rowActions}>
+                          {isEditMode && (
+                            <button
+                              type="button"
+                              className={panelStyles.removeButton}
+                              aria-label={`Remover ataque ${attack.name || i + 1}`}
+                              onClick={() => removeAttack(i)}
+                            >
+                              ✕
+                            </button>
+                          )}
+                          {(isEditMode || hasViewDetail) && (
+                            <button
+                              type="button"
+                              className={styles.expandBtn}
+                              onClick={() => toggleRow(i)}
+                              aria-expanded={isExpanded}
+                              aria-label={isExpanded ? 'Recolher detalhes' : 'Expandir detalhes'}
+                            >
+                              {isExpanded ? '▾' : '▸'}
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
-                  )}
+                    {isExpanded && (
+                      <tr className={styles.detailRow}>
+                        <td colSpan={colSpan}>
+                          {isEditMode ? (
+                            <div className={styles.detailContent}>
+                              <div className={styles.detailFieldsGrid}>
+                                <label className={styles.detailField}>
+                                  Alcance
+                                  <input
+                                    type="text"
+                                    value={attack.range ?? ''}
+                                    placeholder="1,5m"
+                                    onChange={(event) =>
+                                      setAttack(i, { range: event.target.value })
+                                    }
+                                  />
+                                </label>
+                                <label className={styles.detailField}>
+                                  Tempo de Ação
+                                  <input
+                                    type="text"
+                                    value={attack.castingTime ?? ''}
+                                    placeholder="1 ação, 1 ação bônus, 1 reação..."
+                                    onChange={(event) =>
+                                      setAttack(i, { castingTime: event.target.value })
+                                    }
+                                  />
+                                </label>
+                                <label className={`${styles.detailField} ${styles.detailFieldFull}`}>
+                                  Notas
+                                  <textarea
+                                    value={attack.notes ?? ''}
+                                    placeholder="Observações do ataque"
+                                    rows={3}
+                                    onChange={(event) =>
+                                      setAttack(i, { notes: event.target.value })
+                                    }
+                                  />
+                                </label>
+                              </div>
+                              {hasLegacyDamageFallback && (
+                                <span className={styles.legacyDamage}>
+                                  Dano anterior: {legacyDamageLabel}
+                                </span>
+                              )}
+                              <div>
+                                <span className={styles.detailSectionLabel}>Danos</span>
+                                <DamagesEditor
+                                  damages={attack.damages ?? []}
+                                  onChange={(updated) => setAttack(i, { damages: updated })}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className={styles.detailContent}>
+                              {(hasCastingTime || hasRange || hasLegacyDamageFallback) && (
+                                <div className={styles.metaRow}>
+                                  {hasCastingTime && (
+                                    <span className={styles.metaChip}>
+                                      Tempo: {attack.castingTime}
+                                    </span>
+                                  )}
+                                  {hasRange && (
+                                    <span className={styles.metaChip}>
+                                      Alcance: {attack.range}
+                                    </span>
+                                  )}
+                                  {hasLegacyDamageFallback && (
+                                    <span className={styles.metaChip}>
+                                      Dano anterior: {legacyDamageLabel}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {hasNotes && (
+                                <p className={styles.detailNotes}>{attack.notes}</p>
+                              )}
+                              {hasStructuredDamages && (
+                                <div className={styles.rollArea}>
+                                  <button
+                                    type="button"
+                                    className={styles.rollBtn}
+                                    onClick={() => handleRollDamage(i, attack.damages ?? [])}
+                                  >
+                                    Rolar dano
+                                  </button>
+                                  {rollResults.has(i) && (
+                                    <div className={styles.rollResult}>
+                                      {rollResults.get(i)!.results.map((r, ri) => (
+                                        <span key={ri} className={styles.rollLine}>
+                                          {formatRollLine(r)}
+                                        </span>
+                                      ))}
+                                      <span className={styles.rollTotal}>
+                                        Total: {rollResults.get(i)!.total}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {!hasViewDetail && (
+                                <span className={styles.emptyDetail}>
+                                  Nenhum detalhe cadastrado.
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
                   </Fragment>
                 )
               })}

@@ -307,8 +307,8 @@
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  align-items: center;
+  gap: var(--space-3);
   color: var(--ink);
   text-decoration: none;
   padding: var(--space-1) 0;
@@ -316,6 +316,42 @@
 
 .sheetCardLink:hover .sheetName {
   color: var(--accent);
+}
+
+.sheetThumbnail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-12);
+  height: var(--space-12);
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+}
+
+.sheetThumbnailImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sheetThumbnailFallback {
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+
+.sheetText {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
 .sheetName {
@@ -407,6 +443,12 @@
       var(--parchment-dark) 75%);
   background-size: 800px 100%;
   animation: shimmer 1.4s infinite linear;
+}
+
+.skeletonAvatar {
+  width: var(--space-12);
+  height: var(--space-12);
+  flex-shrink: 0;
 }
 
 .skeletonName {
@@ -575,5 +617,20 @@
   .inlineFilterSelect,
   .inlineFilter:first-child .inlineFilterSelect {
     width: min(100%, 10rem);
+  }
+
+  .sheetItem {
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .sheetCardLink {
+    gap: var(--space-2);
+  }
+
+  .sheetThumbnail,
+  .skeletonAvatar {
+    width: var(--space-10);
+    height: var(--space-10);
   }
 }

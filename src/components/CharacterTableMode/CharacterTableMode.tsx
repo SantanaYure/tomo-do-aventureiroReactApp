@@ -4,7 +4,12 @@ import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/Attribute
 import { ManagedResourceControls } from '../ManagedResourceControls/ManagedResourceControls'
 import { spendResource, restoreResource, restoreResourceFull } from '../../utils/manageableResource'
 import { isRestBasedReset } from '../../utils/restRules'
-import { rollDamages, formatRollLine, type DamageRollSummary } from '../../utils/diceRoller'
+import {
+  rollDamages,
+  formatRollLine,
+  formatDamagePartsSummary,
+  type DamageRollSummary,
+} from '../../utils/diceRoller'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './CharacterTableMode.module.css'
 
@@ -243,7 +248,10 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
               const id = `attack-${index}`
               const isExpanded = expandedIds.has(id)
               const bonus = calcAttackBonus(attack, character)
-              const damage = [attack.damage, attack.damageType].filter(Boolean).join(' ')
+              const legacyDamage = [attack.damage, attack.damageType]
+                .filter((part) => part?.trim())
+                .join(' ')
+              const damage = legacyDamage || formatDamagePartsSummary(attack.damages ?? [])
               const hasBody =
                 Boolean(attack.range?.trim() || attack.notes?.trim()) ||
                 (attack.damages ?? []).length > 0

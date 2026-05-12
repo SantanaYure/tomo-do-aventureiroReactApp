@@ -53,6 +53,7 @@ function SheetSkeleton({ count = 3 }: { count?: number }) {
     <ul className={styles.sheetList} aria-hidden="true">
       {Array.from({ length: count }, (_, i) => (
         <li key={i} className={styles.skeletonItem}>
+          <div className={`${styles.skeletonLine} ${styles.skeletonAvatar}`} />
           <div className={styles.skeletonContent}>
             <div className={`${styles.skeletonLine} ${styles.skeletonName}`} />
             <div className={`${styles.skeletonLine} ${styles.skeletonMeta}`} />
@@ -99,6 +100,35 @@ function SheetSection<T>({
   )
 }
 
+function SheetThumbnail({
+  avatar,
+  alt,
+  fallbackLabel,
+}: {
+  avatar?: string
+  alt: string
+  fallbackLabel: string
+}) {
+  const avatarSrc = avatar?.trim()
+
+  return (
+    <span className={styles.sheetThumbnail}>
+      {avatarSrc ? (
+        <img
+          src={avatarSrc}
+          alt={alt}
+          className={styles.sheetThumbnailImage}
+          loading="lazy"
+        />
+      ) : (
+        <span className={styles.sheetThumbnailFallback} aria-hidden="true">
+          {fallbackLabel}
+        </span>
+      )}
+    </span>
+  )
+}
+
 interface CharacterSheetItemProps {
   sheet: StoredCharacterSheet
   onExport: () => void
@@ -108,6 +138,7 @@ interface CharacterSheetItemProps {
 function CharacterSheetItem({ sheet, onExport, onDelete }: CharacterSheetItemProps) {
   const name = sheet.data.character.name || '(sem nome)'
   const race = sheet.data.character.race
+  const avatar = sheet.data.character.avatar
   const totalLevel = sheet.data.character.classes.reduce((sum, c) => sum + c.level, 0)
   const classNames = sheet.data.character.classes
     .filter((c) => c.className)
@@ -118,8 +149,11 @@ function CharacterSheetItem({ sheet, onExport, onDelete }: CharacterSheetItemPro
   return (
     <li className={styles.sheetItem}>
       <Link to={`/ficha/${sheet.id}`} className={styles.sheetCardLink}>
-        <span className={styles.sheetName}>{name}</span>
-        {meta && <span className={styles.sheetMeta}>{meta}</span>}
+        <SheetThumbnail avatar={avatar} alt={`Avatar de ${name}`} fallbackLabel="PJ" />
+        <span className={styles.sheetText}>
+          <span className={styles.sheetName}>{name}</span>
+          {meta && <span className={styles.sheetMeta}>{meta}</span>}
+        </span>
       </Link>
       <div className={styles.sheetActions}>
         <SheetActionsMenu onExport={onExport} onDelete={onDelete} />
@@ -136,14 +170,19 @@ interface MonsterSheetItemProps {
 
 function MonsterSheetItem({ sheet, onExport, onDelete }: MonsterSheetItemProps) {
   const name = sheet.data.details.name || '(sem nome)'
+  const avatar = sheet.data.details.avatar
+  const fallbackLabel = sheet.data.details.kind === 'npc' ? 'NPC' : 'MON'
   const cr = sheet.data.traits.challengeRating.trim()
   const meta = cr ? `ND ${cr}` : null
 
   return (
     <li className={styles.sheetItem}>
       <Link to={`/monstro/${sheet.id}`} className={styles.sheetCardLink}>
-        <span className={styles.sheetName}>{name}</span>
-        {meta && <span className={styles.sheetMeta}>{meta}</span>}
+        <SheetThumbnail avatar={avatar} alt={`Avatar de ${name}`} fallbackLabel={fallbackLabel} />
+        <span className={styles.sheetText}>
+          <span className={styles.sheetName}>{name}</span>
+          {meta && <span className={styles.sheetMeta}>{meta}</span>}
+        </span>
       </Link>
       <div className={styles.sheetActions}>
         <SheetActionsMenu onExport={onExport} onDelete={onDelete} />
