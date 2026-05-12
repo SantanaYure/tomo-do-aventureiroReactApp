@@ -141,6 +141,7 @@ export function applyRestToCharacterSheet(
       character: {
         ...recovered.character,
         hpCurrent: hpMax,
+        hitDiceSpent: 0,
       },
     }
   }
