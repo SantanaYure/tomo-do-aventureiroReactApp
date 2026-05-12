@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type { CreatureSize, MonsterKind, MonsterSheet } from '../../../types/system/dnd/monsterSheet'
 import type { SheetGroup } from '../../../types/system/dnd/SheetGroup'
 import { AvatarCropper } from '../../AvatarCropper/AvatarCropper'
-import { GroupSelector } from '../../GroupSelector/GroupSelector'
 import panelStyles from '../../../styles/panel.module.css'
 import type { DeepPartial, MonsterComponentProps } from '../shared'
 import styles from './MonsterHeader.module.css'
@@ -37,7 +36,13 @@ interface MonsterHeaderProps extends MonsterComponentProps {
   isLoadingGroups?: boolean
 }
 
+const INDEPENDENT_LABEL = 'Personagem Independente'
 const MANAGE_VALUE = '__manage__'
+
+function getGroupLabel(groups: SheetGroup[], groupId: string): string {
+  const group = groups.find((currentGroup) => currentGroup.id === groupId)
+  return group?.name ?? INDEPENDENT_LABEL
+}
 
 export function MonsterHeader({
   sheet,
@@ -181,7 +186,7 @@ export function MonsterHeader({
                   }}
                   disabled={isLoadingGroups}
                 >
-                  <option value="">Personagem Independente</option>
+                  <option value="">{INDEPENDENT_LABEL}</option>
                   {groups.map((group) => (
                     <option key={group.id} value={group.id}>
                       {group.name}
@@ -235,18 +240,7 @@ export function MonsterHeader({
           {details.creatureClass.trim().length > 0 ? (
             <p className={styles.classification}>{details.creatureClass}</p>
           ) : null}
-
-          {onGroupChange && (
-            <div className={styles.groupSelectorView}>
-              <GroupSelector
-                groups={groups}
-                value={groupId}
-                onChange={onGroupChange}
-                onManage={onManage}
-                loading={isLoadingGroups}
-              />
-            </div>
-          )}
+          <p className={styles.groupMeta}>Mesa: {getGroupLabel(groups, groupId)}</p>
 
           {contentSections.map((section) => (
             <div key={section.title} className={styles.textSection}>
