@@ -1,15 +1,14 @@
-// src/components/CharacterHeader/CharacterHeader.tsx
-// Cabeçalho da ficha: nome, raça, classes, alinhamento, XP
-// Edição via isEditMode — toggle global
-
 import { useState } from 'react'
 import type { Character, Class } from '../../types/system/dnd'
+import type { SheetGroup } from '../../types/system/dnd/SheetGroup'
 import { AvatarCropper } from '../AvatarCropper/AvatarCropper'
 import { NumberInput } from '../NumberInput/NumberInput'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './CharacterHeader.module.css'
 
 const HIT_DICE_OPTIONS = ['1d6', '1d8', '1d10', '1d12']
+const INDEPENDENT_LABEL = 'Personagem Independente'
+const MANAGE_VALUE = '__manage__'
 
 interface CharacterHeaderProps {
   character: Character
@@ -18,6 +17,11 @@ interface CharacterHeaderProps {
   onShortRest: () => void
   onLongRest: () => void
   restFeedback?: string | null
+  groups?: SheetGroup[]
+  groupId?: string
+  onGroupChange?: (id: string) => void
+  onManage?: () => void
+  isLoadingGroups?: boolean
 }
 
 function formatClasses(classes: Class[]): string {
@@ -30,7 +34,20 @@ function totalLevel(classes: Class[]): number {
   return classes.reduce((sum, currentClass) => sum + currentClass.level, 0)
 }
 
-function ViewLayout({ character }: { character: Character }) {
+function getGroupLabel(groups: SheetGroup[], groupId: string): string {
+  const group = groups.find((currentGroup) => currentGroup.id === groupId)
+  return group?.name ?? INDEPENDENT_LABEL
+}
+
+function ViewLayout({
+  character,
+  groups,
+  groupId,
+}: {
+  character: Character
+  groups: SheetGroup[]
+  groupId: string
+}) {
   return (
     <div className={styles.viewLayout}>
       {character.avatar && (
@@ -49,6 +66,9 @@ function ViewLayout({ character }: { character: Character }) {
           {formatClasses(character.classes)} · Nível {totalLevel(character.classes)}
           {character.xp > 0 && <span className={styles.viewXp}> · XP {character.xp}</span>}
         </p>
+        <p className={styles.viewGroupMeta}>
+          Mesa: {getGroupLabel(groups, groupId)}
+        </p>
       </div>
     </div>
   )
@@ -61,6 +81,11 @@ export function CharacterHeader({
   onShortRest,
   onLongRest,
   restFeedback,
+  groups = [],
+  groupId = '',
+  onGroupChange,
+  onManage,
+  isLoadingGroups,
 }: CharacterHeaderProps) {
   const [showCropper, setShowCropper] = useState(false)
 
@@ -192,6 +217,31 @@ export function CharacterHeader({
                   onChange={(value) => set('xp', value)}
                 />
               </label>
+
+              {onGroupChange && (
+                <label className={styles.field}>
+                  Mesa
+                  <select
+                    value={groupId && groups.some((group) => group.id === groupId) ? groupId : ''}
+                    onChange={(event) => {
+                      if (event.target.value === MANAGE_VALUE) {
+                        onManage?.()
+                        return
+                      }
+                      onGroupChange(event.target.value)
+                    }}
+                    disabled={isLoadingGroups}
+                  >
+                    <option value="">{INDEPENDENT_LABEL}</option>
+                    {groups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name}
+                      </option>
+                    ))}
+                    {onManage && <option value={MANAGE_VALUE}>Gerenciar mesas...</option>}
+                  </select>
+                </label>
+              )}
             </div>
           </div>
 
@@ -257,7 +307,7 @@ export function CharacterHeader({
           </fieldset>
         </div>
       ) : (
-        <ViewLayout character={character} />
+        <ViewLayout character={character} groups={groups} groupId={groupId} />
       )}
     </header>
   )

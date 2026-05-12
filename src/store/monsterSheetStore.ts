@@ -430,6 +430,7 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
 
     return {
         systemId: normalizeMonsterSystemId(nextValue.systemId),
+        groupId: typeof nextValue.groupId === 'string' ? nextValue.groupId : '',
         details: {
             name: normalizeString(details.name),
             kind: isOneOf(details.kind, MONSTER_KINDS) ? details.kind : 'monster',
@@ -616,6 +617,19 @@ function isValidMonsterSheetPayload(data: unknown): boolean {
     return true
 }
 
+async function resolveGroupReferenceOnImport(
+    uid: string,
+    groupId: string | undefined,
+): Promise<string> {
+    if (typeof groupId !== 'string' || groupId.trim().length === 0) return ''
+    try {
+        const groupSnap = await getDoc(doc(db, 'users', uid, 'sheetGroups', groupId))
+        return groupSnap.exists() ? groupId : ''
+    } catch {
+        return ''
+    }
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export async function createMonsterSheet(uid: string): Promise<StoredMonsterSheet> {
@@ -688,11 +702,17 @@ export async function importMonsterSheetFromJSON(
             return result
         }
 
+        const resolvedGroupId = await resolveGroupReferenceOnImport(uid, payload.data.groupId)
+        const dataWithResolvedGroup: MonsterSheet = {
+            ...payload.data,
+            groupId: resolvedGroupId,
+        }
+
         const timestamp = new Date().toISOString()
         await setDoc(
             docRef,
             createMonsterSheetPayload(
-                payload.data,
+                dataWithResolvedGroup,
                 timestamp,
                 payload.createdAt ?? timestamp,
                 normalizedId,

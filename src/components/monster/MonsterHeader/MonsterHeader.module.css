@@ -101,6 +101,11 @@
     color: var(--accent);
 }
 
+.groupMeta {
+    font-size: var(--text-sm);
+    color: var(--ink-faint);
+}
+
 .sectionTitle {
     margin: 0;
     font-family: var(--font-display);
@@ -122,8 +127,18 @@
     white-space: pre-wrap;
 }
 
+.classeRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+}
+
 @media (max-width: 760px) {
     .metaGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .classeRow {
         grid-template-columns: 1fr;
     }
 }

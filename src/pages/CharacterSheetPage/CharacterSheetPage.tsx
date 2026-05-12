@@ -27,6 +27,9 @@ import { CharacterDetailsPanel } from '../../components/CharacterDetailsPanel/Ch
 import { CharacterTableMode } from '../../components/CharacterTableMode/CharacterTableMode'
 import { CharacterCombatSummary } from '../../components/CharacterCombatSummary/CharacterCombatSummary'
 import { ShortRestModal } from '../../components/ShortRestModal/ShortRestModal'
+import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
+import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
+import { useSheetGroups } from '../../hooks/useSheetGroups'
 import type { SavingStatus } from '../../types/savingStatus'
 import styles from './CharacterSheetPage.module.css'
 
@@ -101,6 +104,8 @@ export function CharacterSheetPage() {
   const [showShortRestModal, setShowShortRestModal] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showGroupManager, setShowGroupManager] = useState(false)
+  const { groups, isLoading: isLoadingGroups } = useSheetGroups(uid)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -188,6 +193,11 @@ export function CharacterSheetPage() {
   function handleToggleEditMode() {
     if (!sheet) return
     handleUpdate({ ...sheet, isEditMode: !sheet.isEditMode })
+  }
+
+  function handleGroupChange(nextGroupId: string) {
+    if (!sheet) return
+    handleUpdate({ ...sheet, groupId: nextGroupId })
   }
 
   function handleRequestDelete() {
@@ -441,23 +451,7 @@ export function CharacterSheetPage() {
       )}
       <div className={styles.topBar}>
         <Link className={styles.backLink} to="/">← Voltar</Link>
-        <div className={styles.topBarRight}>
-          <button
-            type="button"
-            className={styles.exportBtn}
-            onClick={handleExport}
-            disabled={!sheet}
-          >
-            Exportar PJ
-          </button>
-          <button
-            type="button"
-            className={styles.deleteBtn}
-            onClick={handleRequestDelete}
-            disabled={!sheet || isDeleting}
-          >
-            Excluir PJ
-          </button>
+        <div className={styles.topBarActions}>
           {savingStatus !== 'idle' && (
             <span className={styles.savingIndicator} data-status={savingStatus}>
               {savingStatus === 'saving' && 'Salvando...'}
@@ -465,6 +459,13 @@ export function CharacterSheetPage() {
               {savingStatus === 'error' && 'Erro ao salvar'}
             </span>
           )}
+          <SheetActionsMenu
+            onExport={handleExport}
+            onDelete={handleRequestDelete}
+            exportLabel="Exportar PJ"
+            deleteLabel="Excluir PJ"
+            disabled={!sheet || isDeleting}
+          />
         </div>
       </div>
 
@@ -475,6 +476,11 @@ export function CharacterSheetPage() {
         onShortRest={handleShortRest}
         onLongRest={handleLongRest}
         restFeedback={restFeedback}
+        groups={groups}
+        groupId={currentSheet.groupId ?? ''}
+        onGroupChange={handleGroupChange}
+        onManage={() => setShowGroupManager(true)}
+        isLoadingGroups={isLoadingGroups}
       />
 
       <div ref={tabBarRef} className={styles.tabBarShell}>
@@ -524,6 +530,14 @@ export function CharacterSheetPage() {
         </div>
       </div>
       <div className={styles.editToggleSentinel} ref={sentinelRef} />
+
+      {showGroupManager && uid && (
+        <GroupManagerModal
+          uid={uid}
+          groups={groups}
+          onClose={() => setShowGroupManager(false)}
+        />
+      )}
 
       {showDeleteDialog && (
         <div

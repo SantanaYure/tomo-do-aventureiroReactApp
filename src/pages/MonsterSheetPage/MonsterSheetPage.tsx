@@ -9,6 +9,9 @@ import { MonsterStatsPanel } from '../../components/monster/MonsterStatsPanel/Mo
 import { MonsterTraitsPanel } from '../../components/monster/MonsterTraitsPanel/MonsterTraitsPanel'
 import { MonsterTableMode } from '../../components/monster/MonsterTableMode/MonsterTableMode'
 import { MonsterCombatSummary } from '../../components/monster/MonsterCombatSummary/MonsterCombatSummary'
+import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
+import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
+import { useSheetGroups } from '../../hooks/useSheetGroups'
 import type { DeepPartial } from '../../components/monster/shared'
 import {
   saveMonsterSheet,
@@ -126,6 +129,8 @@ export function MonsterSheetPage() {
   const [restFeedback, setRestFeedback] = useState<string | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showGroupManager, setShowGroupManager] = useState(false)
+  const { groups, isLoading: isLoadingGroups } = useSheetGroups(uid)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -318,7 +323,18 @@ export function MonsterSheetPage() {
   const currentSheet = sheet
 
   function renderDetailsTab() {
-    return <MonsterHeader sheet={currentSheet} isEditing={isEditing} onChange={handleSheetChange} />
+    return (
+      <MonsterHeader
+        sheet={currentSheet}
+        isEditing={isEditing}
+        onChange={handleSheetChange}
+        groups={groups}
+        groupId={currentSheet.groupId ?? ''}
+        onGroupChange={(nextGroupId) => handleSheetChange({ groupId: nextGroupId })}
+        onManage={() => setShowGroupManager(true)}
+        isLoadingGroups={isLoadingGroups}
+      />
+    )
   }
 
   function renderCombatTab() {
@@ -382,23 +398,14 @@ export function MonsterSheetPage() {
     <div className={styles.page} data-saving-status={savingStatus}>
       <div className={styles.topBar}>
         <Link className={styles.backLink} to="/">← Voltar</Link>
-        <div className={styles.topBarRight}>
-          <button
-            type="button"
-            className={styles.exportBtn}
-            onClick={handleExport}
-            disabled={!sheet}
-          >
-            {sheet?.details.kind === 'npc' ? 'Exportar NPC' : 'Exportar Monstro'}
-          </button>
-          <button
-            type="button"
-            className={styles.deleteBtn}
-            onClick={handleRequestDelete}
+        <div className={styles.topBarActions}>
+          <SheetActionsMenu
+            onExport={handleExport}
+            onDelete={handleRequestDelete}
+            exportLabel={currentSheet.details.kind === 'npc' ? 'Exportar NPC' : 'Exportar Monstro'}
+            deleteLabel={currentSheet.details.kind === 'npc' ? 'Excluir NPC' : 'Excluir Monstro'}
             disabled={!sheet || isDeleting}
-          >
-            {sheet?.details.kind === 'npc' ? 'Excluir NPC' : 'Excluir Monstro'}
-          </button>
+          />
         </div>
       </div>
 
@@ -457,6 +464,14 @@ export function MonsterSheetPage() {
       </div>
 
       <div className={styles.editToggleSentinel} ref={sentinelRef} />
+
+      {showGroupManager && uid && (
+        <GroupManagerModal
+          uid={uid}
+          groups={groups}
+          onClose={() => setShowGroupManager(false)}
+        />
+      )}
 
       {showDeleteDialog && (
         <div
