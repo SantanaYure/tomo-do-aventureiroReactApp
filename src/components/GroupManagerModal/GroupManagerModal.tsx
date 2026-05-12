@@ -225,7 +225,7 @@ export function GroupManagerModal({ uid, groups, onClose }: GroupManagerModalPro
                 e voltarão para "Sem mesa".
               </p>
               <p className={styles.confirmSub}>
-                Grupo: <strong>{pendingDelete.name}</strong>
+                Mesa: <strong>{pendingDelete.name}</strong>
               </p>
               <div className={styles.confirmActions}>
                 <button

@@ -11,6 +11,7 @@ import { MonsterTableMode } from '../../components/monster/MonsterTableMode/Mons
 import { MonsterCombatSummary } from '../../components/monster/MonsterCombatSummary/MonsterCombatSummary'
 import { GroupSelector } from '../../components/GroupSelector/GroupSelector'
 import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
+import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
 import type { DeepPartial } from '../../components/monster/shared'
 import {
@@ -130,11 +131,9 @@ export function MonsterSheetPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showGroupManager, setShowGroupManager] = useState(false)
-  const [showMoreMenu, setShowMoreMenu] = useState(false)
   const { groups, isLoading: isLoadingGroups } = useSheetGroups(uid)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
-  const moreMenuRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const restFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasSheet = sheet !== null
@@ -198,18 +197,6 @@ export function MonsterSheetPage() {
       if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
     }
   }, [])
-
-  // Close ⋮ menu on outside click
-  useEffect(() => {
-    if (!showMoreMenu) return
-    function handleOutside(event: MouseEvent) {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
-        setShowMoreMenu(false)
-      }
-    }
-    document.addEventListener('mousedown', handleOutside)
-    return () => document.removeEventListener('mousedown', handleOutside)
-  }, [showMoreMenu])
 
   useEffect(() => {
     if (!sheet) return
@@ -411,39 +398,13 @@ export function MonsterSheetPage() {
           />
         </div>
         <div className={styles.topBarActions}>
-          <button
-            type="button"
-            className={styles.exportBtn}
-            onClick={handleExport}
-            disabled={!sheet}
-          >
-            {currentSheet.details.kind === 'npc' ? 'Exportar NPC' : 'Exportar Monstro'}
-          </button>
-          <div className={styles.moreMenuContainer} ref={moreMenuRef}>
-            <button
-              type="button"
-              className={styles.moreBtn}
-              onClick={() => setShowMoreMenu((v) => !v)}
-              aria-label="Mais opções"
-              aria-expanded={showMoreMenu}
-              aria-haspopup="menu"
-            >
-              ⋮
-            </button>
-            {showMoreMenu && (
-              <div className={styles.moreMenuDropdown} role="menu">
-                <button
-                  type="button"
-                  role="menuitem"
-                  className={styles.deleteMenuItem}
-                  onClick={() => { setShowMoreMenu(false); handleRequestDelete() }}
-                  disabled={!sheet || isDeleting}
-                >
-                  {currentSheet.details.kind === 'npc' ? 'Excluir NPC' : 'Excluir Monstro'}
-                </button>
-              </div>
-            )}
-          </div>
+          <SheetActionsMenu
+            onExport={handleExport}
+            onDelete={handleRequestDelete}
+            exportLabel={currentSheet.details.kind === 'npc' ? 'Exportar NPC' : 'Exportar Monstro'}
+            deleteLabel={currentSheet.details.kind === 'npc' ? 'Excluir NPC' : 'Excluir Monstro'}
+            disabled={!sheet || isDeleting}
+          />
         </div>
       </div>
 

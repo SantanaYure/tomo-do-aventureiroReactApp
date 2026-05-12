@@ -29,6 +29,7 @@ import { CharacterCombatSummary } from '../../components/CharacterCombatSummary/
 import { ShortRestModal } from '../../components/ShortRestModal/ShortRestModal'
 import { GroupSelector } from '../../components/GroupSelector/GroupSelector'
 import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
+import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
 import type { SavingStatus } from '../../types/savingStatus'
 import styles from './CharacterSheetPage.module.css'
@@ -105,11 +106,9 @@ export function CharacterSheetPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showGroupManager, setShowGroupManager] = useState(false)
-  const [showMoreMenu, setShowMoreMenu] = useState(false)
   const { groups, isLoading: isLoadingGroups } = useSheetGroups(uid)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
-  const moreMenuRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const restFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasSheet = sheet !== null
@@ -171,18 +170,6 @@ export function CharacterSheetPage() {
       if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
     }
   }, [])
-
-  // Close ⋮ menu on outside click
-  useEffect(() => {
-    if (!showMoreMenu) return
-    function handleOutside(event: MouseEvent) {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
-        setShowMoreMenu(false)
-      }
-    }
-    document.addEventListener('mousedown', handleOutside)
-    return () => document.removeEventListener('mousedown', handleOutside)
-  }, [showMoreMenu])
 
   function handleUpdate(updated: CharacterSheet) {
     if (!id || !uid) return
@@ -475,39 +462,6 @@ export function CharacterSheetPage() {
           />
         </div>
         <div className={styles.topBarActions}>
-          <button
-            type="button"
-            className={styles.exportBtn}
-            onClick={handleExport}
-            disabled={!sheet}
-          >
-            Exportar PJ
-          </button>
-          <div className={styles.moreMenuContainer} ref={moreMenuRef}>
-            <button
-              type="button"
-              className={styles.moreBtn}
-              onClick={() => setShowMoreMenu((v) => !v)}
-              aria-label="Mais opções"
-              aria-expanded={showMoreMenu}
-              aria-haspopup="menu"
-            >
-              ⋮
-            </button>
-            {showMoreMenu && (
-              <div className={styles.moreMenuDropdown} role="menu">
-                <button
-                  type="button"
-                  role="menuitem"
-                  className={styles.deleteMenuItem}
-                  onClick={() => { setShowMoreMenu(false); handleRequestDelete() }}
-                  disabled={!sheet || isDeleting}
-                >
-                  Excluir PJ
-                </button>
-              </div>
-            )}
-          </div>
           {savingStatus !== 'idle' && (
             <span className={styles.savingIndicator} data-status={savingStatus}>
               {savingStatus === 'saving' && 'Salvando...'}
@@ -515,6 +469,13 @@ export function CharacterSheetPage() {
               {savingStatus === 'error' && 'Erro ao salvar'}
             </span>
           )}
+          <SheetActionsMenu
+            onExport={handleExport}
+            onDelete={handleRequestDelete}
+            exportLabel="Exportar PJ"
+            deleteLabel="Excluir PJ"
+            disabled={!sheet || isDeleting}
+          />
         </div>
       </div>
 

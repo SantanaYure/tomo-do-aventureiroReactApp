@@ -41,7 +41,7 @@ export function normalizeSheetGroup(value: unknown, id: string, uid: string): Sh
 
 export async function createSheetGroup(uid: string, name: string): Promise<SheetGroup> {
   const normalizedName = normalizeGroupName(name)
-  if (!normalizedName) throw new Error('Nome do grupo é obrigatório.')
+  if (!normalizedName) throw new Error('Nome da mesa é obrigatório.')
 
   const timestamp = new Date().toISOString()
   const payload = {
@@ -60,7 +60,7 @@ export async function renameSheetGroup(
   name: string,
 ): Promise<void> {
   const normalizedName = normalizeGroupName(name)
-  if (!normalizedName) throw new Error('Nome do grupo é obrigatório.')
+  if (!normalizedName) throw new Error('Nome da mesa é obrigatório.')
 
   const ref = getDocRef(uid, id)
   const existing = await getDoc(ref)
@@ -79,7 +79,7 @@ export async function renameSheetGroup(
 
 /**
  * Exclui o grupo e remove o vínculo `groupId` das fichas (PJ, monstro e NPC)
- * que estavam associadas. As fichas não são apagadas — voltam para "Sem grupo".
+ * que estavam associadas. As fichas não são apagadas — voltam para "Personagem Independente".
  */
 export async function deleteSheetGroup(uid: string, id: string): Promise<void> {
   const charactersRef = collection(db, 'users', uid, 'characterSheets')

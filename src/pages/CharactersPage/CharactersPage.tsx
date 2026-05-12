@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { normalizeFileName, downloadJsonFile } from '../../utils/exportSheet'
 import {
@@ -22,20 +22,13 @@ import { useCharacterSheets } from '../../hooks/useCharacterSheets'
 import { useMonsterSheets } from '../../hooks/useMonsterSheets'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
 import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
-import type { SheetGroup } from '../../types/system/dnd/SheetGroup'
+import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
 import styles from './CharactersPage.module.css'
 
 const NO_GROUP_KEY = '__no_group__'
+const NO_GROUP_LABEL = 'Personagem Independente'
 
-function matchesTextSearch(text: string, term: string): boolean {
-  if (!term) return true
-  return text.trim().toLocaleLowerCase('pt-BR').includes(term)
-}
-
-function matchesTypeSearch(typeLabel: string, term: string): boolean {
-  if (!term) return false
-  return typeLabel.includes(term)
-}
+type SheetTypeFilter = 'all' | 'character' | 'monster' | 'npc'
 
 type ImportFeedback = {
   scope: 'character' | 'monster' | 'npc' | 'unknown'
@@ -48,15 +41,12 @@ type PendingDelete = {
   name: string
 }
 
-type SheetFilterType = 'all' | 'character' | 'monster' | 'npc'
-type FilterFieldKey = 'type' | 'level' | 'class' | 'race' | 'nd' | 'group'
-type ViewMode = 'flat' | 'grouped'
-
-type SortOrder = 'recent' | 'alpha' | 'class' | 'level-asc' | 'level-desc' | 'race' | 'custom'
-
-type MonsterSortOrder = 'recent' | 'alpha' | 'nd-asc' | 'nd-desc' | 'custom'
-
 const MAX_JSON_BYTES = 2 * 1024 * 1024
+
+function matchesText(text: string, term: string): boolean {
+  if (!term) return false
+  return text.trim().toLocaleLowerCase('pt-BR').includes(term)
+}
 
 function SheetSkeleton({ count = 3 }: { count?: number }) {
   return (
@@ -68,7 +58,6 @@ function SheetSkeleton({ count = 3 }: { count?: number }) {
             <div className={`${styles.skeletonLine} ${styles.skeletonMeta}`} />
           </div>
           <div className={styles.skeletonActions}>
-            <div className={`${styles.skeletonLine} ${styles.skeletonBtn}`} />
             <div className={`${styles.skeletonLine} ${styles.skeletonBtn}`} />
           </div>
         </li>
@@ -114,27 +103,9 @@ interface CharacterSheetItemProps {
   sheet: StoredCharacterSheet
   onExport: () => void
   onDelete: () => void
-  isDraggable?: boolean
-  isDragging?: boolean
-  isDragOver?: boolean
-  onDragStart?: () => void
-  onDragOver?: (e: React.DragEvent) => void
-  onDrop?: () => void
-  onDragEnd?: () => void
 }
 
-function CharacterSheetItem({
-  sheet,
-  onExport,
-  onDelete,
-  isDraggable,
-  isDragging,
-  isDragOver,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
-}: CharacterSheetItemProps) {
+function CharacterSheetItem({ sheet, onExport, onDelete }: CharacterSheetItemProps) {
   const name = sheet.data.character.name || '(sem nome)'
   const race = sheet.data.character.race
   const totalLevel = sheet.data.character.classes.reduce((sum, c) => sum + c.level, 0)
@@ -144,41 +115,14 @@ function CharacterSheetItem({
     .join(' · ')
   const meta = [race, classNames].filter(Boolean).join(' · ') || (totalLevel > 0 ? `Nível ${totalLevel}` : null)
 
-  const liClasses = [
-    styles.sheetItem,
-    isDragging ? styles.sheetItemDragging : '',
-    isDragOver ? styles.sheetItemDragOver : '',
-  ]
-    .filter(Boolean)
-    .join(' ')
-
   return (
-    <li
-      className={liClasses}
-      draggable={isDraggable}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
-    >
-      {isDraggable && (
-        <span className={styles.dragHandle} aria-hidden="true">
-          ⠿
-        </span>
-      )}
-      <div className={styles.sheetInfo}>
-        <Link to={`/ficha/${sheet.id}`} className={styles.sheetLink}>
-          {name}
-        </Link>
+    <li className={styles.sheetItem}>
+      <Link to={`/ficha/${sheet.id}`} className={styles.sheetCardLink}>
+        <span className={styles.sheetName}>{name}</span>
         {meta && <span className={styles.sheetMeta}>{meta}</span>}
-      </div>
+      </Link>
       <div className={styles.sheetActions}>
-        <button type="button" className={styles.exportButton} onClick={onExport}>
-          ↓ Exportar
-        </button>
-        <button type="button" className={styles.deleteButton} onClick={onDelete}>
-          Excluir
-        </button>
+        <SheetActionsMenu onExport={onExport} onDelete={onDelete} />
       </div>
     </li>
   )
@@ -188,70 +132,24 @@ interface MonsterSheetItemProps {
   sheet: StoredMonsterSheet
   onExport: () => void
   onDelete: () => void
-  isDraggable?: boolean
-  isDragging?: boolean
-  isDragOver?: boolean
-  onDragStart?: () => void
-  onDragOver?: (e: React.DragEvent) => void
-  onDrop?: () => void
-  onDragEnd?: () => void
 }
 
-function MonsterSheetItem({
-  sheet,
-  onExport,
-  onDelete,
-  isDraggable,
-  isDragging,
-  isDragOver,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
-}: MonsterSheetItemProps) {
+function MonsterSheetItem({ sheet, onExport, onDelete }: MonsterSheetItemProps) {
   const name = sheet.data.details.name || '(sem nome)'
-
-  const liClasses = [
-    styles.sheetItem,
-    isDragging ? styles.sheetItemDragging : '',
-    isDragOver ? styles.sheetItemDragOver : '',
-  ]
-    .filter(Boolean)
-    .join(' ')
+  const cr = sheet.data.traits.challengeRating.trim()
+  const meta = cr ? `ND ${cr}` : null
 
   return (
-    <li
-      className={liClasses}
-      draggable={isDraggable}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
-    >
-      {isDraggable && (
-        <span className={styles.dragHandle} aria-hidden="true">
-          ⠿
-        </span>
-      )}
-      <div className={styles.sheetInfo}>
-        <Link to={`/monstro/${sheet.id}`} className={styles.sheetLink}>
-          {name}
-        </Link>
-      </div>
+    <li className={styles.sheetItem}>
+      <Link to={`/monstro/${sheet.id}`} className={styles.sheetCardLink}>
+        <span className={styles.sheetName}>{name}</span>
+        {meta && <span className={styles.sheetMeta}>{meta}</span>}
+      </Link>
       <div className={styles.sheetActions}>
-        <button type="button" className={styles.exportButton} onClick={onExport}>
-          ↓ Exportar
-        </button>
-        <button type="button" className={styles.deleteButton} onClick={onDelete}>
-          Excluir
-        </button>
+        <SheetActionsMenu onExport={onExport} onDelete={onDelete} />
       </div>
     </li>
   )
-}
-
-function normalizeFilterValue(value: string): string {
-  return value.trim().toLocaleLowerCase('pt-BR')
 }
 
 function getImportedSheetData(parsed: unknown): Record<string, unknown> | null {
@@ -312,72 +210,6 @@ function detectImportedSheetType(parsed: unknown): ImportFeedback['scope'] {
   return 'unknown'
 }
 
-function getCharacterTotalLevel(sheet: StoredCharacterSheet): number {
-  return sheet.data.character.classes.reduce((sum, currentClass) => sum + currentClass.level, 0)
-}
-
-function getCharacterClassNames(sheet: StoredCharacterSheet): string[] {
-  return sheet.data.character.classes
-    .map((currentClass) => currentClass.className.trim())
-    .filter(Boolean)
-}
-
-function parseChallengeRating(cr: string): number {
-  const trimmed = cr.trim()
-  if (!trimmed) return -1
-  if (trimmed.includes('/')) {
-    const [num, den] = trimmed.split('/')
-    const parsed = Number(num) / Number(den)
-    return isNaN(parsed) ? -1 : parsed
-  }
-  const parsed = Number(trimmed)
-  return isNaN(parsed) ? -1 : parsed
-}
-
-const FILTER_FIELD_OPTIONS: { key: FilterFieldKey; label: string }[] = [
-  { key: 'type', label: 'Tipo' },
-  { key: 'group', label: 'Grupo' },
-  { key: 'level', label: 'Nível' },
-  { key: 'class', label: 'Classe' },
-  { key: 'race', label: 'Raça/Linhagem' },
-  { key: 'nd', label: 'ND' },
-]
-
-function applyMonsterSort(
-  list: StoredMonsterSheet[],
-  order: MonsterSortOrder,
-  customOrder: string[],
-): StoredMonsterSheet[] {
-  if (order === 'custom' && customOrder.length > 0) {
-    const orderMap = new Map(customOrder.map((id, i) => [id, i]))
-    return [...list].sort((a, b) => {
-      const ai = orderMap.has(a.id) ? (orderMap.get(a.id) as number) : Number.MAX_SAFE_INTEGER
-      const bi = orderMap.has(b.id) ? (orderMap.get(b.id) as number) : Number.MAX_SAFE_INTEGER
-      return ai - bi
-    })
-  }
-  if (order === 'alpha') {
-    return [...list].sort((a, b) =>
-      (a.data.details.name || '').localeCompare(b.data.details.name || '', 'pt-BR'),
-    )
-  }
-  if (order === 'nd-asc') {
-    return [...list].sort(
-      (a, b) =>
-        parseChallengeRating(a.data.traits.challengeRating) -
-        parseChallengeRating(b.data.traits.challengeRating),
-    )
-  }
-  if (order === 'nd-desc') {
-    return [...list].sort(
-      (a, b) =>
-        parseChallengeRating(b.data.traits.challengeRating) -
-        parseChallengeRating(a.data.traits.challengeRating),
-    )
-  }
-  return list // 'recent' — já ordenado pelo Firestore
-}
-
 export function CharactersPage() {
   const { uid } = useAuth()
   const navigate = useNavigate()
@@ -391,22 +223,12 @@ export function CharactersPage() {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [showGroupManager, setShowGroupManager] = useState(false)
-  const [viewMode, setViewMode] = useState<ViewMode>('flat')
+  const [typeFilter, setTypeFilter] = useState<SheetTypeFilter>('all')
+  const [groupFilter, setGroupFilter] = useState<string>('all')
 
-  const [typeFilter, setTypeFilter] = useState<SheetFilterType>('all')
-  const [levelFilter, setLevelFilter] = useState('all')
-  const [classFilter, setClassFilter] = useState('all')
-  const [raceFilter, setRaceFilter] = useState('all')
-  const [ndFilter, setNdFilter] = useState('all')
-  const [groupFilter, setGroupFilter] = useState('all')
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
-  const [draftTypeFilter, setDraftTypeFilter] = useState<SheetFilterType>('all')
-  const [draftLevelFilter, setDraftLevelFilter] = useState('all')
-  const [draftClassFilter, setDraftClassFilter] = useState('all')
-  const [draftRaceFilter, setDraftRaceFilter] = useState('all')
-  const [draftNdFilter, setDraftNdFilter] = useState('all')
-  const [draftGroupFilter, setDraftGroupFilter] = useState('all')
-  const [draftVisibleFilters, setDraftVisibleFilters] = useState<FilterFieldKey[]>([])
+  const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
+  const importFileInputRef = useRef<HTMLInputElement>(null)
 
   const groupNameById = useMemo(() => {
     const map = new Map<string, string>()
@@ -415,258 +237,68 @@ export function CharactersPage() {
   }, [groups])
 
   const normalizedSearchTerm = searchTerm.trim().toLocaleLowerCase('pt-BR')
+  const hasSearch = normalizedSearchTerm.length > 0
 
-  const [sortOrder, setSortOrder] = useState<SortOrder>('recent')
-  const [customOrder, setCustomOrder] = useState<string[]>([])
-  const [dragSourceId, setDragSourceId] = useState<string | null>(null)
-  const [dragOverId, setDragOverId] = useState<string | null>(null)
-
-  const [monsterSortOrder, setMonsterSortOrder] = useState<MonsterSortOrder>('recent')
-  const [customMonsterOrder, setCustomMonsterOrder] = useState<string[]>([])
-  const [monsterDragSourceId, setMonsterDragSourceId] = useState<string | null>(null)
-  const [monsterDragOverId, setMonsterDragOverId] = useState<string | null>(null)
-
-  const [npcSortOrder, setNpcSortOrder] = useState<MonsterSortOrder>('recent')
-  const [customNpcOrder, setCustomNpcOrder] = useState<string[]>([])
-  const [npcDragSourceId, setNpcDragSourceId] = useState<string | null>(null)
-  const [npcDragOverId, setNpcDragOverId] = useState<string | null>(null)
-
-  const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
-  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
-  const importFileInputRef = useRef<HTMLInputElement>(null)
-
-  const isSearchMode = searchTerm.trim().length > 0
-
-  useEffect(() => {
-    if (!isFilterModalOpen) {
-      return
-    }
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setIsFilterModalOpen(false)
-      }
-    }
-
-    document.addEventListener('keydown', handleEscape)
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape)
-    }
-  }, [isFilterModalOpen])
-
-  useEffect(() => {
-    if (!uid) return
-    const load = (key: string, setter: (v: string[]) => void) => {
-      try {
-        const stored = localStorage.getItem(key)
-        if (stored) {
-          const parsed = JSON.parse(stored)
-          if (Array.isArray(parsed)) setter(parsed)
-        }
-      } catch { }
-    }
-    load(`tomo-char-order-${uid}`, setCustomOrder)
-    load(`tomo-monster-order-${uid}`, setCustomMonsterOrder)
-    load(`tomo-npc-order-${uid}`, setCustomNpcOrder)
-  }, [uid])
-
-  function saveCustomOrder(newOrder: string[]) {
-    if (!uid) return
-    setCustomOrder(newOrder)
-    try { localStorage.setItem(`tomo-char-order-${uid}`, JSON.stringify(newOrder)) } catch { }
+  function sheetMatchesSearch(name: string, groupId: string, typeLabels: string[]): boolean {
+    if (!hasSearch) return true
+    const groupName = groupId ? groupNameById.get(groupId) ?? '' : NO_GROUP_LABEL
+    if (matchesText(name, normalizedSearchTerm)) return true
+    if (matchesText(groupName, normalizedSearchTerm)) return true
+    return typeLabels.some((label) => matchesText(label, normalizedSearchTerm))
   }
 
-  function saveCustomMonsterOrder(newOrder: string[]) {
-    if (!uid) return
-    setCustomMonsterOrder(newOrder)
-    try { localStorage.setItem(`tomo-monster-order-${uid}`, JSON.stringify(newOrder)) } catch { }
+  function matchesGroupFilter(groupId: string): boolean {
+    if (groupFilter === 'all') return true
+    if (groupFilter === NO_GROUP_KEY) return !groupId
+    return groupId === groupFilter
   }
 
-  function saveCustomNpcOrder(newOrder: string[]) {
-    if (!uid) return
-    setCustomNpcOrder(newOrder)
-    try { localStorage.setItem(`tomo-npc-order-${uid}`, JSON.stringify(newOrder)) } catch { }
+  function matchesTypeFilter(type: 'character' | 'monster' | 'npc'): boolean {
+    if (typeFilter === 'all') return true
+    return typeFilter === type
   }
 
-  const baseSheets = useMemo(() => {
-    if (!isSearchMode) return sheets
-    return sheets.filter((sheet) => {
-      const name = sheet.data.character.name
+  const filteredCharacters = useMemo(
+    () => sheets.filter((sheet) => {
       const groupId = sheet.data.groupId ?? ''
-      const groupName = groupId ? groupNameById.get(groupId) ?? '' : ''
-      return (
-        matchesTextSearch(name, normalizedSearchTerm) ||
-        matchesTextSearch(groupName, normalizedSearchTerm) ||
-        matchesTypeSearch('pj personagem', normalizedSearchTerm)
-      )
-    })
-  }, [sheets, isSearchMode, normalizedSearchTerm, groupNameById])
+      if (!matchesTypeFilter('character')) return false
+      if (!matchesGroupFilter(groupId)) return false
+      return sheetMatchesSearch(sheet.data.character.name, groupId, ['pj', 'personagem'])
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sheets, typeFilter, groupFilter, normalizedSearchTerm, groupNameById],
+  )
 
-  const baseAllMonsters = useMemo(() => {
-    if (!isSearchMode) return monsters
-    return monsters.filter((monster) => {
-      const name = monster.data.details.name
+  const filteredMonsters = useMemo(
+    () => monsters.filter((monster) => {
       const groupId = monster.data.groupId ?? ''
-      const groupName = groupId ? groupNameById.get(groupId) ?? '' : ''
-      const typeLabel = monster.data.details.kind === 'npc' ? 'npc' : 'monstro monster'
-      return (
-        matchesTextSearch(name, normalizedSearchTerm) ||
-        matchesTextSearch(groupName, normalizedSearchTerm) ||
-        matchesTypeSearch(typeLabel, normalizedSearchTerm)
-      )
-    })
-  }, [monsters, isSearchMode, normalizedSearchTerm, groupNameById])
-
-  const levelOptions = useMemo(
-    () => Array.from(new Set(baseSheets.map(getCharacterTotalLevel))).sort((left, right) => left - right),
-    [baseSheets],
-  )
-
-  const classOptions = useMemo(
-    () => Array.from(new Set(baseSheets.flatMap(getCharacterClassNames))).sort((left, right) => left.localeCompare(right, 'pt-BR')),
-    [baseSheets],
-  )
-
-  const raceOptions = useMemo(
-    () => Array.from(
-      new Set(
-        baseSheets
-          .map((sheet) => sheet.data.character.race.trim())
-          .filter(Boolean),
-      ),
-    ).sort((left, right) => left.localeCompare(right, 'pt-BR')),
-    [baseSheets],
-  )
-
-  const displayedSheets = useMemo(
-    () => baseSheets.filter((sheet) => {
-      if (typeFilter !== 'all' && typeFilter !== 'character') return false
-      if (levelFilter !== 'all' && getCharacterTotalLevel(sheet) !== Number(levelFilter)) return false
-      if (
-        classFilter !== 'all' &&
-        !getCharacterClassNames(sheet).some(
-          (className) => normalizeFilterValue(className) === normalizeFilterValue(classFilter),
-        )
-      ) {
-        return false
-      }
-      if (
-        raceFilter !== 'all' &&
-        normalizeFilterValue(sheet.data.character.race) !== normalizeFilterValue(raceFilter)
-      ) {
-        return false
-      }
-      if (groupFilter !== 'all') {
-        const sheetGroupId = sheet.data.groupId ?? ''
-        if (groupFilter === NO_GROUP_KEY) {
-          if (sheetGroupId) return false
-        } else if (sheetGroupId !== groupFilter) {
-          return false
-        }
-      }
-      return true
+      const kind = monster.data.details.kind === 'npc' ? 'npc' : 'monster'
+      if (!matchesTypeFilter(kind)) return false
+      if (!matchesGroupFilter(groupId)) return false
+      const labels = kind === 'npc' ? ['npc'] : ['monstro', 'monster']
+      return sheetMatchesSearch(monster.data.details.name, groupId, labels)
     }),
-    [baseSheets, classFilter, levelFilter, raceFilter, typeFilter, groupFilter],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [monsters, typeFilter, groupFilter, normalizedSearchTerm, groupNameById],
   )
 
-  const sortedSheets = useMemo(() => {
-    if (sortOrder === 'custom' && customOrder.length > 0) {
-      const orderMap = new Map(customOrder.map((id, i) => [id, i]))
-      return [...displayedSheets].sort((a, b) => {
-        const ai = orderMap.has(a.id) ? (orderMap.get(a.id) as number) : Number.MAX_SAFE_INTEGER
-        const bi = orderMap.has(b.id) ? (orderMap.get(b.id) as number) : Number.MAX_SAFE_INTEGER
-        return ai - bi
-      })
-    }
-    if (sortOrder === 'alpha') {
-      return [...displayedSheets].sort((a, b) =>
-        (a.data.character.name || '').localeCompare(b.data.character.name || '', 'pt-BR'),
-      )
-    }
-    if (sortOrder === 'class') {
-      return [...displayedSheets].sort((a, b) =>
-        (getCharacterClassNames(a)[0] || '').localeCompare(getCharacterClassNames(b)[0] || '', 'pt-BR'),
-      )
-    }
-    if (sortOrder === 'level-desc') {
-      return [...displayedSheets].sort((a, b) => getCharacterTotalLevel(b) - getCharacterTotalLevel(a))
-    }
-    if (sortOrder === 'level-asc') {
-      return [...displayedSheets].sort((a, b) => getCharacterTotalLevel(a) - getCharacterTotalLevel(b))
-    }
-    if (sortOrder === 'race') {
-      return [...displayedSheets].sort((a, b) =>
-        a.data.character.race.localeCompare(b.data.character.race, 'pt-BR'),
-      )
-    }
-    return displayedSheets
-  }, [displayedSheets, sortOrder, customOrder])
-
-  // Usa a lista completa (não filtrada por busca) para as opções de ND
-  const ndOptions = useMemo(() => {
-    const values = Array.from(
-      new Set(
-        monsters
-          .map((m) => m.data.traits.challengeRating.trim())
-          .filter(Boolean),
-      ),
-    )
-    return values.sort((a, b) => parseChallengeRating(a) - parseChallengeRating(b))
-  }, [monsters])
-
-  // Filtra por ND e grupo; a visibilidade por tipo é controlada via showMonsterSection/showNpcSection
-  const displayedAllMonsters = useMemo(
-    () => baseAllMonsters.filter((monster) => {
-      if (ndFilter !== 'all' && monster.data.traits.challengeRating.trim() !== ndFilter) return false
-      if (groupFilter !== 'all') {
-        const monsterGroupId = monster.data.groupId ?? ''
-        if (groupFilter === NO_GROUP_KEY) {
-          if (monsterGroupId) return false
-        } else if (monsterGroupId !== groupFilter) {
-          return false
-        }
-      }
-      return true
-    }),
-    [baseAllMonsters, ndFilter, groupFilter],
-  )
-
-  const displayedMonsters = useMemo(
-    () => displayedAllMonsters.filter((m) => m.data.details.kind !== 'npc'),
-    [displayedAllMonsters],
-  )
-  const displayedNpcs = useMemo(
-    () => displayedAllMonsters.filter((m) => m.data.details.kind === 'npc'),
-    [displayedAllMonsters],
-  )
-
-  const sortedMonsters = useMemo(
-    () => applyMonsterSort(displayedMonsters, monsterSortOrder, customMonsterOrder),
-    [displayedMonsters, monsterSortOrder, customMonsterOrder],
-  )
-  const sortedNpcs = useMemo(
-    () => applyMonsterSort(displayedNpcs, npcSortOrder, customNpcOrder),
-    [displayedNpcs, npcSortOrder, customNpcOrder],
-  )
-
-  type GroupedBuckets = {
-    title: string
+  type GroupedBucket = {
     key: string
+    title: string
     characters: StoredCharacterSheet[]
     monsters: StoredMonsterSheet[]
     npcs: StoredMonsterSheet[]
   }
 
-  const groupedBuckets = useMemo<GroupedBuckets[]>(() => {
-    const buckets = new Map<string, GroupedBuckets>()
+  const groupedBuckets = useMemo<GroupedBucket[]>(() => {
+    const buckets = new Map<string, GroupedBucket>()
 
-    function getBucket(key: string, title: string): GroupedBuckets {
+    function ensureBucket(key: string, title: string): GroupedBucket {
       const existing = buckets.get(key)
       if (existing) return existing
-      const created: GroupedBuckets = {
-        title,
+      const created: GroupedBucket = {
         key,
+        title,
         characters: [],
         monsters: [],
         npcs: [],
@@ -675,163 +307,49 @@ export function CharactersPage() {
       return created
     }
 
-    // Inicializa os buckets para todos os grupos (ordenados pelo hook por nome asc)
-    groups.forEach((group) => getBucket(group.id, group.name))
+    // Apenas cria buckets para mesas que passam o filtro atual
+    if (groupFilter === 'all' || (groupFilter !== NO_GROUP_KEY && groupFilter !== 'all')) {
+      groups.forEach((group) => {
+        if (groupFilter !== 'all' && groupFilter !== group.id) return
+        ensureBucket(group.id, group.name)
+      })
+    }
 
-    sortedSheets.forEach((sheet) => {
+    filteredCharacters.forEach((sheet) => {
       const id = sheet.data.groupId ?? ''
-      const title = id ? groupNameById.get(id) ?? 'Sem grupo' : 'Sem grupo'
       const key = id && groupNameById.has(id) ? id : NO_GROUP_KEY
-      getBucket(key, key === NO_GROUP_KEY ? 'Sem grupo' : title).characters.push(sheet)
+      const title = key === NO_GROUP_KEY ? NO_GROUP_LABEL : groupNameById.get(key) ?? NO_GROUP_LABEL
+      ensureBucket(key, title).characters.push(sheet)
     })
 
-    sortedMonsters.forEach((monster) => {
+    filteredMonsters.forEach((monster) => {
       const id = monster.data.groupId ?? ''
-      const title = id ? groupNameById.get(id) ?? 'Sem grupo' : 'Sem grupo'
       const key = id && groupNameById.has(id) ? id : NO_GROUP_KEY
-      getBucket(key, key === NO_GROUP_KEY ? 'Sem grupo' : title).monsters.push(monster)
+      const title = key === NO_GROUP_KEY ? NO_GROUP_LABEL : groupNameById.get(key) ?? NO_GROUP_LABEL
+      const bucket = ensureBucket(key, title)
+      if (monster.data.details.kind === 'npc') {
+        bucket.npcs.push(monster)
+      } else {
+        bucket.monsters.push(monster)
+      }
     })
 
-    sortedNpcs.forEach((npc) => {
-      const id = npc.data.groupId ?? ''
-      const title = id ? groupNameById.get(id) ?? 'Sem grupo' : 'Sem grupo'
-      const key = id && groupNameById.has(id) ? id : NO_GROUP_KEY
-      getBucket(key, key === NO_GROUP_KEY ? 'Sem grupo' : title).npcs.push(npc)
-    })
-
+    // Sem mesa vai por último (a não ser que seja o único filtro)
     const noGroupBucket = buckets.get(NO_GROUP_KEY)
     buckets.delete(NO_GROUP_KEY)
     const ordered = Array.from(buckets.values())
     if (noGroupBucket) ordered.push(noGroupBucket)
     return ordered
-  }, [groups, groupNameById, sortedSheets, sortedMonsters, sortedNpcs])
+  }, [groups, groupNameById, groupFilter, filteredCharacters, filteredMonsters])
 
-  const loadingSheets = isLoadingSheets
-  const loadingMonsters = isLoadingMonsters
-  const skeletonCount = isSearchMode ? 2 : 3
+  const isFiltered = hasSearch || typeFilter !== 'all' || groupFilter !== 'all'
   const loadError = sheetsError ?? monstersError
+  const isLoading = isLoadingSheets || isLoadingMonsters
+  const skeletonCount = hasSearch ? 2 : 3
 
-  const hasActiveFilters =
-    typeFilter !== 'all' || levelFilter !== 'all' || classFilter !== 'all' ||
-    raceFilter !== 'all' || ndFilter !== 'all' || groupFilter !== 'all'
-  const activeFilterCount = [
-    typeFilter, levelFilter, classFilter, raceFilter, ndFilter, groupFilter,
-  ].filter((value) => value !== 'all').length
-
-  // Visibilidade das seções por tipo e por resultado de busca/filtro
-  const isFiltered = isSearchMode || hasActiveFilters
-  const showCharSection = typeFilter === 'all' || typeFilter === 'character'
-  const showMonsterSection =
-    (typeFilter === 'all' || typeFilter === 'monster') &&
-    (!isFiltered || loadingMonsters || displayedMonsters.length > 0)
-  const showNpcSection =
-    (typeFilter === 'all' || typeFilter === 'npc') &&
-    (!isFiltered || loadingMonsters || displayedNpcs.length > 0)
-
-  function handleCharacterDragStart(id: string) {
-    setDragSourceId(id)
-  }
-
-  function handleCharacterDragOver(id: string, e: React.DragEvent) {
-    e.preventDefault()
-    setDragOverId(id)
-  }
-
-  function handleCharacterDrop(targetId: string) {
-    if (!dragSourceId || dragSourceId === targetId) {
-      setDragSourceId(null)
-      setDragOverId(null)
-      return
-    }
-    const currentIds = sortedSheets.map((s) => s.id)
-    const fromIdx = currentIds.indexOf(dragSourceId)
-    const toIdx = currentIds.indexOf(targetId)
-    if (fromIdx === -1 || toIdx === -1) return
-
-    const newOrder = [...currentIds]
-    newOrder.splice(fromIdx, 1)
-    newOrder.splice(toIdx, 0, dragSourceId)
-
-    setSortOrder('custom')
-    saveCustomOrder(newOrder)
-    setDragSourceId(null)
-    setDragOverId(null)
-  }
-
-  function handleCharacterDragEnd() {
-    setDragSourceId(null)
-    setDragOverId(null)
-  }
-
-  function handleMonsterDragStart(id: string) {
-    setMonsterDragSourceId(id)
-  }
-
-  function handleMonsterDragOver(id: string, e: React.DragEvent) {
-    e.preventDefault()
-    setMonsterDragOverId(id)
-  }
-
-  function handleMonsterDrop(targetId: string) {
-    if (!monsterDragSourceId || monsterDragSourceId === targetId) {
-      setMonsterDragSourceId(null)
-      setMonsterDragOverId(null)
-      return
-    }
-    const currentIds = sortedMonsters.map((m) => m.id)
-    const fromIdx = currentIds.indexOf(monsterDragSourceId)
-    const toIdx = currentIds.indexOf(targetId)
-    if (fromIdx === -1 || toIdx === -1) return
-
-    const newOrder = [...currentIds]
-    newOrder.splice(fromIdx, 1)
-    newOrder.splice(toIdx, 0, monsterDragSourceId)
-
-    setMonsterSortOrder('custom')
-    saveCustomMonsterOrder(newOrder)
-    setMonsterDragSourceId(null)
-    setMonsterDragOverId(null)
-  }
-
-  function handleMonsterDragEnd() {
-    setMonsterDragSourceId(null)
-    setMonsterDragOverId(null)
-  }
-
-  function handleNpcDragStart(id: string) {
-    setNpcDragSourceId(id)
-  }
-
-  function handleNpcDragOver(id: string, e: React.DragEvent) {
-    e.preventDefault()
-    setNpcDragOverId(id)
-  }
-
-  function handleNpcDrop(targetId: string) {
-    if (!npcDragSourceId || npcDragSourceId === targetId) {
-      setNpcDragSourceId(null)
-      setNpcDragOverId(null)
-      return
-    }
-    const currentIds = sortedNpcs.map((n) => n.id)
-    const fromIdx = currentIds.indexOf(npcDragSourceId)
-    const toIdx = currentIds.indexOf(targetId)
-    if (fromIdx === -1 || toIdx === -1) return
-
-    const newOrder = [...currentIds]
-    newOrder.splice(fromIdx, 1)
-    newOrder.splice(toIdx, 0, npcDragSourceId)
-
-    setNpcSortOrder('custom')
-    saveCustomNpcOrder(newOrder)
-    setNpcDragSourceId(null)
-    setNpcDragOverId(null)
-  }
-
-  function handleNpcDragEnd() {
-    setNpcDragSourceId(null)
-    setNpcDragOverId(null)
-  }
+  const visibleBuckets = groupedBuckets.filter(
+    (bucket) => bucket.characters.length + bucket.monsters.length + bucket.npcs.length > 0,
+  )
 
   async function handleCreateCharacter() {
     if (!uid || isCreatingCharacter) return
@@ -963,87 +481,6 @@ export function CharactersPage() {
     return `Nenhum ${labelLow} foi importado.`
   }
 
-  function clearFilters() {
-    setTypeFilter('all')
-    setLevelFilter('all')
-    setClassFilter('all')
-    setRaceFilter('all')
-    setNdFilter('all')
-    setGroupFilter('all')
-  }
-
-  function getActiveFilterKeys(): FilterFieldKey[] {
-    const keys: FilterFieldKey[] = []
-
-    if (typeFilter !== 'all') keys.push('type')
-    if (groupFilter !== 'all') keys.push('group')
-    if (levelFilter !== 'all') keys.push('level')
-    if (classFilter !== 'all') keys.push('class')
-    if (raceFilter !== 'all') keys.push('race')
-    if (ndFilter !== 'all') keys.push('nd')
-
-    return keys
-  }
-
-  function clearDraftFilterValue(key: FilterFieldKey) {
-    if (key === 'type') setDraftTypeFilter('all')
-    if (key === 'level') setDraftLevelFilter('all')
-    if (key === 'class') setDraftClassFilter('all')
-    if (key === 'race') setDraftRaceFilter('all')
-    if (key === 'nd') setDraftNdFilter('all')
-    if (key === 'group') setDraftGroupFilter('all')
-  }
-
-  function syncDraftFilters() {
-    setDraftTypeFilter(typeFilter)
-    setDraftLevelFilter(levelFilter)
-    setDraftClassFilter(classFilter)
-    setDraftRaceFilter(raceFilter)
-    setDraftNdFilter(ndFilter)
-    setDraftGroupFilter(groupFilter)
-    setDraftVisibleFilters(getActiveFilterKeys())
-  }
-
-  function openFilterModal() {
-    syncDraftFilters()
-    setIsFilterModalOpen(true)
-  }
-
-  function closeFilterModal() {
-    setIsFilterModalOpen(false)
-  }
-
-  function applyDraftFilters() {
-    setTypeFilter(draftVisibleFilters.includes('type') ? draftTypeFilter : 'all')
-    setLevelFilter(draftVisibleFilters.includes('level') ? draftLevelFilter : 'all')
-    setClassFilter(draftVisibleFilters.includes('class') ? draftClassFilter : 'all')
-    setRaceFilter(draftVisibleFilters.includes('race') ? draftRaceFilter : 'all')
-    setNdFilter(draftVisibleFilters.includes('nd') ? draftNdFilter : 'all')
-    setGroupFilter(draftVisibleFilters.includes('group') ? draftGroupFilter : 'all')
-    setIsFilterModalOpen(false)
-  }
-
-  function clearDraftFilters() {
-    setDraftTypeFilter('all')
-    setDraftLevelFilter('all')
-    setDraftClassFilter('all')
-    setDraftRaceFilter('all')
-    setDraftNdFilter('all')
-    setDraftGroupFilter('all')
-    setDraftVisibleFilters([])
-  }
-
-  function toggleDraftVisibleFilter(key: FilterFieldKey) {
-    setDraftVisibleFilters((previous) => {
-      if (previous.includes(key)) {
-        clearDraftFilterValue(key)
-        return previous.filter((currentKey) => currentKey !== key)
-      }
-
-      return [...previous, key]
-    })
-  }
-
   if (loadError) {
     return (
       <div className={styles.page}>
@@ -1051,13 +488,44 @@ export function CharactersPage() {
           <p className={styles.errorMessage}>Erro ao carregar fichas. Verifique sua conexão.</p>
           <button
             type="button"
-            className={styles.importButton}
+            className={styles.tertiaryAction}
             onClick={() => window.location.reload()}
           >
             Tentar novamente
           </button>
         </div>
       </div>
+    )
+  }
+
+  function renderBucketContent(bucket: GroupedBucket) {
+    return (
+      <ul className={styles.sheetList}>
+        {bucket.characters.map((sheet) => (
+          <CharacterSheetItem
+            key={`char-${sheet.id}`}
+            sheet={sheet}
+            onExport={() => handleExportSheet(sheet)}
+            onDelete={() => requestDeleteSheet(sheet.id, sheet.data.character.name)}
+          />
+        ))}
+        {bucket.monsters.map((monster) => (
+          <MonsterSheetItem
+            key={`mon-${monster.id}`}
+            sheet={monster}
+            onExport={() => handleExportMonster(monster)}
+            onDelete={() => requestDeleteMonster(monster.id, monster.data.details.name)}
+          />
+        ))}
+        {bucket.npcs.map((npc) => (
+          <MonsterSheetItem
+            key={`npc-${npc.id}`}
+            sheet={npc}
+            onExport={() => handleExportMonster(npc)}
+            onDelete={() => requestDeleteMonster(npc.id, npc.data.details.name)}
+          />
+        ))}
+      </ul>
     )
   }
 
@@ -1077,18 +545,18 @@ export function CharactersPage() {
           <div className={styles.createActions}>
             <button
               type="button"
-              className={styles.createSecondary}
+              className={styles.tertiaryAction}
               onClick={handleImportClick}
             >
               ↑ Importar PJ
             </button>
             <button
               type="button"
-              className={styles.createPrimary}
-              onClick={handleCreateCharacter}
-              disabled={isCreatingCharacter}
+              className={styles.tertiaryAction}
+              onClick={() => setShowGroupManager(true)}
+              disabled={isLoadingGroups}
             >
-              {isCreatingCharacter ? 'Criando...' : '+ Novo PJ'}
+              Gerenciar mesas
             </button>
             <button
               type="button"
@@ -1097,6 +565,14 @@ export function CharactersPage() {
               disabled={isCreatingMonster}
             >
               {isCreatingMonster ? 'Criando...' : '+ Monstro / NPC'}
+            </button>
+            <button
+              type="button"
+              className={styles.createPrimary}
+              onClick={handleCreateCharacter}
+              disabled={isCreatingCharacter}
+            >
+              {isCreatingCharacter ? 'Criando...' : '+ Novo PJ'}
             </button>
           </div>
         </div>
@@ -1108,7 +584,7 @@ export function CharactersPage() {
           <input
             type="search"
             className={styles.searchInput}
-            placeholder="Buscar por nome..."
+            placeholder="Buscar por nome, mesa ou tipo..."
             value={searchTerm}
             onChange={handleSearchTermChange}
             aria-label="Buscar fichas"
@@ -1125,112 +601,42 @@ export function CharactersPage() {
           )}
         </div>
 
-        <div className={styles.headerTools}>
-          <button
-            type="button"
-            className={styles.filterButton}
-            onClick={() => setViewMode((mode) => (mode === 'grouped' ? 'flat' : 'grouped'))}
-            aria-pressed={viewMode === 'grouped'}
-          >
-            {viewMode === 'grouped' ? 'Ver lista' : 'Agrupar por grupo'}
-          </button>
-          <button
-            type="button"
-            className={styles.filterButton}
-            onClick={() => setShowGroupManager(true)}
-            disabled={isLoadingGroups}
-          >
-            Gerenciar grupos
-          </button>
-          <button
-            type="button"
-            className={styles.filterButton}
-            onClick={openFilterModal}
-            aria-haspopup="dialog"
-            aria-expanded={isFilterModalOpen}
-          >
-            Filtrar{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-          </button>
-        </div>
+        <div className={styles.inlineFilters}>
+          <label className={styles.inlineFilter}>
+            <span className={styles.inlineFilterLabel}>Mesa</span>
+            <select
+              className={styles.inlineFilterSelect}
+              value={groupFilter}
+              onChange={(event) => setGroupFilter(event.target.value)}
+              disabled={isLoadingGroups}
+            >
+              <option value="all">Todas</option>
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                </option>
+              ))}
+              <option value={NO_GROUP_KEY}>{NO_GROUP_LABEL}</option>
+            </select>
+          </label>
 
+          <label className={styles.inlineFilter}>
+            <span className={styles.inlineFilterLabel}>Tipo</span>
+            <select
+              className={styles.inlineFilterSelect}
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value as SheetTypeFilter)}
+            >
+              <option value="all">Todos</option>
+              <option value="character">PJ</option>
+              <option value="npc">NPC</option>
+              <option value="monster">Monstro</option>
+            </select>
+          </label>
+        </div>
       </header>
 
-      {viewMode === 'flat' && showCharSection && (
-        <SheetSection
-          title="PJs"
-          items={sortedSheets}
-          loading={loadingSheets}
-          skeletonCount={skeletonCount}
-          renderItem={(sheet) => (
-            <CharacterSheetItem
-              key={sheet.id}
-              sheet={sheet}
-              onExport={() => handleExportSheet(sheet)}
-              onDelete={() => requestDeleteSheet(sheet.id, sheet.data.character.name)}
-              isDraggable={!isSearchMode}
-              isDragging={dragSourceId === sheet.id}
-              isDragOver={dragOverId === sheet.id}
-              onDragStart={!isSearchMode ? () => handleCharacterDragStart(sheet.id) : undefined}
-              onDragOver={!isSearchMode ? (e) => handleCharacterDragOver(sheet.id, e) : undefined}
-              onDrop={!isSearchMode ? () => handleCharacterDrop(sheet.id) : undefined}
-              onDragEnd={!isSearchMode ? handleCharacterDragEnd : undefined}
-            />
-          )}
-          emptyMessage={isFiltered ? 'Nenhuma ficha encontrada.' : 'Nenhum PJ encontrado.'}
-        />
-      )}
-
-      {viewMode === 'flat' && showMonsterSection && (
-        <SheetSection
-          title="Monstros"
-          items={sortedMonsters}
-          loading={loadingMonsters}
-          skeletonCount={skeletonCount}
-          renderItem={(monster) => (
-            <MonsterSheetItem
-              key={monster.id}
-              sheet={monster}
-              onExport={() => handleExportMonster(monster)}
-              onDelete={() => requestDeleteMonster(monster.id, monster.data.details.name)}
-              isDraggable={!isSearchMode}
-              isDragging={monsterDragSourceId === monster.id}
-              isDragOver={monsterDragOverId === monster.id}
-              onDragStart={!isSearchMode ? () => handleMonsterDragStart(monster.id) : undefined}
-              onDragOver={!isSearchMode ? (e) => handleMonsterDragOver(monster.id, e) : undefined}
-              onDrop={!isSearchMode ? () => handleMonsterDrop(monster.id) : undefined}
-              onDragEnd={!isSearchMode ? handleMonsterDragEnd : undefined}
-            />
-          )}
-          emptyMessage="Nenhum monstro encontrado."
-        />
-      )}
-
-      {viewMode === 'flat' && showNpcSection && (
-        <SheetSection
-          title="NPCs"
-          items={sortedNpcs}
-          loading={loadingMonsters}
-          skeletonCount={skeletonCount}
-          renderItem={(npc) => (
-            <MonsterSheetItem
-              key={npc.id}
-              sheet={npc}
-              onExport={() => handleExportMonster(npc)}
-              onDelete={() => requestDeleteMonster(npc.id, npc.data.details.name)}
-              isDraggable={!isSearchMode}
-              isDragging={npcDragSourceId === npc.id}
-              isDragOver={npcDragOverId === npc.id}
-              onDragStart={!isSearchMode ? () => handleNpcDragStart(npc.id) : undefined}
-              onDragOver={!isSearchMode ? (e) => handleNpcDragOver(npc.id, e) : undefined}
-              onDrop={!isSearchMode ? () => handleNpcDrop(npc.id) : undefined}
-              onDragEnd={!isSearchMode ? handleNpcDragEnd : undefined}
-            />
-          )}
-          emptyMessage="Nenhum NPC encontrado."
-        />
-      )}
-
-      {viewMode === 'grouped' && (loadingSheets || loadingMonsters) && (
+      {isLoading && (
         <SheetSection
           title="Carregando"
           items={[]}
@@ -1241,52 +647,22 @@ export function CharactersPage() {
         />
       )}
 
-      {viewMode === 'grouped' && !loadingSheets && !loadingMonsters && (
-        groupedBuckets.filter((bucket) =>
-          bucket.characters.length + bucket.monsters.length + bucket.npcs.length > 0,
-        ).length === 0 ? (
-          <p className={styles.emptySection}>Nenhuma ficha encontrada.</p>
-        ) : (
-          groupedBuckets
-            .filter((bucket) =>
-              bucket.characters.length + bucket.monsters.length + bucket.npcs.length > 0 ||
-              bucket.key !== NO_GROUP_KEY,
-            )
-            .map((bucket) => (
-              <SheetSection
-                key={bucket.key}
-                title={bucket.title}
-                items={[...bucket.characters, ...bucket.monsters, ...bucket.npcs]}
-                loading={false}
-                skeletonCount={1}
-                renderItem={(item) => {
-                  const anyItem = item as StoredCharacterSheet | StoredMonsterSheet
-                  if ('character' in anyItem.data) {
-                    const sheetItem = anyItem as StoredCharacterSheet
-                    return (
-                      <CharacterSheetItem
-                        key={sheetItem.id}
-                        sheet={sheetItem}
-                        onExport={() => handleExportSheet(sheetItem)}
-                        onDelete={() => requestDeleteSheet(sheetItem.id, sheetItem.data.character.name)}
-                      />
-                    )
-                  }
-                  const monsterItem = anyItem as StoredMonsterSheet
-                  return (
-                    <MonsterSheetItem
-                      key={monsterItem.id}
-                      sheet={monsterItem}
-                      onExport={() => handleExportMonster(monsterItem)}
-                      onDelete={() => requestDeleteMonster(monsterItem.id, monsterItem.data.details.name)}
-                    />
-                  )
-                }}
-                emptyMessage="Nenhuma ficha neste grupo."
-              />
-            ))
-        )
+      {!isLoading && visibleBuckets.length === 0 && (
+        <p className={styles.emptySection}>
+          {isFiltered
+            ? 'Nenhuma ficha encontrada com os filtros atuais.'
+            : 'Nenhuma ficha por aqui ainda. Crie um PJ ou um Monstro/NPC para começar.'}
+        </p>
       )}
+
+      {!isLoading && visibleBuckets.map((bucket) => (
+        <section key={bucket.key} className={styles.collectionSection}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>{bucket.title}</h2>
+          </div>
+          {renderBucketContent(bucket)}
+        </section>
+      ))}
 
       {importFeedback && (
         <p
@@ -1298,148 +674,6 @@ export function CharactersPage() {
         >
           {feedbackMessage(importFeedback)}
         </p>
-      )}
-
-      {isFilterModalOpen && (
-        <div className={styles.dialogOverlay} onClick={closeFilterModal}>
-          <div
-            className={styles.filterDialog}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="filters-dialog-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className={styles.filterDialogHeader}>
-              <div>
-                <p className={styles.filterDialogEyebrow}>Refinar lista</p>
-                <h2 id="filters-dialog-title" className={styles.filterDialogTitle}>Filtros</h2>
-              </div>
-              <button
-                type="button"
-                className={styles.filterDialogClose}
-                onClick={closeFilterModal}
-                aria-label="Fechar filtros"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className={styles.filterPicker}>
-              <p className={styles.filterPickerLabel}>Escolha quais critérios entrarão no combo</p>
-              <div className={styles.filterPickerChips}>
-                {FILTER_FIELD_OPTIONS.map((option) => (
-                  <button
-                    key={option.key}
-                    type="button"
-                    className={`${styles.filterPickerChip} ${draftVisibleFilters.includes(option.key) ? styles.filterPickerChipActive : ''}`}
-                    onClick={() => toggleDraftVisibleFilter(option.key)}
-                    aria-pressed={draftVisibleFilters.includes(option.key)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {draftVisibleFilters.length > 0 ? (
-              <div className={styles.filterGrid}>
-                {draftVisibleFilters.includes('type') && (
-                  <label className={styles.filterField}>
-                    <span>Tipo</span>
-                    <select value={draftTypeFilter} onChange={(event) => setDraftTypeFilter(event.target.value as SheetFilterType)}>
-                      <option value="all">Todos</option>
-                      <option value="character">PJ</option>
-                      <option value="monster">Monstro</option>
-                      <option value="npc">NPC</option>
-                    </select>
-                  </label>
-                )}
-
-                {draftVisibleFilters.includes('group') && (
-                  <label className={styles.filterField}>
-                    <span>Grupo</span>
-                    <select value={draftGroupFilter} onChange={(event) => setDraftGroupFilter(event.target.value)}>
-                      <option value="all">Todos</option>
-                      <option value={NO_GROUP_KEY}>Sem grupo</option>
-                      {groups.map((group) => (
-                        <option key={group.id} value={group.id}>
-                          {group.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-
-                {draftVisibleFilters.includes('level') && (
-                  <label className={styles.filterField}>
-                    <span>Nível</span>
-                    <select value={draftLevelFilter} onChange={(event) => setDraftLevelFilter(event.target.value)}>
-                      <option value="all">Todos</option>
-                      {levelOptions.map((level) => (
-                        <option key={level} value={String(level)}>
-                          Nível {level}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-
-                {draftVisibleFilters.includes('class') && (
-                  <label className={styles.filterField}>
-                    <span>Classe</span>
-                    <select value={draftClassFilter} onChange={(event) => setDraftClassFilter(event.target.value)}>
-                      <option value="all">Todas</option>
-                      {classOptions.map((className) => (
-                        <option key={className} value={className}>
-                          {className}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-
-                {draftVisibleFilters.includes('race') && (
-                  <label className={styles.filterField}>
-                    <span>Raça/Linhagem</span>
-                    <select value={draftRaceFilter} onChange={(event) => setDraftRaceFilter(event.target.value)}>
-                      <option value="all">Todas</option>
-                      {raceOptions.map((race) => (
-                        <option key={race} value={race}>
-                          {race}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-
-                {draftVisibleFilters.includes('nd') && (
-                  <label className={styles.filterField}>
-                    <span>ND</span>
-                    <select value={draftNdFilter} onChange={(event) => setDraftNdFilter(event.target.value)}>
-                      <option value="all">Todos</option>
-                      {ndOptions.map((nd) => (
-                        <option key={nd} value={nd}>
-                          {nd}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              </div>
-            ) : (
-              <p className={styles.filterHint}>Nenhum critério selecionado ainda. Escolha acima os filtros que deseja usar.</p>
-            )}
-
-            <div className={styles.filterDialogActions}>
-              <button type="button" className={styles.createSecondary} onClick={clearDraftFilters}>
-                Limpar seleção
-              </button>
-              <button type="button" className={styles.createPrimary} onClick={applyDraftFilters}>
-                Aplicar filtros
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {showGroupManager && uid && (
@@ -1462,12 +696,12 @@ export function CharactersPage() {
               Excluir "{pendingDelete.name || '(sem nome)'}" permanentemente?
             </p>
             <div className={styles.dialogActions}>
-              <button type="button" className={styles.deleteButton} onClick={confirmDelete}>
+              <button type="button" className={styles.confirmDangerBtn} onClick={confirmDelete}>
                 Confirmar exclusão
               </button>
               <button
                 type="button"
-                className={styles.importButton}
+                className={styles.tertiaryAction}
                 onClick={() => setPendingDelete(null)}
               >
                 Cancelar

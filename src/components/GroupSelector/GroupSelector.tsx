@@ -47,7 +47,7 @@ export function GroupSelector({
         disabled={disabled || loading}
         aria-label={label}
       >
-        <option value="">Sem mesa</option>
+        <option value="">Personagem Independente</option>
         {groups.map((group) => (
           <option key={group.id} value={group.id}>
             {group.name}
