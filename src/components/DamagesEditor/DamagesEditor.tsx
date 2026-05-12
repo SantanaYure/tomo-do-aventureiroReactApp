@@ -30,30 +30,32 @@ export function DamagesEditor({ damages, onChange }: DamagesEditorProps) {
         <div className={styles.partList}>
           {damages.map((part, i) => (
             <div key={i} className={styles.partRow}>
-              <input
-                type="text"
-                className={styles.diceInput}
-                value={part.dice}
-                placeholder="2d6"
-                aria-label={`Dado do dano ${i + 1}`}
-                onChange={(e) => setPart(i, { dice: e.target.value })}
-              />
-              <input
-                type="text"
-                className={styles.typeInput}
-                value={part.type}
-                placeholder="Cortante"
-                aria-label={`Tipo do dano ${i + 1}`}
-                onChange={(e) => setPart(i, { type: e.target.value })}
-              />
-              <input
-                type="text"
-                className={styles.bonusInput}
-                value={part.bonus}
-                placeholder="+4"
-                aria-label={`Bônus do dano ${i + 1}`}
-                onChange={(e) => setPart(i, { bonus: e.target.value })}
-              />
+              <div className={styles.partFields}>
+                <input
+                  type="text"
+                  className={styles.diceInput}
+                  value={part.dice}
+                  placeholder="2d6"
+                  aria-label={`Dado do dano ${i + 1}`}
+                  onChange={(e) => setPart(i, { dice: e.target.value })}
+                />
+                <input
+                  type="text"
+                  className={styles.typeInput}
+                  value={part.type}
+                  placeholder="Cortante"
+                  aria-label={`Tipo do dano ${i + 1}`}
+                  onChange={(e) => setPart(i, { type: e.target.value })}
+                />
+                <input
+                  type="text"
+                  className={styles.bonusInput}
+                  value={part.bonus}
+                  placeholder="+4"
+                  aria-label={`Bônus do dano ${i + 1}`}
+                  onChange={(e) => setPart(i, { bonus: e.target.value })}
+                />
+              </div>
               <button
                 type="button"
                 className={`${panelStyles.removeButton} ${styles.removeBtn}`}

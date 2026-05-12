@@ -216,16 +216,6 @@ export function AttacksPanel({
                       </td>
                       <td className={styles.actionTd} data-label="Ações">
                         <div className={styles.rowActions}>
-                          {isEditMode && (
-                            <button
-                              type="button"
-                              className={panelStyles.removeButton}
-                              aria-label={`Remover ataque ${attack.name || i + 1}`}
-                              onClick={() => removeAttack(i)}
-                            >
-                              ✕
-                            </button>
-                          )}
                           {(isEditMode || hasViewDetail) && (
                             <button
                               type="button"
@@ -235,6 +225,16 @@ export function AttacksPanel({
                               aria-label={isExpanded ? 'Recolher detalhes' : 'Expandir detalhes'}
                             >
                               {isExpanded ? '▾' : '▸'}
+                            </button>
+                          )}
+                          {isEditMode && (
+                            <button
+                              type="button"
+                              className={panelStyles.removeButton}
+                              aria-label={`Remover ataque ${attack.name || i + 1}`}
+                              onClick={() => removeAttack(i)}
+                            >
+                              ✕
                             </button>
                           )}
                         </div>

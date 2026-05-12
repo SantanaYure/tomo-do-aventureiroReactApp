@@ -1,6 +1,7 @@
 .editor {
   display: grid;
   gap: var(--space-2);
+  min-width: 0;
 }
 
 .partList {
@@ -10,9 +11,16 @@
 
 .partRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2);
-  flex-wrap: nowrap;
+}
+
+.partFields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
 }
 
 .diceInput {
@@ -34,6 +42,7 @@
 
 .removeBtn {
   flex-shrink: 0;
+  align-self: flex-start;
   width: 2rem;
   height: 2rem;
   padding: 0;
@@ -47,10 +56,9 @@
 }
 
 @media (max-width: 480px) {
-  .partRow {
+  .partFields {
     display: grid;
-    grid-template-columns: 5rem 1fr 4rem 2rem;
-    align-items: center;
+    grid-template-columns: 5rem 1fr 4rem;
   }
 
   .diceInput,
