@@ -12,6 +12,7 @@ import { MonsterCombatSummary } from '../../components/monster/MonsterCombatSumm
 import type { DeepPartial } from '../../components/monster/shared'
 import {
   saveMonsterSheet,
+  deleteMonsterSheet,
   exportMonsterSheetAsJSON,
   type StoredMonsterSheet,
 } from '../../store/monsterSheetStore'
@@ -123,6 +124,8 @@ export function MonsterSheetPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [isAtBottom, setIsAtBottom] = useState(false)
   const [restFeedback, setRestFeedback] = useState<string | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -239,6 +242,27 @@ export function MonsterSheetPage() {
 
   function handleToggleEditMode() {
     setIsEditing((previous) => !previous)
+  }
+
+  function handleRequestDelete() {
+    setShowDeleteDialog(true)
+  }
+
+  async function handleConfirmDelete() {
+    if (!uid || !id || isDeleting) return
+    setIsDeleting(true)
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    try {
+      await deleteMonsterSheet(uid, id)
+      setShowDeleteDialog(false)
+      navigate('/')
+    } catch (deleteError) {
+      console.error('Erro ao excluir ficha:', deleteError)
+      setIsDeleting(false)
+    }
   }
 
   function handleTabChange(tab: Tab) {
@@ -358,14 +382,24 @@ export function MonsterSheetPage() {
     <div className={styles.page} data-saving-status={savingStatus}>
       <div className={styles.topBar}>
         <Link className={styles.backLink} to="/">← Voltar</Link>
-        <button
-          type="button"
-          className={styles.exportBtn}
-          onClick={handleExport}
-          disabled={!sheet}
-        >
-          {sheet?.details.kind === 'npc' ? 'Exportar NPC' : 'Exportar Monstro'}
-        </button>
+        <div className={styles.topBarRight}>
+          <button
+            type="button"
+            className={styles.exportBtn}
+            onClick={handleExport}
+            disabled={!sheet}
+          >
+            {sheet?.details.kind === 'npc' ? 'Exportar NPC' : 'Exportar Monstro'}
+          </button>
+          <button
+            type="button"
+            className={styles.deleteBtn}
+            onClick={handleRequestDelete}
+            disabled={!sheet || isDeleting}
+          >
+            {sheet?.details.kind === 'npc' ? 'Excluir NPC' : 'Excluir Monstro'}
+          </button>
+        </div>
       </div>
 
       <div ref={tabBarRef} className={styles.tabBarShell}>
@@ -423,6 +457,44 @@ export function MonsterSheetPage() {
       </div>
 
       <div className={styles.editToggleSentinel} ref={sentinelRef} />
+
+      {showDeleteDialog && (
+        <div
+          className={styles.dialogOverlay}
+          onClick={() => { if (!isDeleting) setShowDeleteDialog(false) }}
+          role="presentation"
+        >
+          <div
+            className={styles.dialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-monster-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p id="delete-monster-title" className={styles.dialogTitle}>
+              Tem certeza que deseja excluir esta ficha? Essa ação não pode ser desfeita.
+            </p>
+            <div className={styles.dialogActions}>
+              <button
+                type="button"
+                className={styles.confirmDeleteBtn}
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Excluindo...' : 'Confirmar exclusão'}
+              </button>
+              <button
+                type="button"
+                className={styles.cancelDeleteBtn}
+                onClick={() => setShowDeleteDialog(false)}
+                disabled={isDeleting}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

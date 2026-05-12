@@ -6,6 +6,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import type { CharacterSheet } from '../../types/system/dnd'
 import {
   saveCharacterSheet,
+  deleteCharacterSheet,
   exportCharacterSheetAsJSON,
   type StoredCharacterSheet,
 } from '../../store/characterSheetStore'
@@ -98,6 +99,8 @@ export function CharacterSheetPage() {
   const [isAtBottom, setIsAtBottom] = useState(false)
   const [restFeedback, setRestFeedback] = useState<string | null>(null)
   const [showShortRestModal, setShowShortRestModal] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -185,6 +188,27 @@ export function CharacterSheetPage() {
   function handleToggleEditMode() {
     if (!sheet) return
     handleUpdate({ ...sheet, isEditMode: !sheet.isEditMode })
+  }
+
+  function handleRequestDelete() {
+    setShowDeleteDialog(true)
+  }
+
+  async function handleConfirmDelete() {
+    if (!uid || !id || isDeleting) return
+    setIsDeleting(true)
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    try {
+      await deleteCharacterSheet(uid, id)
+      setShowDeleteDialog(false)
+      navigate('/')
+    } catch (deleteError) {
+      console.error('Erro ao excluir ficha:', deleteError)
+      setIsDeleting(false)
+    }
   }
 
   function handleTabChange(tab: Tab) {
@@ -426,6 +450,14 @@ export function CharacterSheetPage() {
           >
             Exportar PJ
           </button>
+          <button
+            type="button"
+            className={styles.deleteBtn}
+            onClick={handleRequestDelete}
+            disabled={!sheet || isDeleting}
+          >
+            Excluir PJ
+          </button>
           {savingStatus !== 'idle' && (
             <span className={styles.savingIndicator} data-status={savingStatus}>
               {savingStatus === 'saving' && 'Salvando...'}
@@ -492,6 +524,44 @@ export function CharacterSheetPage() {
         </div>
       </div>
       <div className={styles.editToggleSentinel} ref={sentinelRef} />
+
+      {showDeleteDialog && (
+        <div
+          className={styles.dialogOverlay}
+          onClick={() => { if (!isDeleting) setShowDeleteDialog(false) }}
+          role="presentation"
+        >
+          <div
+            className={styles.dialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-sheet-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p id="delete-sheet-title" className={styles.dialogTitle}>
+              Tem certeza que deseja excluir esta ficha? Essa ação não pode ser desfeita.
+            </p>
+            <div className={styles.dialogActions}>
+              <button
+                type="button"
+                className={styles.confirmDeleteBtn}
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Excluindo...' : 'Confirmar exclusão'}
+              </button>
+              <button
+                type="button"
+                className={styles.cancelDeleteBtn}
+                onClick={() => setShowDeleteDialog(false)}
+                disabled={isDeleting}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
