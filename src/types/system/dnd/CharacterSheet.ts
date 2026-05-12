@@ -17,4 +17,5 @@ export interface CharacterSheet {
   attacks: Attack[]
   combatNotes: string
   isEditMode: boolean
+  groupId?: string
 }

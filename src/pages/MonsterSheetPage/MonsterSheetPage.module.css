@@ -7,10 +7,110 @@
 
 .topBar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
+    gap: var(--space-2);
     margin-bottom: var(--space-4);
+}
+
+.topBarCenter {
+    flex: 1 1 auto;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+}
+
+.topBarActions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
+}
+
+.moreMenuContainer {
+    position: relative;
+}
+
+.moreBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    background: var(--parchment-light);
+    color: var(--ink-muted);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.moreBtn:hover {
+    color: var(--accent);
+    border-color: var(--border);
+    background: var(--parchment-dark);
+}
+
+.moreBtn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.moreMenuDropdown {
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    right: 0;
+    min-width: 10rem;
+    padding: var(--space-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--parchment-light);
+    box-shadow: var(--shadow-card);
+    z-index: 50;
+}
+
+.deleteMenuItem {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    border-radius: calc(var(--radius-sm) - 2px);
+    background: transparent;
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    letter-spacing: 0.03em;
+    color: var(--accent);
+    cursor: pointer;
+    transition: background var(--transition);
+    text-align: left;
+    white-space: nowrap;
+}
+
+.deleteMenuItem:hover:not(:disabled) {
+    background: rgba(255, 242, 238, 0.85);
+}
+
+.deleteMenuItem:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
+.deleteMenuItem:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+@media (max-width: 599px) {
+    .topBarCenter {
+        order: 3;
+        width: 100%;
+        flex-basis: 100%;
+        justify-content: flex-start;
+    }
 }
 
 .backLink {
@@ -61,12 +161,6 @@
     cursor: not-allowed;
 }
 
-.topBarRight {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-}
 
 .deleteBtn {
     display: inline-flex;

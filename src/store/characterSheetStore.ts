@@ -433,6 +433,7 @@ export function normalizeCharacterSheet<T extends CharacterSheet>(value: T): T {
       typeof nextValue.isEditMode === 'boolean'
         ? nextValue.isEditMode
         : defaultSheet.isEditMode,
+    groupId: typeof nextValue.groupId === 'string' ? nextValue.groupId : '',
   }
 }
 
@@ -527,6 +528,19 @@ function isValidCharacterSheetPayload(data: unknown): boolean {
   return true
 }
 
+async function resolveGroupReferenceOnImport(
+  uid: string,
+  groupId: string | undefined,
+): Promise<string> {
+  if (typeof groupId !== 'string' || groupId.trim().length === 0) return ''
+  try {
+    const groupSnap = await getDoc(doc(db, 'users', uid, 'sheetGroups', groupId))
+    return groupSnap.exists() ? groupId : ''
+  } catch {
+    return ''
+  }
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export async function createCharacterSheet(
@@ -602,11 +616,17 @@ export async function importCharacterSheetFromJSON(
       return result
     }
 
+    const resolvedGroupId = await resolveGroupReferenceOnImport(uid, payload.data.groupId)
+    const dataWithResolvedGroup: CharacterSheet = {
+      ...payload.data,
+      groupId: resolvedGroupId,
+    }
+
     const timestamp = new Date().toISOString()
     await setDoc(
       docRef,
       createCharacterSheetPayload(
-        payload.data,
+        dataWithResolvedGroup,
         timestamp,
         payload.createdAt ?? timestamp,
         normalizedId,

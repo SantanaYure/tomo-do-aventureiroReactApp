@@ -20,8 +20,22 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import { useCharacterSheets } from '../../hooks/useCharacterSheets'
 import { useMonsterSheets } from '../../hooks/useMonsterSheets'
-import { useFirestoreSearch } from '../../hooks/useFirestoreSearch'
+import { useSheetGroups } from '../../hooks/useSheetGroups'
+import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
+import type { SheetGroup } from '../../types/system/dnd/SheetGroup'
 import styles from './CharactersPage.module.css'
+
+const NO_GROUP_KEY = '__no_group__'
+
+function matchesTextSearch(text: string, term: string): boolean {
+  if (!term) return true
+  return text.trim().toLocaleLowerCase('pt-BR').includes(term)
+}
+
+function matchesTypeSearch(typeLabel: string, term: string): boolean {
+  if (!term) return false
+  return typeLabel.includes(term)
+}
 
 type ImportFeedback = {
   scope: 'character' | 'monster' | 'npc' | 'unknown'
@@ -35,7 +49,8 @@ type PendingDelete = {
 }
 
 type SheetFilterType = 'all' | 'character' | 'monster' | 'npc'
-type FilterFieldKey = 'type' | 'level' | 'class' | 'race' | 'nd'
+type FilterFieldKey = 'type' | 'level' | 'class' | 'race' | 'nd' | 'group'
+type ViewMode = 'flat' | 'grouped'
 
 type SortOrder = 'recent' | 'alpha' | 'class' | 'level-asc' | 'level-desc' | 'race' | 'custom'
 
@@ -321,6 +336,7 @@ function parseChallengeRating(cr: string): number {
 
 const FILTER_FIELD_OPTIONS: { key: FilterFieldKey; label: string }[] = [
   { key: 'type', label: 'Tipo' },
+  { key: 'group', label: 'Grupo' },
   { key: 'level', label: 'Nível' },
   { key: 'class', label: 'Classe' },
   { key: 'race', label: 'Raça/Linhagem' },
@@ -368,26 +384,37 @@ export function CharactersPage() {
 
   const { sheets, isLoading: isLoadingSheets, error: sheetsError } = useCharacterSheets(uid)
   const { monsters, isLoading: isLoadingMonsters, error: monstersError } = useMonsterSheets(uid)
+  const { groups, isLoading: isLoadingGroups } = useSheetGroups(uid)
 
   const [isCreatingCharacter, setIsCreatingCharacter] = useState(false)
   const [isCreatingMonster, setIsCreatingMonster] = useState(false)
 
   const [searchTerm, setSearchTerm] = useState('')
-  const { characters: searchChars, monsters: searchMonsters, isSearching, searchError, retrySearch } =
-    useFirestoreSearch(uid, searchTerm)
+  const [showGroupManager, setShowGroupManager] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('flat')
 
   const [typeFilter, setTypeFilter] = useState<SheetFilterType>('all')
   const [levelFilter, setLevelFilter] = useState('all')
   const [classFilter, setClassFilter] = useState('all')
   const [raceFilter, setRaceFilter] = useState('all')
   const [ndFilter, setNdFilter] = useState('all')
+  const [groupFilter, setGroupFilter] = useState('all')
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
   const [draftTypeFilter, setDraftTypeFilter] = useState<SheetFilterType>('all')
   const [draftLevelFilter, setDraftLevelFilter] = useState('all')
   const [draftClassFilter, setDraftClassFilter] = useState('all')
   const [draftRaceFilter, setDraftRaceFilter] = useState('all')
   const [draftNdFilter, setDraftNdFilter] = useState('all')
+  const [draftGroupFilter, setDraftGroupFilter] = useState('all')
   const [draftVisibleFilters, setDraftVisibleFilters] = useState<FilterFieldKey[]>([])
+
+  const groupNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    groups.forEach((group) => map.set(group.id, group.name))
+    return map
+  }, [groups])
+
+  const normalizedSearchTerm = searchTerm.trim().toLocaleLowerCase('pt-BR')
 
   const [sortOrder, setSortOrder] = useState<SortOrder>('recent')
   const [customOrder, setCustomOrder] = useState<string[]>([])
@@ -462,8 +489,34 @@ export function CharactersPage() {
     try { localStorage.setItem(`tomo-npc-order-${uid}`, JSON.stringify(newOrder)) } catch { }
   }
 
-  const baseSheets = isSearchMode ? searchChars : sheets
-  const baseAllMonsters = isSearchMode ? searchMonsters : monsters
+  const baseSheets = useMemo(() => {
+    if (!isSearchMode) return sheets
+    return sheets.filter((sheet) => {
+      const name = sheet.data.character.name
+      const groupId = sheet.data.groupId ?? ''
+      const groupName = groupId ? groupNameById.get(groupId) ?? '' : ''
+      return (
+        matchesTextSearch(name, normalizedSearchTerm) ||
+        matchesTextSearch(groupName, normalizedSearchTerm) ||
+        matchesTypeSearch('pj personagem', normalizedSearchTerm)
+      )
+    })
+  }, [sheets, isSearchMode, normalizedSearchTerm, groupNameById])
+
+  const baseAllMonsters = useMemo(() => {
+    if (!isSearchMode) return monsters
+    return monsters.filter((monster) => {
+      const name = monster.data.details.name
+      const groupId = monster.data.groupId ?? ''
+      const groupName = groupId ? groupNameById.get(groupId) ?? '' : ''
+      const typeLabel = monster.data.details.kind === 'npc' ? 'npc' : 'monstro monster'
+      return (
+        matchesTextSearch(name, normalizedSearchTerm) ||
+        matchesTextSearch(groupName, normalizedSearchTerm) ||
+        matchesTypeSearch(typeLabel, normalizedSearchTerm)
+      )
+    })
+  }, [monsters, isSearchMode, normalizedSearchTerm, groupNameById])
 
   const levelOptions = useMemo(
     () => Array.from(new Set(baseSheets.map(getCharacterTotalLevel))).sort((left, right) => left - right),
@@ -504,9 +557,17 @@ export function CharactersPage() {
       ) {
         return false
       }
+      if (groupFilter !== 'all') {
+        const sheetGroupId = sheet.data.groupId ?? ''
+        if (groupFilter === NO_GROUP_KEY) {
+          if (sheetGroupId) return false
+        } else if (sheetGroupId !== groupFilter) {
+          return false
+        }
+      }
       return true
     }),
-    [baseSheets, classFilter, levelFilter, raceFilter, typeFilter],
+    [baseSheets, classFilter, levelFilter, raceFilter, typeFilter, groupFilter],
   )
 
   const sortedSheets = useMemo(() => {
@@ -554,13 +615,21 @@ export function CharactersPage() {
     return values.sort((a, b) => parseChallengeRating(a) - parseChallengeRating(b))
   }, [monsters])
 
-  // Filtra por ND; a visibilidade por tipo é controlada via showMonsterSection/showNpcSection
+  // Filtra por ND e grupo; a visibilidade por tipo é controlada via showMonsterSection/showNpcSection
   const displayedAllMonsters = useMemo(
     () => baseAllMonsters.filter((monster) => {
       if (ndFilter !== 'all' && monster.data.traits.challengeRating.trim() !== ndFilter) return false
+      if (groupFilter !== 'all') {
+        const monsterGroupId = monster.data.groupId ?? ''
+        if (groupFilter === NO_GROUP_KEY) {
+          if (monsterGroupId) return false
+        } else if (monsterGroupId !== groupFilter) {
+          return false
+        }
+      }
       return true
     }),
-    [baseAllMonsters, ndFilter],
+    [baseAllMonsters, ndFilter, groupFilter],
   )
 
   const displayedMonsters = useMemo(
@@ -581,14 +650,73 @@ export function CharactersPage() {
     [displayedNpcs, npcSortOrder, customNpcOrder],
   )
 
-  const loadingSheets = isSearchMode ? isSearching : isLoadingSheets
-  const loadingMonsters = isSearchMode ? isSearching : isLoadingMonsters
+  type GroupedBuckets = {
+    title: string
+    key: string
+    characters: StoredCharacterSheet[]
+    monsters: StoredMonsterSheet[]
+    npcs: StoredMonsterSheet[]
+  }
+
+  const groupedBuckets = useMemo<GroupedBuckets[]>(() => {
+    const buckets = new Map<string, GroupedBuckets>()
+
+    function getBucket(key: string, title: string): GroupedBuckets {
+      const existing = buckets.get(key)
+      if (existing) return existing
+      const created: GroupedBuckets = {
+        title,
+        key,
+        characters: [],
+        monsters: [],
+        npcs: [],
+      }
+      buckets.set(key, created)
+      return created
+    }
+
+    // Inicializa os buckets para todos os grupos (ordenados pelo hook por nome asc)
+    groups.forEach((group) => getBucket(group.id, group.name))
+
+    sortedSheets.forEach((sheet) => {
+      const id = sheet.data.groupId ?? ''
+      const title = id ? groupNameById.get(id) ?? 'Sem grupo' : 'Sem grupo'
+      const key = id && groupNameById.has(id) ? id : NO_GROUP_KEY
+      getBucket(key, key === NO_GROUP_KEY ? 'Sem grupo' : title).characters.push(sheet)
+    })
+
+    sortedMonsters.forEach((monster) => {
+      const id = monster.data.groupId ?? ''
+      const title = id ? groupNameById.get(id) ?? 'Sem grupo' : 'Sem grupo'
+      const key = id && groupNameById.has(id) ? id : NO_GROUP_KEY
+      getBucket(key, key === NO_GROUP_KEY ? 'Sem grupo' : title).monsters.push(monster)
+    })
+
+    sortedNpcs.forEach((npc) => {
+      const id = npc.data.groupId ?? ''
+      const title = id ? groupNameById.get(id) ?? 'Sem grupo' : 'Sem grupo'
+      const key = id && groupNameById.has(id) ? id : NO_GROUP_KEY
+      getBucket(key, key === NO_GROUP_KEY ? 'Sem grupo' : title).npcs.push(npc)
+    })
+
+    const noGroupBucket = buckets.get(NO_GROUP_KEY)
+    buckets.delete(NO_GROUP_KEY)
+    const ordered = Array.from(buckets.values())
+    if (noGroupBucket) ordered.push(noGroupBucket)
+    return ordered
+  }, [groups, groupNameById, sortedSheets, sortedMonsters, sortedNpcs])
+
+  const loadingSheets = isLoadingSheets
+  const loadingMonsters = isLoadingMonsters
   const skeletonCount = isSearchMode ? 2 : 3
   const loadError = sheetsError ?? monstersError
 
   const hasActiveFilters =
-    typeFilter !== 'all' || levelFilter !== 'all' || classFilter !== 'all' || raceFilter !== 'all' || ndFilter !== 'all'
-  const activeFilterCount = [typeFilter, levelFilter, classFilter, raceFilter, ndFilter].filter((value) => value !== 'all').length
+    typeFilter !== 'all' || levelFilter !== 'all' || classFilter !== 'all' ||
+    raceFilter !== 'all' || ndFilter !== 'all' || groupFilter !== 'all'
+  const activeFilterCount = [
+    typeFilter, levelFilter, classFilter, raceFilter, ndFilter, groupFilter,
+  ].filter((value) => value !== 'all').length
 
   // Visibilidade das seções por tipo e por resultado de busca/filtro
   const isFiltered = isSearchMode || hasActiveFilters
@@ -841,12 +969,14 @@ export function CharactersPage() {
     setClassFilter('all')
     setRaceFilter('all')
     setNdFilter('all')
+    setGroupFilter('all')
   }
 
   function getActiveFilterKeys(): FilterFieldKey[] {
     const keys: FilterFieldKey[] = []
 
     if (typeFilter !== 'all') keys.push('type')
+    if (groupFilter !== 'all') keys.push('group')
     if (levelFilter !== 'all') keys.push('level')
     if (classFilter !== 'all') keys.push('class')
     if (raceFilter !== 'all') keys.push('race')
@@ -861,6 +991,7 @@ export function CharactersPage() {
     if (key === 'class') setDraftClassFilter('all')
     if (key === 'race') setDraftRaceFilter('all')
     if (key === 'nd') setDraftNdFilter('all')
+    if (key === 'group') setDraftGroupFilter('all')
   }
 
   function syncDraftFilters() {
@@ -869,6 +1000,7 @@ export function CharactersPage() {
     setDraftClassFilter(classFilter)
     setDraftRaceFilter(raceFilter)
     setDraftNdFilter(ndFilter)
+    setDraftGroupFilter(groupFilter)
     setDraftVisibleFilters(getActiveFilterKeys())
   }
 
@@ -887,6 +1019,7 @@ export function CharactersPage() {
     setClassFilter(draftVisibleFilters.includes('class') ? draftClassFilter : 'all')
     setRaceFilter(draftVisibleFilters.includes('race') ? draftRaceFilter : 'all')
     setNdFilter(draftVisibleFilters.includes('nd') ? draftNdFilter : 'all')
+    setGroupFilter(draftVisibleFilters.includes('group') ? draftGroupFilter : 'all')
     setIsFilterModalOpen(false)
   }
 
@@ -896,6 +1029,7 @@ export function CharactersPage() {
     setDraftClassFilter('all')
     setDraftRaceFilter('all')
     setDraftNdFilter('all')
+    setDraftGroupFilter('all')
     setDraftVisibleFilters([])
   }
 
@@ -995,6 +1129,22 @@ export function CharactersPage() {
           <button
             type="button"
             className={styles.filterButton}
+            onClick={() => setViewMode((mode) => (mode === 'grouped' ? 'flat' : 'grouped'))}
+            aria-pressed={viewMode === 'grouped'}
+          >
+            {viewMode === 'grouped' ? 'Ver lista' : 'Agrupar por grupo'}
+          </button>
+          <button
+            type="button"
+            className={styles.filterButton}
+            onClick={() => setShowGroupManager(true)}
+            disabled={isLoadingGroups}
+          >
+            Gerenciar grupos
+          </button>
+          <button
+            type="button"
+            className={styles.filterButton}
             onClick={openFilterModal}
             aria-haspopup="dialog"
             aria-expanded={isFilterModalOpen}
@@ -1003,17 +1153,9 @@ export function CharactersPage() {
           </button>
         </div>
 
-        {searchError && (
-          <div className={styles.searchError}>
-            <span>Erro ao buscar fichas.</span>
-            <button type="button" className={styles.retryButton} onClick={retrySearch}>
-              Tentar novamente
-            </button>
-          </div>
-        )}
       </header>
 
-      {showCharSection && (
+      {viewMode === 'flat' && showCharSection && (
         <SheetSection
           title="PJs"
           items={sortedSheets}
@@ -1038,7 +1180,7 @@ export function CharactersPage() {
         />
       )}
 
-      {showMonsterSection && (
+      {viewMode === 'flat' && showMonsterSection && (
         <SheetSection
           title="Monstros"
           items={sortedMonsters}
@@ -1063,7 +1205,7 @@ export function CharactersPage() {
         />
       )}
 
-      {showNpcSection && (
+      {viewMode === 'flat' && showNpcSection && (
         <SheetSection
           title="NPCs"
           items={sortedNpcs}
@@ -1086,6 +1228,64 @@ export function CharactersPage() {
           )}
           emptyMessage="Nenhum NPC encontrado."
         />
+      )}
+
+      {viewMode === 'grouped' && (loadingSheets || loadingMonsters) && (
+        <SheetSection
+          title="Carregando"
+          items={[]}
+          loading={true}
+          skeletonCount={skeletonCount}
+          renderItem={() => null}
+          emptyMessage=""
+        />
+      )}
+
+      {viewMode === 'grouped' && !loadingSheets && !loadingMonsters && (
+        groupedBuckets.filter((bucket) =>
+          bucket.characters.length + bucket.monsters.length + bucket.npcs.length > 0,
+        ).length === 0 ? (
+          <p className={styles.emptySection}>Nenhuma ficha encontrada.</p>
+        ) : (
+          groupedBuckets
+            .filter((bucket) =>
+              bucket.characters.length + bucket.monsters.length + bucket.npcs.length > 0 ||
+              bucket.key !== NO_GROUP_KEY,
+            )
+            .map((bucket) => (
+              <SheetSection
+                key={bucket.key}
+                title={bucket.title}
+                items={[...bucket.characters, ...bucket.monsters, ...bucket.npcs]}
+                loading={false}
+                skeletonCount={1}
+                renderItem={(item) => {
+                  const anyItem = item as StoredCharacterSheet | StoredMonsterSheet
+                  if ('character' in anyItem.data) {
+                    const sheetItem = anyItem as StoredCharacterSheet
+                    return (
+                      <CharacterSheetItem
+                        key={sheetItem.id}
+                        sheet={sheetItem}
+                        onExport={() => handleExportSheet(sheetItem)}
+                        onDelete={() => requestDeleteSheet(sheetItem.id, sheetItem.data.character.name)}
+                      />
+                    )
+                  }
+                  const monsterItem = anyItem as StoredMonsterSheet
+                  return (
+                    <MonsterSheetItem
+                      key={monsterItem.id}
+                      sheet={monsterItem}
+                      onExport={() => handleExportMonster(monsterItem)}
+                      onDelete={() => requestDeleteMonster(monsterItem.id, monsterItem.data.details.name)}
+                    />
+                  )
+                }}
+                emptyMessage="Nenhuma ficha neste grupo."
+              />
+            ))
+        )
       )}
 
       {importFeedback && (
@@ -1151,6 +1351,21 @@ export function CharactersPage() {
                       <option value="character">PJ</option>
                       <option value="monster">Monstro</option>
                       <option value="npc">NPC</option>
+                    </select>
+                  </label>
+                )}
+
+                {draftVisibleFilters.includes('group') && (
+                  <label className={styles.filterField}>
+                    <span>Grupo</span>
+                    <select value={draftGroupFilter} onChange={(event) => setDraftGroupFilter(event.target.value)}>
+                      <option value="all">Todos</option>
+                      <option value={NO_GROUP_KEY}>Sem grupo</option>
+                      {groups.map((group) => (
+                        <option key={group.id} value={group.id}>
+                          {group.name}
+                        </option>
+                      ))}
                     </select>
                   </label>
                 )}
@@ -1225,6 +1440,14 @@ export function CharactersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showGroupManager && uid && (
+        <GroupManagerModal
+          uid={uid}
+          groups={groups}
+          onClose={() => setShowGroupManager(false)}
+        />
       )}
 
       {pendingDelete && (

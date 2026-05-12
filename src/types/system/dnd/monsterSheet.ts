@@ -108,6 +108,8 @@ export type MonsterKind = 'monster' | 'npc'
 export interface MonsterSheet {
     systemId: MonsterSystemId
 
+    groupId?: string
+
     details: {
         name: string
         kind: MonsterKind
