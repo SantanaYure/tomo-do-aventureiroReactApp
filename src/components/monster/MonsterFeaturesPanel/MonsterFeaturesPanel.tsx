@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import type { MonsterFeature } from '../../../types/system/dnd/monsterSheet'
+import type { DamagePart, MonsterFeature } from '../../../types/system/dnd/monsterSheet'
 import { ManagedResourceControls } from '../../ManagedResourceControls/ManagedResourceControls'
 import { NumberInput } from '../../NumberInput/NumberInput'
+import { DamagesEditor } from '../../DamagesEditor/DamagesEditor'
 import {
     restoreResource,
     restoreResourceFull,
@@ -15,6 +16,7 @@ import {
     RECHARGE_OPTIONS,
 } from '../shared'
 import { isRestBasedRecharge } from '../../../utils/restRules'
+import { rollDamages, formatRollLine, type DamageRollSummary } from '../../../utils/diceRoller'
 import styles from './MonsterFeaturesPanel.module.css'
 
 function createFeature(): MonsterFeature {
@@ -29,6 +31,8 @@ function createFeature(): MonsterFeature {
         duration: '',
         range: '',
         requirements: '',
+        castingTime: '',
+        damages: [],
     }
 }
 
@@ -38,7 +42,12 @@ export function MonsterFeaturesPanel({
     onChange,
 }: MonsterComponentProps) {
     const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+    const [rollResults, setRollResults] = useState<Map<string, DamageRollSummary>>(new Map())
     const features = sheet.features
+
+    function handleRollDamage(featureId: string, damages: DamagePart[]) {
+        setRollResults((previous) => new Map(previous).set(featureId, rollDamages(damages)))
+    }
 
     function toggleCollapse(id: string) {
         setCollapsedIds((previous) => {
@@ -238,6 +247,16 @@ export function MonsterFeaturesPanel({
 
                                 <div className={styles.detailsGrid}>
                                     <label className={styles.field}>
+                                        Tempo de Conjuração
+                                        <input
+                                            type="text"
+                                            value={feature.castingTime ?? ''}
+                                            onChange={(event) => setFeature(index, { castingTime: event.target.value })}
+                                            placeholder="1 ação, 1 ação bônus, 1 reação..."
+                                        />
+                                    </label>
+
+                                    <label className={styles.field}>
                                         Alcance
                                         <input
                                             type="text"
@@ -266,6 +285,14 @@ export function MonsterFeaturesPanel({
                                             placeholder="V, S, material ou condição"
                                         />
                                     </label>
+                                </div>
+
+                                <div className={styles.field}>
+                                    <span className={styles.sectionLabel}>Danos</span>
+                                    <DamagesEditor
+                                        damages={feature.damages ?? []}
+                                        onChange={(updated) => setFeature(index, { damages: updated })}
+                                    />
                                 </div>
 
                                 <label className={styles.field}>
@@ -329,8 +356,11 @@ export function MonsterFeaturesPanel({
                                             </div>
                                         )}
 
-                                        {(feature.range.trim() || feature.duration.trim() || feature.requirements.trim()) && (
+                                        {((feature.castingTime ?? '').trim() || feature.range.trim() || feature.duration.trim() || feature.requirements.trim()) && (
                                             <div className={styles.detailRow}>
+                                                {(feature.castingTime ?? '').trim() && (
+                                                    <span className={styles.detailChip}>Tempo: {feature.castingTime}</span>
+                                                )}
                                                 {feature.range.trim() && (
                                                     <span className={styles.detailChip}>Alcance: {feature.range}</span>
                                                 )}
@@ -346,6 +376,26 @@ export function MonsterFeaturesPanel({
                                         <p className={feature.description.trim() ? styles.description : styles.emptyText}>
                                             {feature.description.trim() || 'Sem descrição adicional.'}
                                         </p>
+
+                                        {(feature.damages ?? []).length > 0 && (
+                                            <div className={styles.rollArea}>
+                                                <button
+                                                    type="button"
+                                                    className={styles.rollBtn}
+                                                    onClick={() => handleRollDamage(featureId, feature.damages ?? [])}
+                                                >
+                                                    🎲 Rolar dano
+                                                </button>
+                                                {rollResults.has(featureId) && (
+                                                    <div className={styles.rollResult}>
+                                                        {rollResults.get(featureId)!.results.map((r, i) => (
+                                                            <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
+                                                        ))}
+                                                        <span className={styles.rollTotal}>Total: {rollResults.get(featureId)!.total}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </article>

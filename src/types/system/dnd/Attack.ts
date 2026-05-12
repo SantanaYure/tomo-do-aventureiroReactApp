@@ -2,6 +2,8 @@
 // Descrição: ataques do personagem
 // Tipo: interface/type
 
+import type { DamagePart } from './DamagePart'
+
 export type AttackAttributeKey =
   | 'str'
   | 'dex'
@@ -20,4 +22,6 @@ export interface Attack {
   damageType?: string
   range?: string
   notes?: string
+  castingTime?: string
+  damages?: DamagePart[]
 }
