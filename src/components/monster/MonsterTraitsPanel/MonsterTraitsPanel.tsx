@@ -18,6 +18,10 @@ function calculateModifier(score: number): number {
   return Math.floor((score - 10) / 2)
 }
 
+function formatModifier(value: number): string {
+  return value >= 0 ? `+${value}` : `${value}`
+}
+
 function getPerceptionSkillBonus(skills: string[]): number | null {
   for (const skill of skills) {
     const normalizedSkill = normalizeText(skill)
@@ -97,6 +101,7 @@ export function MonsterTraitsPanel({
 }: MonsterComponentProps) {
   const { traits } = sheet
   const passivePerception = calculatePassivePerception(sheet)
+  const proficiencyBonus = Math.max(1, Math.trunc(sheet.spells.proficiencyBonus))
   const [savingThrowsDraft, setSavingThrowsDraft] = useState(formatLines(sheet.traits.savingThrows))
   const [skillsDraft, setSkillsDraft] = useState(formatLines(sheet.traits.skills))
   const [languagesDraft, setLanguagesDraft] = useState(formatLines(sheet.traits.languages))
@@ -108,6 +113,10 @@ export function MonsterTraitsPanel({
 
   function updateTraits(patch: DeepPartial<MonsterSheet['traits']>) {
     onChange({ traits: patch })
+  }
+
+  function updateProficiencyBonus(value: number) {
+    onChange({ spells: { proficiencyBonus: Math.max(1, Math.trunc(value)) } })
   }
 
   useEffect(() => {
@@ -265,6 +274,16 @@ export function MonsterTraitsPanel({
               />
             </label>
 
+            <label className={`${styles.field} ${styles.ratingCard}`}>
+              Proficiência
+              <NumberInput
+                min={1}
+                value={proficiencyBonus}
+                emptyValue={2}
+                onChange={updateProficiencyBonus}
+              />
+            </label>
+
             <div className={`${styles.field} ${styles.ratingCard}`}>
               Percepcao Passiva
               <strong className={styles.ratingValue}>{passivePerception}</strong>
@@ -292,6 +311,11 @@ export function MonsterTraitsPanel({
             </div>
 
             <div className={styles.ratingCard}>
+              <span className={styles.ratingLabel}>Proficiência</span>
+              <strong className={styles.ratingValue}>{formatModifier(proficiencyBonus)}</strong>
+            </div>
+
+            <div className={styles.ratingCard}>
               <span className={styles.ratingLabel}>Percepcao Passiva</span>
               <strong className={styles.ratingValue}>{passivePerception}</strong>
             </div>
@@ -309,6 +333,11 @@ export function MonsterTraitsPanel({
             <div className={styles.ratingCard}>
               <span className={styles.ratingLabel}>XP</span>
               <strong className={styles.ratingValue}>{XP_FORMATTER.format(traits.xp)}</strong>
+            </div>
+
+            <div className={styles.ratingCard}>
+              <span className={styles.ratingLabel}>Proficiência</span>
+              <strong className={styles.ratingValue}>{formatModifier(proficiencyBonus)}</strong>
             </div>
 
             <div className={styles.ratingCard}>
