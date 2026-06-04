@@ -17,6 +17,8 @@ import {
 } from '../shared'
 import { isRestBasedRecharge } from '../../../utils/restRules'
 import { rollDamages, formatRollLine, type DamageRollSummary } from '../../../utils/diceRoller'
+import { useDragReorder } from '../useDragReorder'
+import { ReorderControls, reorderCardClass } from '../ReorderControls/ReorderControls'
 import styles from './MonsterFeaturesPanel.module.css'
 
 function createFeature(): MonsterFeature {
@@ -44,6 +46,7 @@ export function MonsterFeaturesPanel({
     const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
     const [rollResults, setRollResults] = useState<Map<string, DamageRollSummary>>(new Map())
     const features = sheet.features
+    const reorder = useDragReorder(features, updateFeatures)
 
     function handleRollDamage(featureId: string, damages: DamagePart[]) {
         setRollResults((previous) => new Map(previous).set(featureId, rollDamages(damages)))
@@ -183,7 +186,24 @@ export function MonsterFeaturesPanel({
                         const featureId = feature.id || `feature-${index}`
 
                         return (
-                            <article className={styles.card} key={featureId}>
+                            <article
+                                className={reorderCardClass(
+                                    styles.card,
+                                    reorder.draggingIndex === index,
+                                    reorder.overIndex === index,
+                                )}
+                                key={featureId}
+                                {...reorder.getCardProps(index)}
+                            >
+                                <ReorderControls
+                                    label={feature.name.trim() || `habilidade ${index + 1}`}
+                                    isFirst={index === 0}
+                                    isLast={index === features.length - 1}
+                                    onMoveUp={() => reorder.moveUp(index)}
+                                    onMoveDown={() => reorder.moveDown(index)}
+                                    handleProps={reorder.getHandleProps(index)}
+                                />
+
                                 <div className={styles.cardHeader}>
                                     <label className={`${styles.field} ${styles.nameField}`}>
                                         Nome

@@ -12,6 +12,8 @@ import panelStyles from '../../../styles/panel.module.css'
 import {
     type MonsterComponentProps,
 } from '../shared'
+import { useDragReorder } from '../useDragReorder'
+import { ReorderControls, reorderCardClass } from '../ReorderControls/ReorderControls'
 import styles from './LegendaryActionsPanel.module.css'
 
 function createLegendaryAction(): LegendaryAction {
@@ -36,6 +38,7 @@ export function LegendaryActionsPanel({
     const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
     const legendary = sheet.legendary
     const actions = legendary.actions
+    const reorder = useDragReorder(actions, updateActions)
 
     function updateLegendary(patch: Partial<typeof legendary>) {
         onChange({ legendary: patch })
@@ -176,7 +179,24 @@ export function LegendaryActionsPanel({
                             const actionId = action.id || `legendary-${index}`
 
                             return (
-                                <article className={styles.card} key={actionId}>
+                                <article
+                                    className={reorderCardClass(
+                                        styles.card,
+                                        reorder.draggingIndex === index,
+                                        reorder.overIndex === index,
+                                    )}
+                                    key={actionId}
+                                    {...reorder.getCardProps(index)}
+                                >
+                                    <ReorderControls
+                                        label={action.name.trim() || `ação lendária ${index + 1}`}
+                                        isFirst={index === 0}
+                                        isLast={index === actions.length - 1}
+                                        onMoveUp={() => reorder.moveUp(index)}
+                                        onMoveDown={() => reorder.moveDown(index)}
+                                        handleProps={reorder.getHandleProps(index)}
+                                    />
+
                                     <div className={styles.cardHeader}>
                                         <label className={`${styles.field} ${styles.nameField}`}>
                                             Nome

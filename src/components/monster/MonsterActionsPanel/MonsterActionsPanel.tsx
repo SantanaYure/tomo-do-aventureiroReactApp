@@ -22,6 +22,8 @@ import {
 } from '../shared'
 import { isRestBasedRecharge } from '../../../utils/restRules'
 import { rollDamages, formatRollLine, type DamageRollSummary } from '../../../utils/diceRoller'
+import { useDragReorder } from '../useDragReorder'
+import { ReorderControls, reorderCardClass } from '../ReorderControls/ReorderControls'
 import styles from './MonsterActionsPanel.module.css'
 
 const ATTACK_TYPES: AttackType[] = ['Corpo-a-corpo', 'Distância', 'Magia']
@@ -106,6 +108,8 @@ export function MonsterActionsPanel({
     }
     const actions = sheet.actions
     const reactions = sheet.reactions
+    const actionsReorder = useDragReorder(actions, updateActions)
+    const reactionsReorder = useDragReorder(reactions, updateReactions)
     const indexedActions = actions.map((action, index) => ({ action, index }))
     const multiattacks = indexedActions.filter(({ action }) => action.isMultiattack)
     const regularActions = indexedActions.filter(({ action }) => !action.isMultiattack)
@@ -285,7 +289,24 @@ export function MonsterActionsPanel({
                             const actionId = action.id || `action-${index}`
 
                             return (
-                                <article className={styles.card} key={actionId}>
+                                <article
+                                    className={reorderCardClass(
+                                        styles.card,
+                                        actionsReorder.draggingIndex === index,
+                                        actionsReorder.overIndex === index,
+                                    )}
+                                    key={actionId}
+                                    {...actionsReorder.getCardProps(index)}
+                                >
+                                    <ReorderControls
+                                        label={action.name.trim() || `ação ${index + 1}`}
+                                        isFirst={index === 0}
+                                        isLast={index === actions.length - 1}
+                                        onMoveUp={() => actionsReorder.moveUp(index)}
+                                        onMoveDown={() => actionsReorder.moveDown(index)}
+                                        handleProps={actionsReorder.getHandleProps(index)}
+                                    />
+
                                     <div className={styles.cardHeader}>
                                         <label className={`${styles.field} ${styles.nameField}`}>
                                             Nome
@@ -477,7 +498,24 @@ export function MonsterActionsPanel({
                             const reactionId = reaction.id || `reaction-${index}`
 
                             return (
-                                <article className={styles.card} key={reactionId}>
+                                <article
+                                    className={reorderCardClass(
+                                        styles.card,
+                                        reactionsReorder.draggingIndex === index,
+                                        reactionsReorder.overIndex === index,
+                                    )}
+                                    key={reactionId}
+                                    {...reactionsReorder.getCardProps(index)}
+                                >
+                                    <ReorderControls
+                                        label={reaction.name.trim() || `reação ${index + 1}`}
+                                        isFirst={index === 0}
+                                        isLast={index === reactions.length - 1}
+                                        onMoveUp={() => reactionsReorder.moveUp(index)}
+                                        onMoveDown={() => reactionsReorder.moveDown(index)}
+                                        handleProps={reactionsReorder.getHandleProps(index)}
+                                    />
+
                                     <div className={styles.cardHeader}>
                                         <label className={`${styles.field} ${styles.nameField}`}>
                                             Nome
