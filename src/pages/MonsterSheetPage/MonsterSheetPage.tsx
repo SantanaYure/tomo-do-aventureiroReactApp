@@ -28,9 +28,15 @@ import type { SavingStatus } from '../../types/savingStatus'
 import type { MonsterSheet } from '../../types/system/dnd/monsterSheet'
 import styles from './MonsterSheetPage.module.css'
 
-const TABS = ['Mesa', 'Detalhes', 'Combate', 'Habilidades', 'Ações', 'Magias', 'Lendárias'] as const
+const TABS = ['Mesa', 'Detalhes', 'Combate', 'Habilidades e Ações', 'Magias', 'Lendárias'] as const
 
 type Tab = (typeof TABS)[number]
+
+// Abas legadas (sessionStorage de versões anteriores) → aba unificada
+const LEGACY_TAB_ALIASES: Record<string, Tab> = {
+  Habilidades: 'Habilidades e Ações',
+  Ações: 'Habilidades e Ações',
+}
 
 type MonsterLocationState = {
   startEditing?: boolean
@@ -43,8 +49,7 @@ const TAB_PANEL_IDS: Record<Tab, string> = {
   Mesa: 'monster-sheet-panel-mesa',
   Detalhes: 'monster-sheet-panel-detalhes',
   Combate: 'monster-sheet-panel-combate',
-  Habilidades: 'monster-sheet-panel-habilidades',
-  Ações: 'monster-sheet-panel-acoes',
+  'Habilidades e Ações': 'monster-sheet-panel-habilidades-acoes',
   Magias: 'monster-sheet-panel-magias',
   Lendárias: 'monster-sheet-panel-lendarias',
 }
@@ -53,8 +58,7 @@ const TAB_BUTTON_IDS: Record<Tab, string> = {
   Mesa: 'monster-sheet-tab-mesa',
   Detalhes: 'monster-sheet-tab-detalhes',
   Combate: 'monster-sheet-tab-combate',
-  Habilidades: 'monster-sheet-tab-habilidades',
-  Ações: 'monster-sheet-tab-acoes',
+  'Habilidades e Ações': 'monster-sheet-tab-habilidades-acoes',
   Magias: 'monster-sheet-tab-magias',
   Lendárias: 'monster-sheet-tab-lendarias',
 }
@@ -74,7 +78,15 @@ function readStoredTab(id?: string): Tab {
 
   const storedTab = window.sessionStorage.getItem(getTabStorageKey(id))
 
-  return isTab(storedTab) ? storedTab : DEFAULT_TAB
+  if (isTab(storedTab)) {
+    return storedTab
+  }
+
+  if (storedTab !== null && storedTab in LEGACY_TAB_ALIASES) {
+    return LEGACY_TAB_ALIASES[storedTab]
+  }
+
+  return DEFAULT_TAB
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -346,12 +358,13 @@ export function MonsterSheetPage() {
     )
   }
 
-  function renderFeaturesTab() {
-    return <MonsterFeaturesPanel sheet={currentSheet} isEditing={isEditing} onChange={handleSheetChange} />
-  }
-
-  function renderActionsTab() {
-    return <MonsterActionsPanel sheet={currentSheet} isEditing={isEditing} onChange={handleSheetChange} />
+  function renderFeaturesAndActionsTab() {
+    return (
+      <>
+        <MonsterFeaturesPanel sheet={currentSheet} isEditing={isEditing} onChange={handleSheetChange} />
+        <MonsterActionsPanel sheet={currentSheet} isEditing={isEditing} onChange={handleSheetChange} />
+      </>
+    )
   }
 
   function renderSpellsTab() {
@@ -379,10 +392,8 @@ export function MonsterSheetPage() {
         return renderDetailsTab()
       case 'Combate':
         return renderCombatTab()
-      case 'Habilidades':
-        return renderFeaturesTab()
-      case 'Ações':
-        return renderActionsTab()
+      case 'Habilidades e Ações':
+        return renderFeaturesAndActionsTab()
       case 'Magias':
         return renderSpellsTab()
       case 'Lendárias':
