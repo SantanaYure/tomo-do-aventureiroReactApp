@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { MonsterActionsPanel } from '../../components/monster/MonsterActionsPanel/MonsterActionsPanel'
 import { MonsterFeaturesPanel } from '../../components/monster/MonsterFeaturesPanel/MonsterFeaturesPanel'
@@ -224,9 +224,16 @@ export function MonsterSheetPage() {
 
   // A persistência (debounce + teto de espera + rascunho local + histórico)
   // vive em `useSheetAutosave`.
-  function handleSheetChange(patch: DeepPartial<MonsterSheet>) {
-    commit((current) => mergeDeepPatch(current, patch))
-  }
+  //
+  // Estável entre renders (a forma funcional de `commit` lê a ficha de uma ref):
+  // é o que permite ao `memo` do resumo de combate abortar o render quando a
+  // edição foi em outro painel.
+  const handleSheetChange = useCallback(
+    (patch: DeepPartial<MonsterSheet>) => {
+      commit((current) => mergeDeepPatch(current, patch))
+    },
+    [commit],
+  )
 
   function showRestFeedback(message: string) {
     if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
@@ -517,7 +524,11 @@ export function MonsterSheetPage() {
         </span>
       </div>
 
-      <MonsterCombatSummary sheet={currentSheet} onChange={handleSheetChange} />
+      <MonsterCombatSummary
+        stats={currentSheet.stats}
+        traits={currentSheet.traits}
+        onChange={handleSheetChange}
+      />
 
       <div
         id={TAB_PANEL_IDS[activeTab]}
