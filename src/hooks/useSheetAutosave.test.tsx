@@ -1,13 +1,18 @@
 // Testes da camada de estado/persistência das fichas.
 //
-// Vários testes comparam o comportamento novo com uma réplica do agendador
-// ANTIGO (debounce puro, reiniciado a cada tecla) para deixar registrado que o
-// defeito existia — não apenas que o código novo passa.
+// Todas as asserções exercitam o código de produção. Cada teste deste arquivo
+// falha se a proteção correspondente for removida do hook — não há réplica de
+// comportamento antigo escrita no próprio teste.
 
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { useSheetAutosave, type RemoteSheetSnapshot, type SheetSaveFn } from './useSheetAutosave'
-import { getSheetDraftKey, writeSheetDraft, type SheetDraftEnvelope } from '../utils/sheetDraft'
+import {
+  getSheetDraftKey,
+  writeSheetDraft,
+  SHEET_DRAFT_SCHEMA_VERSION,
+  type StoredSheetDraft,
+} from '../utils/sheetDraft'
 
 type Doc = { title: string; notes: string }
 
@@ -17,34 +22,37 @@ const REMOTE_CREATED_AT = '2026-01-01T00:00:00.000Z'
 const REMOTE_UPDATED_AT = '2026-01-02T00:00:00.000Z'
 const NOW = new Date('2026-01-03T12:00:00.000Z')
 
-function makeRemote(data: Partial<Doc> = {}): RemoteSheetSnapshot<Doc> {
+function makeRemote(
+  data: Partial<Doc> = {},
+  updatedAt = REMOTE_UPDATED_AT,
+): RemoteSheetSnapshot<Doc> {
   return {
     data: { title: 'Original', notes: '', ...data },
     createdAt: REMOTE_CREATED_AT,
-    updatedAt: REMOTE_UPDATED_AT,
+    updatedAt,
   }
 }
 
-/**
- * Réplica fiel do agendador anterior à correção: debounce de 800ms reiniciado a
- * cada edição, sem teto de espera e sem flush em pagehide/desmontagem.
- */
-function createLegacyAutosave(onSave: () => void, debounceMs = 800) {
-  let timer: ReturnType<typeof setTimeout> | null = null
-  return {
-    edit() {
-      if (timer !== null) clearTimeout(timer)
-      timer = setTimeout(onSave, debounceMs)
-    },
-    unmount() {
-      if (timer !== null) clearTimeout(timer)
-    },
-  }
+/** Espelha o que as páginas fazem: valida a forma e só então aceita o conteúdo. */
+function parseDoc(raw: unknown): Doc | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const candidate = raw as Record<string, unknown>
+  if (typeof candidate.title !== 'string' || typeof candidate.notes !== 'string') return null
+  return { title: candidate.title, notes: candidate.notes }
 }
 
-function readDraftRaw(): SheetDraftEnvelope<Doc> | null {
+function readDraftRaw(): StoredSheetDraft | null {
   const raw = window.localStorage.getItem(getSheetDraftKey('pj', UID, ID))
-  return raw ? (JSON.parse(raw) as SheetDraftEnvelope<Doc>) : null
+  return raw ? (JSON.parse(raw) as StoredSheetDraft) : null
+}
+
+function draftData(): Doc | null {
+  const draft = readDraftRaw()
+  return draft ? parseDoc(draft.data) : null
+}
+
+function hangingSave(): Mock<SheetSaveFn<Doc>> {
+  return vi.fn<SheetSaveFn<Doc>>(() => new Promise<string>(() => {}))
 }
 
 function setup(options?: {
@@ -52,9 +60,11 @@ function setup(options?: {
   remote?: RemoteSheetSnapshot<Doc> | null
   historyLimit?: number
   retryDelaysMs?: number[]
+  saveTimeoutMs?: number
+  parseDraft?: (raw: unknown) => Doc | null
 }) {
   const save: Mock<SheetSaveFn<Doc>> =
-    options?.save ?? vi.fn<SheetSaveFn<Doc>>().mockResolvedValue(undefined)
+    options?.save ?? vi.fn<SheetSaveFn<Doc>>().mockResolvedValue('updated-1')
   const initialRemote = options?.remote === undefined ? makeRemote() : options.remote
 
   const view = renderHook(
@@ -65,8 +75,10 @@ function setup(options?: {
         remote: props.remote,
         scope: 'pj',
         save,
+        parseDraft: options?.parseDraft ?? parseDoc,
         historyLimit: options?.historyLimit,
         retryDelaysMs: options?.retryDelaysMs,
+        saveTimeoutMs: options?.saveTimeoutMs,
       }),
     { initialProps: { remote: initialRemote } },
   )
@@ -82,6 +94,7 @@ async function advance(ms: number) {
 
 beforeEach(() => {
   window.localStorage.clear()
+  document.body.innerHTML = ''
   vi.useFakeTimers({ now: NOW })
 })
 
@@ -96,9 +109,10 @@ describe('useSheetAutosave — adoção do snapshot remoto', () => {
     const { view } = setup()
     expect(view.result.current.sheet).toEqual({ title: 'Original', notes: '' })
     expect(view.result.current.savingStatus).toBe('idle')
+    expect(view.result.current.localBackupError).toBeNull()
   })
 
-  it('não sobrescreve a edição local quando um novo snapshot remoto chega', async () => {
+  it('não sobrescreve a edição local quando um novo snapshot remoto chega', () => {
     const { view } = setup()
 
     act(() => view.result.current.commit({ title: 'Editado localmente', notes: '' }))
@@ -109,29 +123,20 @@ describe('useSheetAutosave — adoção do snapshot remoto', () => {
 })
 
 describe('P1 — digitação contínua sem pausa (teto de espera)', () => {
-  it('escreve durante a digitação, enquanto o debounce puro antigo nunca escreveria', async () => {
-    const legacySave = vi.fn()
-    const legacy = createLegacyAutosave(legacySave)
+  it('escreve durante digitação contínua, sem nenhuma pausa de 800ms', async () => {
     const { save, view } = setup()
 
-    // 20 edições espaçadas por 200ms (nunca há pausa de 800ms): 4s digitando.
+    // 20 edições espaçadas por 200ms: 4s digitando sem nunca pausar o bastante
+    // para o debounce disparar. Sem o teto de espera, `save` nunca é chamado.
     for (let index = 0; index < 20; index += 1) {
       act(() =>
         view.result.current.commit((current) => ({ ...current, notes: `${current.notes}a` })),
       )
-      legacy.edit()
       await advance(200)
     }
 
-    // Comportamento antigo: nenhuma escrita em 4 segundos de digitação.
-    expect(legacySave).toHaveBeenCalledTimes(0)
-
-    // Comportamento novo: o teto de espera de 3s forçou a escrita.
     expect(save).toHaveBeenCalled()
-    const [, , dataSent] = save.mock.calls[0]
-    expect((dataSent as Doc).notes.length).toBeGreaterThan(0)
-
-    legacy.unmount()
+    expect(save.mock.calls[0][2].notes.length).toBeGreaterThan(0)
   })
 
   it('mantém o debounce de 800ms quando o usuário pausa', async () => {
@@ -155,6 +160,61 @@ describe('P1 — digitação contínua sem pausa (teto de espera)', () => {
   })
 })
 
+describe('D3 — escrita presa (Firestore offline não resolve a promise)', () => {
+  it('não deixa o autosave parado: watchdog libera a fila e reenvia o dado novo', async () => {
+    const save = hangingSave()
+    const { view } = setup({ save, saveTimeoutMs: 5000, retryDelaysMs: [1000] })
+
+    act(() => view.result.current.commit({ title: 'Offline', notes: 'a' }))
+    await advance(900)
+    expect(save).toHaveBeenCalledTimes(1)
+
+    // Usuário continua digitando 30s com a escrita pendurada.
+    for (let index = 0; index < 150; index += 1) {
+      act(() =>
+        view.result.current.commit((current) => ({ ...current, notes: `${current.notes}b` })),
+      )
+      await advance(200)
+    }
+
+    expect(save.mock.calls.length).toBeGreaterThan(1)
+    const lastCall = save.mock.calls[save.mock.calls.length - 1]
+    expect(lastCall[2].notes.length).toBeGreaterThan(1)
+  })
+
+  it('expõe erro depois de esgotar as tentativas com escrita pendurada', async () => {
+    const save = hangingSave()
+    const { view } = setup({ save, saveTimeoutMs: 2000, retryDelaysMs: [500] })
+
+    act(() => view.result.current.commit({ title: 'Pendurado', notes: '' }))
+    await advance(900)
+    expect(save).toHaveBeenCalledTimes(1)
+
+    await advance(2000) // watchdog do 1º voo
+    await advance(500) // backoff
+    expect(save).toHaveBeenCalledTimes(2)
+
+    await advance(2000) // watchdog do 2º voo → tentativas esgotadas
+    expect(view.result.current.savingStatus).toBe('error')
+    expect(draftData()?.title).toBe('Pendurado')
+  })
+
+  it('retry manual abandona a escrita presa e reenvia', async () => {
+    const save = hangingSave()
+    const { view } = setup({ save, saveTimeoutMs: 60000, retryDelaysMs: [] })
+
+    act(() => view.result.current.commit({ title: 'Preso', notes: '' }))
+    await advance(900)
+    expect(save).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      view.result.current.retry()
+    })
+
+    expect(save).toHaveBeenCalledTimes(2)
+  })
+})
+
 describe('P1 — espelho local para recuperação', () => {
   it('grava rascunho síncrono já na primeira edição (antes de qualquer escrita remota)', () => {
     const { save, view } = setup()
@@ -162,34 +222,33 @@ describe('P1 — espelho local para recuperação', () => {
     act(() => view.result.current.commit({ title: 'Rascunho', notes: 'x' }))
 
     expect(save).not.toHaveBeenCalled()
-    expect(readDraftRaw()?.data).toEqual({ title: 'Rascunho', notes: 'x' })
+    expect(draftData()).toEqual({ title: 'Rascunho', notes: 'x' })
   })
 
-  it('pagehide com edição pendente preserva o dado no rascunho local', async () => {
-    const legacySave = vi.fn()
-    const legacy = createLegacyAutosave(legacySave)
-    // A escrita remota nunca completa — é exatamente o cenário em que só o
-    // rascunho local salva o trabalho.
-    const save = vi.fn<SheetSaveFn<Doc>>(() => new Promise<void>(() => {}))
-    const { view } = setup({ save })
+  it('pagehide grava no rascunho a edição que o throttle ainda não havia gravado', async () => {
+    const { view } = setup({ save: hangingSave() })
 
-    act(() => view.result.current.commit({ title: 'Quase perdido', notes: '' }))
-    legacy.edit()
+    // 1ª edição: gravada na borda de subida do throttle.
+    act(() => view.result.current.commit({ title: 'Primeira', notes: '' }))
+    expect(draftData()?.title).toBe('Primeira')
+
+    // 2ª edição dentro da janela do throttle: não chega sozinha ao localStorage.
     await advance(100)
+    act(() => view.result.current.commit({ title: 'Segunda', notes: '' }))
+    expect(draftData()?.title).toBe('Primeira')
 
+    // Só o flush do pagehide preserva a segunda edição. Sem o listener, o
+    // rascunho continuaria em "Primeira" e este teste falharia.
     act(() => {
       window.dispatchEvent(new Event('pagehide'))
     })
-
-    // No comportamento antigo nada havia sido persistido em nenhum lugar.
-    expect(legacySave).toHaveBeenCalledTimes(0)
-    expect(readDraftRaw()?.data.title).toBe('Quase perdido')
+    expect(draftData()?.title).toBe('Segunda')
   })
 
-  it('visibilitychange para hidden faz flush do pendente e mantém o rascunho até a confirmação', async () => {
+  it('visibilitychange para hidden faz flush e mantém o rascunho até a confirmação', async () => {
     // Escrita que nunca resolve: simula o caso real em que o navegador encerra a
     // página (ou a conexão cai) antes de o Firestore confirmar.
-    const save = vi.fn<SheetSaveFn<Doc>>(() => new Promise<void>(() => {}))
+    const save = hangingSave()
     const { view } = setup({ save })
 
     act(() => view.result.current.commit({ title: 'Aba escondida', notes: '' }))
@@ -205,7 +264,7 @@ describe('P1 — espelho local para recuperação', () => {
       document.dispatchEvent(new Event('visibilitychange'))
     })
 
-    expect(readDraftRaw()?.data.title).toBe('Aba escondida')
+    expect(draftData()?.title).toBe('Aba escondida')
     expect(save).toHaveBeenCalledTimes(1)
 
     if (descriptor) Object.defineProperty(document, 'visibilityState', descriptor)
@@ -237,15 +296,85 @@ describe('P1 — espelho local para recuperação', () => {
     expect(readDraftRaw()).toBeNull()
     expect(view.result.current.savingStatus).toBe('saved')
   })
+})
 
-  it('restaura o rascunho quando ele é mais recente que o documento remoto', async () => {
+describe('D1 — rascunho obsoleto não pode ressuscitar', () => {
+  it('pagehide sem edição pendente não grava rascunho nenhum', () => {
+    const { view } = setup()
+
+    expect(view.result.current.sheet).not.toBeNull()
+
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'))
+    })
+
+    expect(readDraftRaw()).toBeNull()
+  })
+
+  it('pagehide depois de save confirmado não regrava o dado já salvo', async () => {
+    const { view } = setup()
+
+    act(() => view.result.current.commit({ title: 'Já salvo', notes: '' }))
+    await advance(900)
+    expect(view.result.current.savingStatus).toBe('saved')
+    expect(readDraftRaw()).toBeNull()
+
+    // Usuário fecha a aba sem editar mais nada.
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'))
+    })
+
+    expect(readDraftRaw()).toBeNull()
+  })
+
+  it('reabrir uma ficha já salva não mostra aviso de recuperação nem reescreve', async () => {
+    const first = setup()
+
+    act(() => first.view.result.current.commit({ title: 'Trabalho salvo', notes: '' }))
+    await advance(900)
+    await act(async () => {
+      first.view.unmount()
+    })
+
+    // Segunda abertura: o remoto já contém o trabalho.
+    const second = setup({ remote: makeRemote({ title: 'Trabalho salvo' }, 'updated-1') })
+
+    expect(second.view.result.current.recoveredDraftAt).toBeNull()
+    expect(second.view.result.current.savingStatus).toBe('idle')
+
+    await advance(5000)
+    expect(second.save).not.toHaveBeenCalled()
+  })
+
+  it('descarta rascunho cuja âncora não é o updatedAt remoto atual (outra aba escreveu)', () => {
+    // `savedAt` no futuro de propósito: a decisão NÃO pode se basear em comparar
+    // relógios de dispositivos diferentes, e sim na âncora.
+    writeSheetDraft(
+      'pj',
+      UID,
+      ID,
+      { title: 'Obsoleto', notes: '' },
+      REMOTE_UPDATED_AT,
+      '2030-01-01T00:00:00.000Z',
+    )
+
+    const { view } = setup({
+      remote: makeRemote({ title: 'Escrito pela aba B' }, '2026-01-02T00:05:00.000Z'),
+    })
+
+    expect(view.result.current.sheet?.title).toBe('Escrito pela aba B')
+    expect(view.result.current.recoveredDraftAt).toBeNull()
+    expect(readDraftRaw()).toBeNull()
+  })
+
+  it('restaura o rascunho cuja âncora casa com o remoto', async () => {
     writeSheetDraft(
       'pj',
       UID,
       ID,
       { title: 'Trabalho recuperado', notes: 'não salvo' },
       REMOTE_UPDATED_AT,
-      '2026-01-02T12:00:00.000Z', // depois do updatedAt remoto
+      '2026-01-02T12:00:00.000Z',
     )
 
     const { save, view } = setup()
@@ -257,20 +386,51 @@ describe('P1 — espelho local para recuperação', () => {
     expect(view.result.current.recoveredDraftAt).toBe('2026-01-02T12:00:00.000Z')
     expect(view.result.current.savingStatus).toBe('pending')
 
-    // Converge sozinho: o rascunho recuperado é enviado ao Firestore.
     await advance(900)
     expect(save).toHaveBeenCalledTimes(1)
     expect(save.mock.calls[0][2]).toEqual({ title: 'Trabalho recuperado', notes: 'não salvo' })
   })
 
-  it('descarta rascunho mais antigo que o documento remoto', () => {
-    writeSheetDraft(
-      'pj',
-      UID,
-      ID,
-      { title: 'Rascunho velho', notes: '' },
-      null,
-      '2026-01-01T06:00:00.000Z', // antes do updatedAt remoto
+  it('reancora o rascunho na escrita confirmada, para não perder o que veio depois', async () => {
+    // 1ª escrita confirma e devolve o novo updatedAt; a 2ª fica pendurada.
+    const save = vi
+      .fn<SheetSaveFn<Doc>>()
+      .mockResolvedValueOnce('updated-2')
+      .mockImplementation(() => new Promise<string>(() => {}))
+    const first = setup({ save })
+
+    act(() => first.view.result.current.commit({ title: 'Primeira', notes: '' }))
+    await advance(900)
+    expect(save).toHaveBeenCalledTimes(1)
+
+    // Continua editando; a aba morre com a 2ª escrita em voo.
+    act(() => first.view.result.current.commit({ title: 'Depois do save', notes: '' }))
+    await advance(900)
+    await act(async () => {
+      first.view.unmount()
+    })
+
+    expect(draftData()?.title).toBe('Depois do save')
+
+    // Reabre com o updatedAt resultante da NOSSA escrita: a âncora casa e o
+    // trabalho posterior é recuperado em vez de descartado.
+    const second = setup({ remote: makeRemote({ title: 'Primeira' }, 'updated-2') })
+
+    expect(second.view.result.current.sheet?.title).toBe('Depois do save')
+    expect(second.view.result.current.recoveredDraftAt).not.toBeNull()
+  })
+})
+
+describe('D2 — rascunho não confiável nunca é adotado às cegas', () => {
+  it('descarta rascunho de versão de formato desconhecida', () => {
+    window.localStorage.setItem(
+      getSheetDraftKey('pj', UID, ID),
+      JSON.stringify({
+        version: SHEET_DRAFT_SCHEMA_VERSION + 1,
+        data: { title: 'De outra versão', notes: '' },
+        savedAt: '2026-01-02T12:00:00.000Z',
+        baseUpdatedAt: REMOTE_UPDATED_AT,
+      }),
     )
 
     const { view } = setup()
@@ -279,14 +439,95 @@ describe('P1 — espelho local para recuperação', () => {
     expect(view.result.current.recoveredDraftAt).toBeNull()
     expect(readDraftRaw()).toBeNull()
   })
+
+  it('descarta rascunho de formato antigo que o normalizador rejeita', () => {
+    // Formato de uma versão anterior do app: sem os campos que a ficha exige.
+    writeSheetDraft(
+      'pj',
+      UID,
+      ID,
+      { character: { name: 'Formato antigo' } },
+      REMOTE_UPDATED_AT,
+      '2026-01-02T12:00:00.000Z',
+    )
+
+    const { view } = setup()
+
+    expect(view.result.current.sheet).toEqual({ title: 'Original', notes: '' })
+    expect(view.result.current.recoveredDraftAt).toBeNull()
+    expect(readDraftRaw()).toBeNull()
+  })
+
+  it('descarta rascunho quando o normalizador lança', () => {
+    writeSheetDraft(
+      'pj',
+      UID,
+      ID,
+      { title: 'Explode', notes: '' },
+      REMOTE_UPDATED_AT,
+      '2026-01-02T12:00:00.000Z',
+    )
+
+    const { view } = setup({
+      parseDraft: () => {
+        throw new Error('normalizador quebrou')
+      },
+    })
+
+    expect(view.result.current.sheet?.title).toBe('Original')
+    expect(view.result.current.recoveredDraftAt).toBeNull()
+  })
+
+  it('descarta envelope corrompido sem quebrar o carregamento', () => {
+    window.localStorage.setItem(getSheetDraftKey('pj', UID, ID), '{isso não é json')
+
+    const { view } = setup()
+
+    expect(view.result.current.sheet?.title).toBe('Original')
+    expect(readDraftRaw()).toBeNull()
+  })
+})
+
+describe('D5 — falha da cópia local de segurança é visível', () => {
+  it('expõe localBackupError quando o localStorage estoura a cota', () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('cheio', 'QuotaExceededError')
+    })
+
+    const { view } = setup()
+
+    act(() => view.result.current.commit({ title: 'Sem espaço', notes: '' }))
+
+    expect(view.result.current.localBackupError).toBe('quota')
+    expect(view.result.current.savingStatus).toBe('pending')
+
+    setItemSpy.mockRestore()
+  })
+
+  it('limpa o aviso quando a gravação local volta a funcionar', async () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('cheio', 'QuotaExceededError')
+    })
+
+    const { view } = setup()
+    act(() => view.result.current.commit({ title: 'Sem espaço', notes: '' }))
+    expect(view.result.current.localBackupError).toBe('quota')
+
+    setItemSpy.mockRestore()
+
+    await advance(600)
+    act(() => view.result.current.commit({ title: 'Com espaço', notes: '' }))
+
+    expect(view.result.current.localBackupError).toBeNull()
+  })
 })
 
 describe('P4 — status de salvamento honesto', () => {
   it('percorre pending → saving → saved', async () => {
-    let resolveSave: (() => void) | null = null
+    let resolveSave: ((value: string) => void) | null = null
     const save = vi.fn<SheetSaveFn<Doc>>(
       () =>
-        new Promise<void>((resolve) => {
+        new Promise<string>((resolve) => {
           resolveSave = resolve
         }),
     )
@@ -299,16 +540,16 @@ describe('P4 — status de salvamento honesto', () => {
     expect(view.result.current.savingStatus).toBe('saving')
 
     await act(async () => {
-      resolveSave?.()
+      resolveSave?.('updated-1')
     })
     expect(view.result.current.savingStatus).toBe('saved')
   })
 
   it('volta para pending quando o usuário edita durante uma escrita em voo', async () => {
-    let resolveSave: (() => void) | null = null
+    let resolveSave: ((value: string) => void) | null = null
     const save = vi.fn<SheetSaveFn<Doc>>(
       () =>
-        new Promise<void>((resolve) => {
+        new Promise<string>((resolve) => {
           resolveSave = resolve
         }),
     )
@@ -322,7 +563,7 @@ describe('P4 — status de salvamento honesto', () => {
     expect(view.result.current.savingStatus).toBe('pending')
 
     await act(async () => {
-      resolveSave?.()
+      resolveSave?.('updated-1')
     })
     expect(view.result.current.savingStatus).toBe('pending')
 
@@ -347,8 +588,7 @@ describe('P4 — status de salvamento honesto', () => {
     expect(save).toHaveBeenCalledTimes(3)
     expect(view.result.current.savingStatus).toBe('error')
 
-    // Nada é perdido: o rascunho local continua disponível para recuperação.
-    expect(readDraftRaw()?.data.title).toBe('Sem rede')
+    expect(draftData()?.title).toBe('Sem rede')
   })
 
   it('uma nova edição depois do erro recupera o orçamento de tentativas', async () => {
@@ -373,7 +613,7 @@ describe('P4 — status de salvamento honesto', () => {
     const save = vi
       .fn<SheetSaveFn<Doc>>()
       .mockRejectedValueOnce(new Error('offline'))
-      .mockResolvedValue(undefined)
+      .mockResolvedValue('updated-1')
     const { view } = setup({ save, retryDelaysMs: [] })
 
     act(() => view.result.current.commit({ title: 'Retry', notes: '' }))
@@ -415,10 +655,9 @@ describe('P4 — undo/redo', () => {
     expect(view.result.current.canRedo).toBe(false)
   })
 
-  it('agrupa edições da mesma rajada em uma única entrada de histórico', async () => {
+  it('agrupa edições da mesma rajada em uma única entrada de histórico', () => {
     const { view } = setup()
 
-    // Cinco "teclas" dentro da janela de agrupamento.
     for (const letter of ['a', 'b', 'c', 'd', 'e']) {
       act(() =>
         view.result.current.commit((current) => ({ ...current, notes: current.notes + letter })),
@@ -430,7 +669,6 @@ describe('P4 — undo/redo', () => {
 
     act(() => view.result.current.undo())
 
-    // Um único undo volta ao estado antes da rajada inteira, não letra por letra.
     expect(view.result.current.sheet?.notes).toBe('')
     expect(view.result.current.canUndo).toBe(false)
   })
@@ -450,8 +688,6 @@ describe('P4 — undo/redo', () => {
     }
 
     expect(undoCount).toBe(3)
-    // Com limite 3, o estado mais antigo alcançável é o "Passo 3"
-    // (as entradas anteriores foram descartadas).
     expect(view.result.current.sheet?.title).toBe('Passo 3')
   })
 
@@ -472,12 +708,18 @@ describe('P4 — undo/redo', () => {
     expect(save.mock.calls.length - savesAfterEditing).toBe(1)
     expect(view.result.current.sheet?.title).toBe('Passo 1')
   })
+})
 
-  it('atende aos atalhos Ctrl+Z e Ctrl+Shift+Z', async () => {
-    const { view } = setup()
-
-    act(() => view.result.current.commit({ title: 'Com atalho', notes: '' }))
+describe('D4 — atalho de desfazer não sequestra campos nem modais', () => {
+  async function setupWithHistory() {
+    const context = setup()
+    act(() => context.view.result.current.commit({ title: 'Com atalho', notes: '' }))
     await advance(1000)
+    return context
+  }
+
+  it('funciona quando o foco não está em campo de texto', async () => {
+    const { view } = await setupWithHistory()
 
     act(() => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true }))
@@ -494,6 +736,51 @@ describe('P4 — undo/redo', () => {
     // Cmd+Z (macOS)
     act(() => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', metaKey: true }))
+    })
+    expect(view.result.current.sheet?.title).toBe('Original')
+  })
+
+  it('ignora o atalho dentro de input, textarea e contenteditable', async () => {
+    const { view } = await setupWithHistory()
+
+    for (const tag of ['input', 'textarea'] as const) {
+      const field = document.createElement(tag)
+      document.body.appendChild(field)
+      act(() => {
+        field.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }),
+        )
+      })
+      expect(view.result.current.sheet?.title).toBe('Com atalho')
+    }
+
+    const editable = document.createElement('div')
+    editable.setAttribute('contenteditable', 'true')
+    document.body.appendChild(editable)
+    act(() => {
+      editable.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }),
+      )
+    })
+    expect(view.result.current.sheet?.title).toBe('Com atalho')
+  })
+
+  it('ignora o atalho enquanto há diálogo modal aberto', async () => {
+    const { view } = await setupWithHistory()
+
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    dialog.setAttribute('aria-modal', 'true')
+    document.body.appendChild(dialog)
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true }))
+    })
+    expect(view.result.current.sheet?.title).toBe('Com atalho')
+
+    dialog.remove()
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true }))
     })
     expect(view.result.current.sheet?.title).toBe('Original')
   })

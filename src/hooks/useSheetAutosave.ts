@@ -7,24 +7,31 @@
 //     contínua sem pausa ainda resulta em escrita periódica.
 //  3. Espelho local em localStorage gravado de forma síncrona, para que fechar a
 //     aba / perder conexão não perca trabalho (o flush remoto pode não completar).
-//  4. Status de salvamento honesto (`pending` ≠ `saving` ≠ `saved`) e retry com
-//     backoff limitado em caso de falha de escrita.
+//  4. Status de salvamento honesto (`pending` ≠ `saving` ≠ `saved`), watchdog para
+//     escrita presa e retry com backoff limitado.
 //  5. Histórico de undo/redo agrupado por pausa, com atalhos Ctrl/Cmd+Z.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SavingStatus } from '../types/savingStatus'
 import {
   clearSheetDraft,
-  isSheetDraftNewerThanRemote,
+  isSheetDraftBasedOnRemote,
   readSheetDraft,
   writeSheetDraft,
   type SheetDraftScope,
+  type SheetDraftWriteResult,
 } from '../utils/sheetDraft'
 
 /** Espera após a última edição antes de escrever (decisão documentada no CLAUDE.md). */
 export const SAVE_DEBOUNCE_MS = 800
 /** Teto de espera: digitação contínua sem pausa ainda salva a cada 3s. */
 export const SAVE_MAX_WAIT_MS = 3000
+/**
+ * Tempo máximo que uma escrita pode ficar em voo antes de ser considerada presa.
+ * A promise do `setDoc` só resolve com confirmação do servidor, então offline ela
+ * pode nunca resolver — sem esse watchdog o autosave ficaria parado para sempre.
+ */
+export const SAVE_TIMEOUT_MS = 10000
 /** Intervalo mínimo entre gravações do rascunho local durante digitação. */
 export const DRAFT_THROTTLE_MS = 500
 /** Número máximo de snapshots no histórico de undo. */
@@ -40,12 +47,21 @@ export interface RemoteSheetSnapshot<T> {
   updatedAt: string
 }
 
+/**
+ * Persiste a ficha. Quando devolve uma string, ela é o `updatedAt` gravado — usado
+ * para reancorar o rascunho local na escrita que acabou de ser confirmada, para
+ * que o avanço do documento remoto causado por nós mesmos não seja confundido com
+ * a escrita de outra aba/aparelho.
+ */
 export type SheetSaveFn<T> = (
   uid: string,
   id: string,
   data: T,
   createdAt?: string,
-) => Promise<void>
+) => Promise<string | void>
+
+/** Motivo pelo qual a cópia local de segurança não pôde ser gravada. */
+export type LocalBackupError = 'quota' | 'unavailable'
 
 export interface UseSheetAutosaveOptions<T> {
   uid: string | null
@@ -54,8 +70,17 @@ export interface UseSheetAutosaveOptions<T> {
   remote: RemoteSheetSnapshot<T> | null
   scope: SheetDraftScope
   save: SheetSaveFn<T>
+  /**
+   * Normaliza/valida o conteúdo do rascunho local, que é dado NÃO CONFIÁVEL
+   * (versão anterior do app, corrupção, edição manual). Deve devolver `null`
+   * quando o conteúdo não for uma ficha utilizável — nesse caso o rascunho é
+   * descartado e o documento remoto é usado. Obrigatório justamente para que
+   * nenhum caminho de leitura escape das funções `normalize*`.
+   */
+  parseDraft: (raw: unknown) => T | null
   debounceMs?: number
   maxWaitMs?: number
+  saveTimeoutMs?: number
   historyLimit?: number
   historyGroupMs?: number
   retryDelaysMs?: number[]
@@ -79,12 +104,40 @@ export interface UseSheetAutosaveResult<T> {
   /** ISO timestamp do rascunho recuperado no carregamento, ou `null`. */
   recoveredDraftAt: string | null
   dismissRecovery: () => void
+  /**
+   * Diferente de `null` quando NÃO foi possível manter a cópia local de segurança.
+   * Precisa ser exibido: sem o espelho local, uma queda de conexão junto com o
+   * fechamento da aba volta a perder trabalho.
+   */
+  localBackupError: LocalBackupError | null
 }
 
 type HistoryStacks<T> = { past: T[]; future: T[] }
 
 function isUpdaterFn<T>(value: T | ((current: T) => T)): value is (current: T) => T {
   return typeof value === 'function'
+}
+
+/**
+ * Campos de texto têm o próprio undo (nativo ou por buffer local, como o
+ * `NumberInput`). Sequestrar Ctrl+Z ali desfaria a ficha inteira por baixo do
+ * cursor — e, no caso do `NumberInput`, o valor exibido ficaria divergente do
+ * documento até o blur.
+ */
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+
+  const tagName = target.tagName
+  if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') return true
+  if (target.isContentEditable) return true
+
+  const contentEditable = target.getAttribute('contenteditable')
+  return contentEditable === '' || contentEditable === 'true'
+}
+
+/** Com um diálogo modal aberto, o atalho pertence ao diálogo, não à ficha. */
+function hasOpenModalDialog(): boolean {
+  return document.querySelector('[role="dialog"][aria-modal="true"]') !== null
 }
 
 export function useSheetAutosave<T>(
@@ -96,8 +149,10 @@ export function useSheetAutosave<T>(
     remote,
     scope,
     save,
+    parseDraft,
     debounceMs = SAVE_DEBOUNCE_MS,
     maxWaitMs = SAVE_MAX_WAIT_MS,
+    saveTimeoutMs = SAVE_TIMEOUT_MS,
     historyLimit = HISTORY_LIMIT,
     historyGroupMs = HISTORY_GROUP_MS,
     retryDelaysMs = RETRY_DELAYS_MS,
@@ -107,12 +162,14 @@ export function useSheetAutosave<T>(
   const [savingStatus, setSavingStatusState] = useState<SavingStatus>('idle')
   const [historyCounts, setHistoryCounts] = useState({ past: 0, future: 0 })
   const [recoveredDraftAt, setRecoveredDraftAt] = useState<string | null>(null)
+  const [localBackupError, setLocalBackupError] = useState<LocalBackupError | null>(null)
 
   // ── Refs (acesso síncrono ao estado mais recente em listeners e timers) ────
   const sheetRef = useRef<T | null>(null)
   const pendingRef = useRef<T | null>(null)
   const draftDataRef = useRef<T | null>(null)
   const inFlightRef = useRef(false)
+  const flightSeqRef = useRef(0)
   const retryCountRef = useRef(0)
   const mountedRef = useRef(true)
   const adoptedRef = useRef(false)
@@ -125,18 +182,35 @@ export function useSheetAutosave<T>(
   const maxWaitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const watchdogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const uidRef = useRef(uid)
   const idRef = useRef(id)
   const scopeRef = useRef(scope)
   const saveRef = useRef(save)
+  const parseDraftRef = useRef(parseDraft)
   uidRef.current = uid
   idRef.current = id
   scopeRef.current = scope
   saveRef.current = save
+  parseDraftRef.current = parseDraft
 
-  const configRef = useRef({ debounceMs, maxWaitMs, historyLimit, historyGroupMs, retryDelaysMs })
-  configRef.current = { debounceMs, maxWaitMs, historyLimit, historyGroupMs, retryDelaysMs }
+  const configRef = useRef({
+    debounceMs,
+    maxWaitMs,
+    saveTimeoutMs,
+    historyLimit,
+    historyGroupMs,
+    retryDelaysMs,
+  })
+  configRef.current = {
+    debounceMs,
+    maxWaitMs,
+    saveTimeoutMs,
+    historyLimit,
+    historyGroupMs,
+    retryDelaysMs,
+  }
 
   // ── Helpers básicos ────────────────────────────────────────────────────────
 
@@ -175,14 +249,37 @@ export function useSheetAutosave<T>(
     }
   }, [])
 
+  const clearWatchdog = useCallback(() => {
+    if (watchdogTimerRef.current !== null) {
+      clearTimeout(watchdogTimerRef.current)
+      watchdogTimerRef.current = null
+    }
+  }, [])
+
   // ── Rascunho local ─────────────────────────────────────────────────────────
 
-  const writeDraftNow = useCallback((data: T) => {
-    const currentUid = uidRef.current
-    const currentId = idRef.current
-    if (!currentUid || !currentId) return
-    writeSheetDraft(scopeRef.current, currentUid, currentId, data, baseUpdatedAtRef.current)
+  const reportDraftResult = useCallback((result: SheetDraftWriteResult) => {
+    if (!mountedRef.current) return
+    setLocalBackupError(result === 'ok' ? null : result)
   }, [])
+
+  const writeDraftNow = useCallback(
+    (data: T) => {
+      const currentUid = uidRef.current
+      const currentId = idRef.current
+      if (!currentUid || !currentId) return
+
+      const result = writeSheetDraft(
+        scopeRef.current,
+        currentUid,
+        currentId,
+        data,
+        baseUpdatedAtRef.current,
+      )
+      reportDraftResult(result)
+    },
+    [reportDraftResult],
+  )
 
   /**
    * Grava o rascunho na borda de subida (primeira edição da rajada) e depois no
@@ -205,7 +302,19 @@ export function useSheetAutosave<T>(
     [writeDraftNow],
   )
 
-  const clearDraft = useCallback(() => {
+  /**
+   * Descarta o espelho local por completo. `draftDataRef` TEM de ser zerado junto
+   * com o localStorage: se ficasse apontando para o dado antigo, um `pagehide`
+   * posterior regravaria um rascunho já obsoleto, que na próxima abertura seria
+   * adotado e sobrescreveria escrita legítima mais nova.
+   */
+  const discardLocalMirror = useCallback(() => {
+    if (draftTimerRef.current !== null) {
+      clearTimeout(draftTimerRef.current)
+      draftTimerRef.current = null
+    }
+    draftDataRef.current = null
+
     const currentUid = uidRef.current
     const currentId = idRef.current
     if (!currentUid || !currentId) return
@@ -213,6 +322,43 @@ export function useSheetAutosave<T>(
   }, [])
 
   // ── Escrita remota ─────────────────────────────────────────────────────────
+
+  const scheduleSaveRef = useRef<() => void>(() => {})
+  const runSaveRef = useRef<() => void>(() => {})
+
+  /**
+   * Devolve o dado à fila e agenda nova tentativa (ou expõe o erro). Usado tanto
+   * quando o `save` rejeita quanto quando ele fica preso além do watchdog.
+   */
+  const handleSaveFailure = useCallback(
+    (data: T) => {
+      clearWatchdog()
+      // Invalida o voo atual: se a escrita presa resolver mais tarde, o resultado
+      // é ignorado (o dado já voltou para a fila e será reenviado).
+      flightSeqRef.current += 1
+      inFlightRef.current = false
+
+      if (pendingRef.current === null) pendingRef.current = data
+
+      const queued = pendingRef.current
+      if (queued !== null) writeDraftNow(queued)
+
+      const delays = configRef.current.retryDelaysMs
+      if (retryCountRef.current < delays.length) {
+        const delay = delays[retryCountRef.current]
+        retryCountRef.current += 1
+        setStatus('saving')
+        retryTimerRef.current = setTimeout(() => {
+          retryTimerRef.current = null
+          runSaveRef.current()
+        }, delay)
+        return
+      }
+
+      setStatus('error')
+    },
+    [clearWatchdog, setStatus, writeDraftNow],
+  )
 
   const runSave = useCallback(() => {
     clearSaveTimers()
@@ -223,58 +369,66 @@ export function useSheetAutosave<T>(
 
     if (data === null || !currentUid || !currentId) return
 
-    // Já existe uma escrita em voo: o handler de conclusão reagenda o pendente.
-    if (inFlightRef.current) return
+    // Já existe uma escrita em voo. É obrigatório REAGENDAR: se apenas
+    // retornássemos, uma escrita que nunca resolve (Firestore offline) mataria
+    // de vez o teto de espera e o autosave ficaria parado indefinidamente.
+    if (inFlightRef.current) {
+      scheduleSaveRef.current()
+      return
+    }
 
     pendingRef.current = null
     inFlightRef.current = true
+    const token = flightSeqRef.current
     setStatus('saving')
+
+    watchdogTimerRef.current = setTimeout(() => {
+      watchdogTimerRef.current = null
+      if (flightSeqRef.current !== token) return
+      handleSaveFailure(data)
+    }, configRef.current.saveTimeoutMs)
 
     // IIFE async: normaliza retornos não-Promise e erros lançados de forma
     // síncrona pela função de save.
     void (async () =>
       saveRef.current(currentUid, currentId, data, createdAtRef.current ?? undefined))()
-      .then(() => {
+      .then((writtenUpdatedAt) => {
+        if (flightSeqRef.current !== token) return
+        clearWatchdog()
         inFlightRef.current = false
         retryCountRef.current = 0
 
-        if (pendingRef.current !== null) {
+        // Reancora: daqui para frente o estado local é baseado NESTA escrita.
+        if (typeof writtenUpdatedAt === 'string' && writtenUpdatedAt.length > 0) {
+          baseUpdatedAtRef.current = writtenUpdatedAt
+        }
+
+        const stillPending = pendingRef.current
+        if (stillPending !== null) {
+          // Regrava o rascunho com a âncora nova; sem isso, o rascunho ficaria
+          // preso à âncora anterior e seria descartado na próxima abertura.
+          writeDraftNow(stillPending)
           setStatus('pending')
           scheduleSaveRef.current()
           return
         }
 
-        clearDraft()
+        discardLocalMirror()
         setStatus('saved')
       })
       .catch(() => {
-        inFlightRef.current = false
-
-        // Nada é descartado: o dado volta para a fila e o rascunho local fica.
-        if (pendingRef.current === null) {
-          pendingRef.current = data
-          draftDataRef.current = data
-        }
-        const queued = pendingRef.current
-        if (queued !== null) writeDraftNow(queued)
-
-        const delays = configRef.current.retryDelaysMs
-        if (retryCountRef.current < delays.length) {
-          const delay = delays[retryCountRef.current]
-          retryCountRef.current += 1
-          setStatus('saving')
-          retryTimerRef.current = setTimeout(() => {
-            retryTimerRef.current = null
-            runSaveRef.current()
-          }, delay)
-          return
-        }
-
-        setStatus('error')
+        if (flightSeqRef.current !== token) return
+        handleSaveFailure(data)
       })
-  }, [clearDraft, clearSaveTimers, setStatus, writeDraftNow])
+  }, [
+    clearSaveTimers,
+    clearWatchdog,
+    discardLocalMirror,
+    handleSaveFailure,
+    setStatus,
+    writeDraftNow,
+  ])
 
-  const runSaveRef = useRef(runSave)
   runSaveRef.current = runSave
 
   const scheduleSave = useCallback(() => {
@@ -296,7 +450,6 @@ export function useSheetAutosave<T>(
     }
   }, [])
 
-  const scheduleSaveRef = useRef(scheduleSave)
   scheduleSaveRef.current = scheduleSave
 
   // ── Histórico ──────────────────────────────────────────────────────────────
@@ -354,6 +507,7 @@ export function useSheetAutosave<T>(
     (next: T) => {
       applyLocal(next)
       pendingRef.current = next
+      retryCountRef.current = 0
       setStatus('pending')
       // Undo/redo entram no mesmo debounce: uma sequência rápida de undos gera
       // uma única escrita, não uma tempestade.
@@ -390,12 +544,21 @@ export function useSheetAutosave<T>(
 
   // ── Flush / retry / descarte ───────────────────────────────────────────────
 
+  /**
+   * Grava o espelho local e dispara a escrita remota do que está pendente.
+   *
+   * Só age quando existe edição pendente de verdade. Gravar o rascunho "por
+   * garantia" quando não há nada pendente é o que ressuscitava dado obsoleto:
+   * o rascunho ganharia `savedAt` novo e seria adotado na abertura seguinte.
+   */
   const flushNow = useCallback(() => {
+    const data = pendingRef.current
+    if (data === null) return
+
     // Ordem importa: o rascunho local é síncrono e é a única garantia real
     // quando o navegador encerra a página antes de a escrita remota completar.
-    const data = pendingRef.current ?? draftDataRef.current
-    if (data !== null) writeDraftNow(data)
-    if (pendingRef.current !== null) runSaveRef.current()
+    writeDraftNow(data)
+    runSaveRef.current()
   }, [writeDraftNow])
 
   const flushRef = useRef(flushNow)
@@ -403,33 +566,47 @@ export function useSheetAutosave<T>(
 
   const retry = useCallback(() => {
     retryCountRef.current = 0
+    clearWatchdog()
+    // Abandona uma escrita eventualmente presa antes de tentar de novo.
+    if (inFlightRef.current) {
+      flightSeqRef.current += 1
+      inFlightRef.current = false
+    }
     if (pendingRef.current === null) {
       const fallback = sheetRef.current
       if (fallback === null) return
       pendingRef.current = fallback
     }
     runSaveRef.current()
-  }, [])
+  }, [clearWatchdog])
 
   const discardPending = useCallback(() => {
     clearSaveTimers()
-    if (draftTimerRef.current !== null) {
-      clearTimeout(draftTimerRef.current)
-      draftTimerRef.current = null
-    }
+    clearWatchdog()
     pendingRef.current = null
-    draftDataRef.current = null
-    clearDraft()
-  }, [clearDraft, clearSaveTimers])
+    discardLocalMirror()
+  }, [clearSaveTimers, clearWatchdog, discardLocalMirror])
 
   const dismissRecovery = useCallback(() => setRecoveredDraftAt(null), [])
 
   // ── Ciclo de vida ──────────────────────────────────────────────────────────
 
-  // Troca de ficha: zera todo o estado de persistência.
+  // Troca de ficha/usuário: preserva o pendente da ficha ANTERIOR no espelho
+  // local antes de zerar o estado. O cleanup roda com o uid/id antigos
+  // capturados no closure, então o rascunho vai para a chave certa.
+  // Declarado antes do efeito de reset para que seu cleanup rode primeiro.
+  useEffect(() => {
+    return () => {
+      const data = pendingRef.current
+      if (data === null || !uid || !id) return
+      writeSheetDraft(scope, uid, id, data, baseUpdatedAtRef.current)
+    }
+  }, [uid, id, scope])
+
   useEffect(() => {
     adoptedRef.current = false
     clearSaveTimers()
+    clearWatchdog()
     if (draftTimerRef.current !== null) {
       clearTimeout(draftTimerRef.current)
       draftTimerRef.current = null
@@ -437,6 +614,7 @@ export function useSheetAutosave<T>(
     pendingRef.current = null
     draftDataRef.current = null
     inFlightRef.current = false
+    flightSeqRef.current += 1
     retryCountRef.current = 0
     historyRef.current = { past: [], future: [] }
     lastHistoryAtRef.current = 0
@@ -447,38 +625,57 @@ export function useSheetAutosave<T>(
     setSavingStatusState('idle')
     setHistoryCounts({ past: 0, future: 0 })
     setRecoveredDraftAt(null)
-  }, [uid, id, clearSaveTimers])
+    setLocalBackupError(null)
+  }, [uid, id, clearSaveTimers, clearWatchdog])
 
-  // Adoção do snapshot remoto + restauração de rascunho mais recente.
+  // Adoção do snapshot remoto + restauração de rascunho aplicável.
   useEffect(() => {
     if (!remote) return
 
     createdAtRef.current = remote.createdAt
-    baseUpdatedAtRef.current = remote.updatedAt
 
-    if (adoptedRef.current) return
+    if (adoptedRef.current) {
+      // Só acompanha o remoto quando não há nada pendente nem em voo. Com
+      // trabalho em andamento, a âncora precisa continuar apontando para a última
+      // escrita NOSSA — é ela que diz se o rascunho ainda é aplicável.
+      if (pendingRef.current === null && !inFlightRef.current) {
+        baseUpdatedAtRef.current = remote.updatedAt
+      }
+      return
+    }
+
     adoptedRef.current = true
+    baseUpdatedAtRef.current = remote.updatedAt
 
     const currentUid = uidRef.current
     const currentId = idRef.current
     const draft =
-      currentUid && currentId
-        ? readSheetDraft<T>(scopeRef.current, currentUid, currentId)
-        : null
+      currentUid && currentId ? readSheetDraft(scopeRef.current, currentUid, currentId) : null
 
-    if (draft && isSheetDraftNewerThanRemote(draft, remote.updatedAt)) {
-      applyLocal(draft.data)
-      draftDataRef.current = draft.data
-      pendingRef.current = draft.data
-      setRecoveredDraftAt(draft.savedAt)
-      setStatus('pending')
-      scheduleSaveRef.current()
-      return
+    if (draft && isSheetDraftBasedOnRemote(draft, remote.updatedAt)) {
+      // Conteúdo do rascunho é dado não confiável: passa pelo normalizador da
+      // página. Formato irreconhecível → descarta e usa o remoto.
+      let parsed: T | null = null
+      try {
+        parsed = parseDraftRef.current(draft.data)
+      } catch {
+        parsed = null
+      }
+
+      if (parsed !== null) {
+        applyLocal(parsed)
+        draftDataRef.current = parsed
+        pendingRef.current = parsed
+        setRecoveredDraftAt(draft.savedAt)
+        setStatus('pending')
+        scheduleSaveRef.current()
+        return
+      }
     }
 
-    if (draft) clearDraft()
+    if (draft) discardLocalMirror()
     applyLocal(remote.data)
-  }, [remote, applyLocal, clearDraft, setStatus])
+  }, [remote, applyLocal, discardLocalMirror, setStatus])
 
   // Flush em eventos de encerramento da página.
   useEffect(() => {
@@ -500,12 +697,15 @@ export function useSheetAutosave<T>(
     }
   }, [])
 
-  // Atalhos de teclado. Interceptamos globalmente porque os campos da ficha são
-  // inputs controlados — o undo nativo do navegador não funciona neles.
+  // Atalhos de teclado. Ficam fora de campos de texto e de diálogos modais, que
+  // têm o próprio comportamento de desfazer.
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (!event.ctrlKey && !event.metaKey) return
       const key = event.key.toLowerCase()
+      if (key !== 'z' && key !== 'y') return
+
+      if (isEditableTarget(event.target) || hasOpenModalDialog()) return
 
       if (key === 'z') {
         event.preventDefault()
@@ -514,10 +714,8 @@ export function useSheetAutosave<T>(
         return
       }
 
-      if (key === 'y') {
-        event.preventDefault()
-        redo()
-      }
+      event.preventDefault()
+      redo()
     }
 
     window.addEventListener('keydown', handleKeyDown)
@@ -535,6 +733,7 @@ export function useSheetAutosave<T>(
       if (maxWaitTimerRef.current !== null) clearTimeout(maxWaitTimerRef.current)
       if (draftTimerRef.current !== null) clearTimeout(draftTimerRef.current)
       if (retryTimerRef.current !== null) clearTimeout(retryTimerRef.current)
+      if (watchdogTimerRef.current !== null) clearTimeout(watchdogTimerRef.current)
     }
   }, [])
 
@@ -551,5 +750,6 @@ export function useSheetAutosave<T>(
     canRedo: historyCounts.future > 0,
     recoveredDraftAt,
     dismissRecovery,
+    localBackupError,
   }
 }
