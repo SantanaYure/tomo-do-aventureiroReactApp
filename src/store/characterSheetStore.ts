@@ -81,8 +81,47 @@ function normalizeDamageParts(value: unknown): DamagePart[] {
     }))
 }
 
+/**
+ * Preenche ids ausentes de uma lista da ficha, sem sortear nada.
+ *
+ * Roda em toda leitura do Firestore, então precisa ser determinístico: um id
+ * aleatório aqui mudaria a cada snapshot e brigaria com o autosave. Documentos
+ * antigos não têm o campo e recebem um id posicional (`attack-1`, `attack-2`,
+ * …), o mesmo padrão que `normalizeMonsterFeature` já usa do lado do monstro.
+ * Ids que já existem são preservados; o sufixo extra só entra se o id
+ * posicional colidir com um id já presente na lista.
+ *
+ * Nunca devolve `id` ausente ou vazio: o documento gravado sempre carrega uma
+ * string, e o Firestore nunca recebe `undefined` neste campo.
+ */
+function assignStableIds<T extends { id?: string }>(items: T[], prefix: string): T[] {
+  const taken = new Set<string>()
+
+  for (const item of items) {
+    const currentId = typeof item?.id === 'string' ? item.id.trim() : ''
+    if (currentId) taken.add(currentId)
+  }
+
+  return items.map((item, index) => {
+    const currentId = typeof item?.id === 'string' ? item.id.trim() : ''
+    if (currentId) return currentId === item.id ? item : { ...item, id: currentId }
+
+    let candidate = `${prefix}-${index + 1}`
+    let suffix = 2
+
+    while (taken.has(candidate)) {
+      candidate = `${prefix}-${index + 1}-${suffix}`
+      suffix += 1
+    }
+
+    taken.add(candidate)
+    return { ...item, id: candidate }
+  })
+}
+
 function createDefaultAttack(): Attack {
   return {
+    id: '',
     name: '',
     attackBonus: 0,
     attributeKey: 'manual',
@@ -122,6 +161,10 @@ function normalizeAttack(attack: unknown): Attack {
   return {
     ...defaultAttack,
     ...nextAttack,
+    // String vazia (não `undefined`) quando o documento antigo não tem o campo:
+    // `assignStableIds` preenche logo em seguida, e o Firestore nunca vê
+    // `undefined` neste campo.
+    id: typeof nextAttack.id === 'string' ? nextAttack.id.trim() : '',
     name: typeof nextAttack.name === 'string' ? nextAttack.name : defaultAttack.name,
     attackBonus:
       typeof nextAttack.attackBonus === 'number' && Number.isFinite(nextAttack.attackBonus)
@@ -147,6 +190,7 @@ function normalizeAttack(attack: unknown): Attack {
 
 function createDefaultResource(): Resource {
   return {
+    id: '',
     name: '',
     description: '',
     duration: '',
@@ -220,6 +264,9 @@ function normalizeResource(resource: Resource | undefined): Resource {
   return {
     ...defaultResource,
     ...nextResource,
+    // Ver a nota em `normalizeAttack`: vazio aqui, preenchido por
+    // `assignStableIds`, nunca `undefined`.
+    id: typeof nextResource.id === 'string' ? nextResource.id.trim() : '',
     name: typeof nextResource.name === 'string' ? nextResource.name : '',
     description: typeof nextResource.description === 'string' ? nextResource.description : '',
     duration: typeof nextResource.duration === 'string' ? nextResource.duration : '',
@@ -417,13 +464,19 @@ export function normalizeCharacterSheet<T extends CharacterSheet>(value: T): T {
     ...nextValue,
     character: normalizeCharacterInternal(nextValue.character),
     resources: Array.isArray(nextValue.resources)
-      ? nextValue.resources.map((resource) => normalizeResource(resource))
+      ? assignStableIds(
+          nextValue.resources.map((resource) => normalizeResource(resource)),
+          'resource',
+        )
       : defaultSheet.resources,
     inventory: Array.isArray(nextValue.inventory) ? nextValue.inventory : defaultSheet.inventory,
     spells: Array.isArray(nextValue.spells) ? nextValue.spells : defaultSheet.spells,
     spellSlots: normalizeSpellSlots(nextValue.spellSlots),
     attacks: Array.isArray(nextValue.attacks)
-      ? nextValue.attacks.map((attack) => normalizeAttack(attack))
+      ? assignStableIds(
+          nextValue.attacks.map((attack) => normalizeAttack(attack)),
+          'attack',
+        )
       : defaultSheet.attacks,
     combatNotes:
       typeof nextValue.combatNotes === 'string'

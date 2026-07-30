@@ -45,6 +45,9 @@ const ORIGIN_LABEL: Record<ResourceOrigin, string> = {
 
 function createResource(): Resource {
   return {
+    // Id de verdade já na criação, como `createFeature()` faz do lado do
+    // monstro. O fallback posicional do normalizador é só para ficha antiga.
+    id: globalThis.crypto.randomUUID(),
     name: '',
     description: '',
     duration: '',
@@ -86,7 +89,10 @@ function ResourcesPanelImpl({
 }: ResourcesPanelProps) {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const [rollResults, setRollResults] = useState<Map<string, DamageRollSummary>>(new Map())
-  const resourceIds = resources.map((_, index) => `resource-${index}`)
+  // Id estável da habilidade, não o índice: remover ou reordenar não pode fazer
+  // o resultado de rolagem (nem o card recolhido) migrar para o vizinho. O
+  // fallback posicional só entra se a ficha não passou pelo normalizador.
+  const resourceIds = resources.map((resource, index) => resource.id || `resource-${index}`)
 
   function handleRollDamage(resourceId: string, damages: DamagePart[]) {
     setRollResults((previous) => new Map(previous).set(resourceId, rollDamages(damages)))
@@ -222,7 +228,7 @@ function ResourcesPanelImpl({
                       className={styles.resourceNameInput}
                       type="text"
                       value={resource.name ?? ''}
-                      placeholder="Nome do recurso"
+                      placeholder="Nome da habilidade"
                       onChange={(event) => setResource(index, { name: event.target.value })}
                     />
                     <input
@@ -305,8 +311,8 @@ function ResourcesPanelImpl({
                       type="button"
                       className={styles.removeAction}
                       onClick={() => removeResource(index)}
-                      aria-label={`Excluir recurso ${resource.name?.trim() || `#${index + 1}`}`}
-                      title="Excluir recurso"
+                      aria-label={`Excluir habilidade ${resource.name?.trim() || `#${index + 1}`}`}
+                      title="Excluir habilidade"
                     >
                       ✕
                     </button>
@@ -477,7 +483,7 @@ function ResourcesPanelImpl({
 
       {isEditMode && (
         <button type="button" className={panelStyles.addButton} onClick={addResource}>
-          + Recurso
+          + Habilidade
         </button>
       )}
     </section>

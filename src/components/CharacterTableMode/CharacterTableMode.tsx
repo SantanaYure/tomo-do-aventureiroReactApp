@@ -121,7 +121,9 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
             {sheet.resources
               .map((resource, originalIndex) => ({ resource, originalIndex }))
               .map(({ resource, originalIndex }) => {
-                const id = `resource-${originalIndex}`
+                // Id estável da habilidade, não o índice: remover ou reordenar
+                // não pode fazer o resultado de rolagem migrar para o vizinho.
+                const id = resource.id || `resource-${originalIndex}`
                 const isExpanded = expandedIds.has(id)
                 const current = resource.current ?? 0
                 const max = resource.max ?? 0
@@ -169,7 +171,7 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
                 }
 
                 return (
-                  <article className={styles.itemCard} key={originalIndex}>
+                  <article className={styles.itemCard} key={id}>
                     <div className={styles.resourceCardHeader}>
                       <span className={styles.itemTitle}>{resource.name || '(sem nome)'}</span>
                       <div className={styles.resourceHeaderRight}>
@@ -197,7 +199,7 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
                           current={current}
                           max={max}
                           itemName={resource.name || ''}
-                          resourceKind="recurso"
+                          resourceKind="habilidade"
                           onSpend={spend}
                           onRestore={restBased ? undefined : restore}
                           onRestoreFull={restBased ? undefined : restoreFull}
@@ -268,7 +270,7 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
           <span className={styles.sectionTitle}>Ataques</span>
           <div className={styles.itemList}>
             {sheet.attacks.map((attack, index) => {
-              const id = `attack-${index}`
+              const id = attack.id || `attack-${index}`
               const isExpanded = expandedIds.has(id)
               const bonus = calcAttackBonus(attack, character)
               const legacyDamage = [attack.damage, attack.damageType]
@@ -285,7 +287,7 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
                   : null
 
               return (
-                <article className={styles.itemCard} key={index}>
+                <article className={styles.itemCard} key={id}>
                   {hasBody ? (
                     <button
                       type="button"

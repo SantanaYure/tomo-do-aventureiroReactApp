@@ -56,6 +56,9 @@ function formatBonus(value: number): string {
 
 function createAttack(): Attack {
   return {
+    // Id de verdade já na criação, como `createAction()` faz do lado do
+    // monstro. O fallback posicional do normalizador é só para ficha antiga.
+    id: globalThis.crypto.randomUUID(),
     name: '',
     attributeKey: 'str',
     useProficiency: false,
@@ -82,30 +85,32 @@ function AttacksPanelImpl({
   isEditMode,
   onChangeAttacks,
 }: AttacksPanelProps) {
-  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set())
-  const [rollResults, setRollResults] = useState<Map<number, DamageRollSummary>>(new Map())
+  // Chaveados pelo id do ataque, não pelo índice: remover ou reordenar um
+  // ataque não pode fazer o resultado de rolagem migrar para o vizinho.
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [rollResults, setRollResults] = useState<Map<string, DamageRollSummary>>(new Map())
 
-  function toggleRow(index: number) {
+  function toggleRow(attackId: string) {
     setExpandedRows((previous) => {
       const next = new Set(previous)
-      if (next.has(index)) {
-        next.delete(index)
+      if (next.has(attackId)) {
+        next.delete(attackId)
       } else {
-        next.add(index)
+        next.add(attackId)
       }
       return next
     })
   }
 
-  function handleRollDamage(index: number, damages: DamagePart[]) {
-    setRollResults((previous) => new Map(previous).set(index, rollDamages(damages)))
+  function handleRollDamage(attackId: string, damages: DamagePart[]) {
+    setRollResults((previous) => new Map(previous).set(attackId, rollDamages(damages)))
   }
 
-  function clearRollResult(index: number) {
+  function clearRollResult(attackId: string) {
     setRollResults((previous) => {
-      if (!previous.has(index)) return previous
+      if (!previous.has(attackId)) return previous
       const next = new Map(previous)
-      next.delete(index)
+      next.delete(attackId)
       return next
     })
   }
@@ -148,8 +153,9 @@ function AttacksPanelImpl({
             </thead>
             <tbody>
               {attacks.map((attack, i) => {
+                const attackId = attack.id || `attack-${i}`
                 const bonus = calcAttackBonus(attack, character)
-                const isExpanded = expandedRows.has(i)
+                const isExpanded = expandedRows.has(attackId)
                 const colSpan = 5
                 const legacyDamageLabel = [attack.damage, attack.damageType]
                   .map((part) => part?.trim() ?? '')
@@ -168,7 +174,7 @@ function AttacksPanelImpl({
                   hasLegacyDamageFallback
 
                 return (
-                  <Fragment key={i}>
+                  <Fragment key={attackId}>
                     <tr>
                       <td className={styles.nameTd} data-label="Nome">
                         {isEditMode ? (
@@ -230,7 +236,7 @@ function AttacksPanelImpl({
                             <button
                               type="button"
                               className={styles.expandBtn}
-                              onClick={() => toggleRow(i)}
+                              onClick={() => toggleRow(attackId)}
                               aria-expanded={isExpanded}
                               aria-label={isExpanded ? 'Recolher detalhes' : 'Expandir detalhes'}
                             >
@@ -332,15 +338,15 @@ function AttacksPanelImpl({
                                   <button
                                     type="button"
                                     className={styles.rollBtn}
-                                    onClick={() => handleRollDamage(i, attack.damages ?? [])}
+                                    onClick={() => handleRollDamage(attackId, attack.damages ?? [])}
                                   >
                                     Rolar dano
                                   </button>
-                                  {rollResults.has(i) && (
+                                  {rollResults.has(attackId) && (
                                     <RollResultBlock
-                                      summary={rollResults.get(i)!}
+                                      summary={rollResults.get(attackId)!}
                                       itemName={attack.name}
-                                      onClear={() => clearRollResult(i)}
+                                      onClear={() => clearRollResult(attackId)}
                                     />
                                   )}
                                 </div>

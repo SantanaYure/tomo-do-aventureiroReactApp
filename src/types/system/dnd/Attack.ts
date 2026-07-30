@@ -14,6 +14,16 @@ export type AttackAttributeKey =
   | 'manual'
 
 export interface Attack {
+  /**
+   * Identificador estável do ataque dentro da ficha.
+   *
+   * Opcional porque documentos antigos do Firestore não têm o campo —
+   * `normalizeAttack` preenche um id determinístico por posição para eles, no
+   * mesmo padrão que `normalizeMonsterFeature` já usava. Serve para chavear
+   * estado de UI (resultado de rolagem, linha expandida) sem depender do
+   * índice do array, que muda ao remover ou reordenar itens.
+   */
+  id?: string
   name?: string
   attackBonus?: number
   attributeKey?: AttackAttributeKey
