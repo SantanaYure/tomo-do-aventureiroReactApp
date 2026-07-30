@@ -48,16 +48,19 @@ export interface RemoteSheetSnapshot<T> {
 }
 
 /**
- * Persiste a ficha. Quando devolve uma string, ela é o `updatedAt` gravado — usado
- * para reancorar o rascunho local na escrita que acabou de ser confirmada, para
- * que o avanço do documento remoto causado por nós mesmos não seja confundido com
- * a escrita de outra aba/aparelho.
+ * Persiste a ficha.
+ *
+ * `updatedAt` é gerado por ESTE hook e passado adiante, para que o valor que a
+ * escrita vai gravar seja conhecido antes de ela sair — é o que permite ancorar o
+ * rascunho local também no estado que o servidor pode já ter aplicado enquanto o
+ * ack ainda está em trânsito.
  */
 export type SheetSaveFn<T> = (
   uid: string,
   id: string,
   data: T,
   createdAt?: string,
+  updatedAt?: string,
 ) => Promise<string | void>
 
 /** Motivo pelo qual a cópia local de segurança não pôde ser gravada. */
@@ -91,10 +94,12 @@ export interface UseSheetAutosaveResult<T> {
   /** Aplica uma edição: atualiza o estado local, o rascunho e agenda a escrita. */
   commit: (updater: T | ((current: T) => T)) => void
   savingStatus: SavingStatus
-  /** Força a escrita do que está pendente agora (sem esperar o debounce). */
-  flushNow: () => void
-  /** Nova tentativa manual depois de um erro de escrita. */
-  retry: () => void
+  /**
+   * Escreve agora, sem esperar o debounce. Serve tanto para "tentar novamente"
+   * depois de um erro quanto para o botão "Salvar agora": quando não há nada
+   * pendente, envia o estado atual da ficha em vez de não fazer nada.
+   */
+  saveNow: () => void
   /** Descarta edições pendentes e o rascunho local (usado antes de excluir a ficha). */
   discardPending: () => void
   undo: () => void
@@ -119,16 +124,44 @@ function isUpdaterFn<T>(value: T | ((current: T) => T)): value is (current: T) =
 }
 
 /**
- * Campos de texto têm o próprio undo (nativo ou por buffer local, como o
- * `NumberInput`). Sequestrar Ctrl+Z ali desfaria a ficha inteira por baixo do
- * cursor — e, no caso do `NumberInput`, o valor exibido ficaria divergente do
- * documento até o blur.
+ * Tipos de `input` que aceitam texto e, por isso, têm desfazer próprio (nativo ou
+ * por buffer local, como o `NumberInput`, que usa `type="number"`).
+ *
+ * Checkbox, radio, range, color e afins NÃO têm desfazer nativo: bloquear o
+ * atalho neles só tiraria do usuário a chance de reverter justamente o clique
+ * errado mais comum numa ficha.
  */
-function isEditableTarget(target: EventTarget | null): boolean {
+const TEXT_ENTRY_INPUT_TYPES = new Set([
+  'text',
+  'search',
+  'url',
+  'tel',
+  'email',
+  'password',
+  'number',
+  'date',
+  'datetime-local',
+  'month',
+  'time',
+  'week',
+])
+
+/**
+ * Campos de digitação têm o próprio undo. Sequestrar Ctrl+Z ali desfaria a ficha
+ * inteira por baixo do cursor — e, no caso do `NumberInput`, o valor exibido
+ * ficaria divergente do documento até o blur.
+ */
+function isTextEntryTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
 
-  const tagName = target.tagName
-  if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') return true
+  if (target instanceof HTMLTextAreaElement) return true
+
+  if (target instanceof HTMLInputElement) {
+    // `type` inválido ou ausente cai em "text" no DOM.
+    const type = (target.getAttribute('type') ?? 'text').toLowerCase()
+    return TEXT_ENTRY_INPUT_TYPES.has(type)
+  }
+
   if (target.isContentEditable) return true
 
   const contentEditable = target.getAttribute('contenteditable')
@@ -175,6 +208,7 @@ export function useSheetAutosave<T>(
   const adoptedRef = useRef(false)
   const createdAtRef = useRef<string | null>(null)
   const baseUpdatedAtRef = useRef<string | null>(null)
+  const inFlightUpdatedAtRef = useRef<string | null>(null)
   const historyRef = useRef<HistoryStacks<T>>({ past: [], future: [] })
   const lastHistoryAtRef = useRef(0)
 
@@ -269,13 +303,13 @@ export function useSheetAutosave<T>(
       const currentId = idRef.current
       if (!currentUid || !currentId) return
 
-      const result = writeSheetDraft(
-        scopeRef.current,
-        currentUid,
-        currentId,
-        data,
-        baseUpdatedAtRef.current,
-      )
+      const result = writeSheetDraft(scopeRef.current, currentUid, currentId, data, {
+        baseUpdatedAt: baseUpdatedAtRef.current,
+        // Sem esta âncora, uma aba morta durante a escrita perderia tudo o que
+        // foi digitado depois de a escrita sair: o servidor pode já ter aplicado
+        // o documento e o remoto estaria adiante da âncora confirmada.
+        inFlightUpdatedAt: inFlightUpdatedAtRef.current,
+      })
       reportDraftResult(result)
     },
     [reportDraftResult],
@@ -327,16 +361,19 @@ export function useSheetAutosave<T>(
   const runSaveRef = useRef<() => void>(() => {})
 
   /**
-   * Devolve o dado à fila e agenda nova tentativa (ou expõe o erro). Usado tanto
-   * quando o `save` rejeita quanto quando ele fica preso além do watchdog.
+   * Devolve o dado à fila e agenda nova tentativa (ou expõe o erro).
+   *
+   * Só é usado quando o `save` REJEITA — aí sim a escrita não aconteceu. Escrita
+   * que apenas demora não passa por aqui (ver o watchdog em `runSave`).
    */
   const handleSaveFailure = useCallback(
     (data: T) => {
       clearWatchdog()
-      // Invalida o voo atual: se a escrita presa resolver mais tarde, o resultado
-      // é ignorado (o dado já voltou para a fila e será reenviado).
+      // Invalida o voo atual: se ele resolver mais tarde, o resultado é ignorado
+      // (o dado já voltou para a fila e será reenviado).
       flightSeqRef.current += 1
       inFlightRef.current = false
+      inFlightUpdatedAtRef.current = null
 
       if (pendingRef.current === null) pendingRef.current = data
 
@@ -369,45 +406,72 @@ export function useSheetAutosave<T>(
 
     if (data === null || !currentUid || !currentId) return
 
-    // Já existe uma escrita em voo. É obrigatório REAGENDAR: se apenas
-    // retornássemos, uma escrita que nunca resolve (Firestore offline) mataria
-    // de vez o teto de espera e o autosave ficaria parado indefinidamente.
-    if (inFlightRef.current) {
-      scheduleSaveRef.current()
-      return
-    }
+    // Uma escrita em voo bloqueia a próxima. Quem religa a fila é o watchdog
+    // abaixo — reagendar aqui não teria efeito, porque `runSave` cairia neste
+    // mesmo ponto enquanto o voo não terminasse.
+    if (inFlightRef.current) return
 
     pendingRef.current = null
     inFlightRef.current = true
-    const token = flightSeqRef.current
+    const flightId = flightSeqRef.current + 1
+    flightSeqRef.current = flightId
+
+    // Gerado aqui, e não dentro do store, para que a âncora da escrita seja
+    // conhecida ANTES de ela sair.
+    const flightUpdatedAt = new Date().toISOString()
+    inFlightUpdatedAtRef.current = flightUpdatedAt
     setStatus('saving')
+
+    // Reancora o espelho local na escrita que está saindo agora. Sem isto, o
+    // rascunho em disco continuaria apontando para a âncora de um voo anterior e
+    // seria descartado na reabertura se o servidor tivesse aplicado ESTA escrita.
+    // Custo: uma gravação local por escrita — não por tecla.
+    const mirrored = draftDataRef.current
+    if (mirrored !== null) writeDraftNow(mirrored)
 
     watchdogTimerRef.current = setTimeout(() => {
       watchdogTimerRef.current = null
-      if (flightSeqRef.current !== token) return
-      handleSaveFailure(data)
+      if (flightSeqRef.current !== flightId) return
+
+      // Demora NÃO é falha: o SDK do Firestore mantém a escrita durável e a
+      // entrega sozinho quando a rede voltar. Reenviar o documento inteiro aqui
+      // multiplicaria escritas (com avatar base64, centenas de KB por tentativa)
+      // e exibiria um erro falso numa conexão apenas lenta.
+      //
+      // O que o watchdog faz é liberar a fila, para que edições NOVAS não fiquem
+      // presas atrás de um ack que não chegou. O voo continua válido: se o ack
+      // vier depois, ele ainda confirma e limpa o rascunho.
+      inFlightRef.current = false
+      setStatus('pending')
+      if (pendingRef.current !== null) scheduleSaveRef.current()
     }, configRef.current.saveTimeoutMs)
 
     // IIFE async: normaliza retornos não-Promise e erros lançados de forma
     // síncrona pela função de save.
     void (async () =>
-      saveRef.current(currentUid, currentId, data, createdAtRef.current ?? undefined))()
-      .then((writtenUpdatedAt) => {
-        if (flightSeqRef.current !== token) return
+      saveRef.current(
+        currentUid,
+        currentId,
+        data,
+        createdAtRef.current ?? undefined,
+        flightUpdatedAt,
+      ))()
+      .then(() => {
+        // Voo superado por outro mais recente: seu ack não pode mais mexer na
+        // âncora nem limpar o rascunho, senão puxaria o estado para trás.
+        if (flightSeqRef.current !== flightId) return
+
         clearWatchdog()
         inFlightRef.current = false
+        inFlightUpdatedAtRef.current = null
         retryCountRef.current = 0
+        // Confirmado no servidor: o que estava em risco já não está.
+        if (mountedRef.current) setLocalBackupError(null)
 
         // Reancora: daqui para frente o estado local é baseado NESTA escrita.
-        if (typeof writtenUpdatedAt === 'string' && writtenUpdatedAt.length > 0) {
-          baseUpdatedAtRef.current = writtenUpdatedAt
-        }
+        baseUpdatedAtRef.current = flightUpdatedAt
 
-        const stillPending = pendingRef.current
-        if (stillPending !== null) {
-          // Regrava o rascunho com a âncora nova; sem isso, o rascunho ficaria
-          // preso à âncora anterior e seria descartado na próxima abertura.
-          writeDraftNow(stillPending)
+        if (pendingRef.current !== null) {
           setStatus('pending')
           scheduleSaveRef.current()
           return
@@ -417,7 +481,7 @@ export function useSheetAutosave<T>(
         setStatus('saved')
       })
       .catch(() => {
-        if (flightSeqRef.current !== token) return
+        if (flightSeqRef.current !== flightId) return
         handleSaveFailure(data)
       })
   }, [
@@ -564,14 +628,17 @@ export function useSheetAutosave<T>(
   const flushRef = useRef(flushNow)
   flushRef.current = flushNow
 
-  const retry = useCallback(() => {
+  const saveNow = useCallback(() => {
     retryCountRef.current = 0
     clearWatchdog()
-    // Abandona uma escrita eventualmente presa antes de tentar de novo.
+    // Abandona um voo em andamento para que a escrita nova saia imediatamente.
     if (inFlightRef.current) {
       flightSeqRef.current += 1
       inFlightRef.current = false
+      inFlightUpdatedAtRef.current = null
     }
+    // Sem nada pendente, envia o estado atual: quem clica em "Salvar agora"
+    // espera uma escrita, não um no-op silencioso.
     if (pendingRef.current === null) {
       const fallback = sheetRef.current
       if (fallback === null) return
@@ -599,7 +666,10 @@ export function useSheetAutosave<T>(
     return () => {
       const data = pendingRef.current
       if (data === null || !uid || !id) return
-      writeSheetDraft(scope, uid, id, data, baseUpdatedAtRef.current)
+      writeSheetDraft(scope, uid, id, data, {
+        baseUpdatedAt: baseUpdatedAtRef.current,
+        inFlightUpdatedAt: inFlightUpdatedAtRef.current,
+      })
     }
   }, [uid, id, scope])
 
@@ -620,6 +690,7 @@ export function useSheetAutosave<T>(
     lastHistoryAtRef.current = 0
     createdAtRef.current = null
     baseUpdatedAtRef.current = null
+    inFlightUpdatedAtRef.current = null
     sheetRef.current = null
     setSheetState(null)
     setSavingStatusState('idle')
@@ -705,7 +776,7 @@ export function useSheetAutosave<T>(
       const key = event.key.toLowerCase()
       if (key !== 'z' && key !== 'y') return
 
-      if (isEditableTarget(event.target) || hasOpenModalDialog()) return
+      if (isTextEntryTarget(event.target) || hasOpenModalDialog()) return
 
       if (key === 'z') {
         event.preventDefault()
@@ -741,8 +812,7 @@ export function useSheetAutosave<T>(
     sheet,
     commit,
     savingStatus,
-    flushNow,
-    retry,
+    saveNow,
     discardPending,
     undo,
     redo,

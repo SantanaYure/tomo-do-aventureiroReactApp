@@ -156,7 +156,13 @@ describe('P1 — digitação contínua sem pausa (teto de espera)', () => {
     act(() => view.result.current.commit({ title: 'A', notes: '' }))
     await advance(900)
 
-    expect(save).toHaveBeenCalledWith(UID, ID, { title: 'A', notes: '' }, REMOTE_CREATED_AT)
+    expect(save).toHaveBeenCalledWith(
+      UID,
+      ID,
+      { title: 'A', notes: '' },
+      REMOTE_CREATED_AT,
+      expect.any(String),
+    )
   })
 })
 
@@ -182,21 +188,70 @@ describe('D3 — escrita presa (Firestore offline não resolve a promise)', () =
     expect(lastCall[2].notes.length).toBeGreaterThan(1)
   })
 
-  it('expõe erro depois de esgotar as tentativas com escrita pendurada', async () => {
-    const save = hangingSave()
-    const { view } = setup({ save, saveTimeoutMs: 2000, retryDelaysMs: [500] })
+  it('D11 — ack lento não vira erro nem multiplica escritas do documento', async () => {
+    let resolveSave: ((value: string) => void) | null = null
+    const save = vi.fn<SheetSaveFn<Doc>>(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveSave = resolve
+        }),
+    )
+    const { view } = setup({ save, saveTimeoutMs: 10000, retryDelaysMs: [1000, 2000, 4000] })
 
-    act(() => view.result.current.commit({ title: 'Pendurado', notes: '' }))
+    // UMA edição e nada mais: conexão móvel com ack acima do watchdog.
+    act(() => view.result.current.commit({ title: 'Rede lenta', notes: '' }))
     await advance(900)
     expect(save).toHaveBeenCalledTimes(1)
 
-    await advance(2000) // watchdog do 1º voo
-    await advance(500) // backoff
+    await advance(60000)
+
+    // Nem reenvio do documento inteiro nem erro falso: a escrita está viva.
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(view.result.current.savingStatus).not.toBe('error')
+    expect(view.result.current.savingStatus).not.toBe('saved')
+    expect(draftData()?.title).toBe('Rede lenta')
+
+    // Quando o ack finalmente chega, ele ainda confirma e limpa o rascunho.
+    await act(async () => {
+      resolveSave?.('updated-tarde')
+    })
+    expect(view.result.current.savingStatus).toBe('saved')
+    expect(readDraftRaw()).toBeNull()
+  })
+
+  it('ack de voo superado não puxa o estado para trás nem apaga o rascunho', async () => {
+    const resolvers: Array<(value: string) => void> = []
+    const save = vi.fn<SheetSaveFn<Doc>>(
+      () =>
+        new Promise<string>((resolve) => {
+          resolvers.push(resolve)
+        }),
+    )
+    const { view } = setup({ save, saveTimeoutMs: 3000, retryDelaysMs: [] })
+
+    act(() => view.result.current.commit({ title: 'Voo 1', notes: '' }))
+    await advance(900)
+    expect(save).toHaveBeenCalledTimes(1)
+
+    // Watchdog libera a fila; nova edição inicia o voo 2, que supera o voo 1.
+    await advance(3000)
+    act(() => view.result.current.commit({ title: 'Voo 2', notes: '' }))
+    await advance(900)
     expect(save).toHaveBeenCalledTimes(2)
 
-    await advance(2000) // watchdog do 2º voo → tentativas esgotadas
-    expect(view.result.current.savingStatus).toBe('error')
-    expect(draftData()?.title).toBe('Pendurado')
+    const anchorOfFlight1 = save.mock.calls[0][4]
+    const anchorOfFlight2 = save.mock.calls[1][4]
+    expect(anchorOfFlight1).not.toBe(anchorOfFlight2)
+
+    // Ack tardio do voo 1: não pode confirmar nem limpar o espelho local, senão
+    // o trabalho do voo 2 ficaria sem rede de segurança e a âncora andaria para trás.
+    await act(async () => {
+      resolvers[0]?.('ignorado')
+    })
+
+    expect(view.result.current.savingStatus).not.toBe('saved')
+    expect(draftData()?.title).toBe('Voo 2')
+    expect(readDraftRaw()?.inFlightUpdatedAt).toBe(anchorOfFlight2)
   })
 
   it('retry manual abandona a escrita presa e reenvia', async () => {
@@ -208,7 +263,7 @@ describe('D3 — escrita presa (Firestore offline não resolve a promise)', () =
     expect(save).toHaveBeenCalledTimes(1)
 
     await act(async () => {
-      view.result.current.retry()
+      view.result.current.saveNow()
     })
 
     expect(save).toHaveBeenCalledTimes(2)
@@ -354,7 +409,7 @@ describe('D1 — rascunho obsoleto não pode ressuscitar', () => {
       UID,
       ID,
       { title: 'Obsoleto', notes: '' },
-      REMOTE_UPDATED_AT,
+      { baseUpdatedAt: REMOTE_UPDATED_AT, inFlightUpdatedAt: null },
       '2030-01-01T00:00:00.000Z',
     )
 
@@ -373,7 +428,7 @@ describe('D1 — rascunho obsoleto não pode ressuscitar', () => {
       UID,
       ID,
       { title: 'Trabalho recuperado', notes: 'não salvo' },
-      REMOTE_UPDATED_AT,
+      { baseUpdatedAt: REMOTE_UPDATED_AT, inFlightUpdatedAt: null },
       '2026-01-02T12:00:00.000Z',
     )
 
@@ -391,19 +446,19 @@ describe('D1 — rascunho obsoleto não pode ressuscitar', () => {
     expect(save.mock.calls[0][2]).toEqual({ title: 'Trabalho recuperado', notes: 'não salvo' })
   })
 
-  it('reancora o rascunho na escrita confirmada, para não perder o que veio depois', async () => {
-    // 1ª escrita confirma e devolve o novo updatedAt; a 2ª fica pendurada.
+  it('reancora na escrita confirmada: edição posterior sobrevive à morte da aba', async () => {
+    // 1ª escrita confirma; a 2ª fica pendurada e a aba morre com ela em voo.
     const save = vi
       .fn<SheetSaveFn<Doc>>()
-      .mockResolvedValueOnce('updated-2')
+      .mockResolvedValueOnce('ok')
       .mockImplementation(() => new Promise<string>(() => {}))
     const first = setup({ save })
 
     act(() => first.view.result.current.commit({ title: 'Primeira', notes: '' }))
     await advance(900)
     expect(save).toHaveBeenCalledTimes(1)
+    const confirmedAnchor = save.mock.calls[0][4] as string
 
-    // Continua editando; a aba morre com a 2ª escrita em voo.
     act(() => first.view.result.current.commit({ title: 'Depois do save', notes: '' }))
     await advance(900)
     await act(async () => {
@@ -412,12 +467,110 @@ describe('D1 — rascunho obsoleto não pode ressuscitar', () => {
 
     expect(draftData()?.title).toBe('Depois do save')
 
-    // Reabre com o updatedAt resultante da NOSSA escrita: a âncora casa e o
-    // trabalho posterior é recuperado em vez de descartado.
-    const second = setup({ remote: makeRemote({ title: 'Primeira' }, 'updated-2') })
+    // Reabre com o updatedAt que a NOSSA escrita confirmada gravou: a âncora
+    // casa e o trabalho posterior é recuperado em vez de descartado.
+    const second = setup({ remote: makeRemote({ title: 'Primeira' }, confirmedAnchor) })
 
     expect(second.view.result.current.sheet?.title).toBe('Depois do save')
     expect(second.view.result.current.recoveredDraftAt).not.toBeNull()
+  })
+
+  it('D10 — aba morta antes do ack não perde o que foi digitado depois', async () => {
+    // Cenário: a escrita sai, o SERVIDOR aplica (remoto vai para o updatedAt da
+    // escrita), o usuário continua digitando e a aba morre antes do ack chegar.
+    const save = hangingSave()
+    const first = setup({ save })
+
+    act(() => first.view.result.current.commit({ title: 'Enviado', notes: '' }))
+    await advance(900)
+    expect(save).toHaveBeenCalledTimes(1)
+
+    // `updatedAt` que essa escrita vai gravar — conhecido antes do ack.
+    const appliedByServer = save.mock.calls[0][4] as string
+
+    // Digitação posterior, com a escrita ainda em voo.
+    act(() =>
+      first.view.result.current.commit((current) => ({ ...current, notes: 'texto novo' })),
+    )
+    await advance(100)
+
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'))
+    })
+    await act(async () => {
+      first.view.unmount()
+    })
+
+    expect(draftData()?.notes).toBe('texto novo')
+
+    // Reabre com o remoto já no estado que o servidor aplicou.
+    const second = setup({ remote: makeRemote({ title: 'Enviado' }, appliedByServer) })
+
+    expect(second.view.result.current.sheet?.notes).toBe('texto novo')
+    expect(second.view.result.current.recoveredDraftAt).not.toBeNull()
+  })
+
+  it('morrer depois do ack, com edição nova, mantém o rascunho aplicável', async () => {
+    // A 1ª escrita confirma; a 2ª fica pendurada, simulando a aba morrendo antes
+    // de o ack da segunda chegar.
+    const save = vi
+      .fn<SheetSaveFn<Doc>>()
+      .mockResolvedValueOnce('ok')
+      .mockImplementation(() => new Promise<string>(() => {}))
+    const { view } = setup({ save })
+
+    act(() => view.result.current.commit({ title: 'Confirmada', notes: '' }))
+    await advance(900)
+    const confirmedAnchor = save.mock.calls[0][4] as string
+
+    // Edição nova; a aba morre antes de a próxima escrita sair.
+    act(() => view.result.current.commit({ title: 'Depois do ack', notes: '' }))
+    await advance(100)
+    await act(async () => {
+      window.dispatchEvent(new Event('pagehide'))
+    })
+
+    const draft = readDraftRaw()
+    expect(draft?.baseUpdatedAt).toBe(confirmedAnchor)
+
+    const second = setup({ remote: makeRemote({ title: 'Confirmada' }, confirmedAnchor) })
+    expect(second.view.result.current.sheet?.title).toBe('Depois do ack')
+  })
+})
+
+describe('D6 — troca de ficha/usuário preserva o pendente', () => {
+  it('guarda o rascunho da ficha anterior ao trocar de id (logout/navegação)', async () => {
+    const save = hangingSave()
+    const view = renderHook(
+      (props: { id: string }) =>
+        useSheetAutosave<Doc>({
+          uid: UID,
+          id: props.id,
+          remote: makeRemote(),
+          scope: 'pj',
+          save,
+          parseDraft: parseDoc,
+        }),
+      { initialProps: { id: ID } },
+    )
+
+    // 1ª edição: gravada na borda de subida do throttle.
+    act(() => view.result.current.commit({ title: 'Primeira', notes: '' }))
+    await advance(100)
+
+    // 2ª edição dentro da janela do throttle: não chega sozinha ao localStorage.
+    act(() => view.result.current.commit({ title: 'Pendente na primeira', notes: '' }))
+    expect(draftData()?.title).toBe('Primeira')
+
+    // Troca de ficha antes de a escrita sair. Só o backup do cleanup preserva a
+    // 2ª edição; sem ele o rascunho ficaria em "Primeira".
+    await act(async () => {
+      view.rerender({ id: 'ficha-2' })
+    })
+
+    // O rascunho tem de estar na chave da ficha ANTIGA.
+    expect(draftData()?.title).toBe('Pendente na primeira')
+    expect(window.localStorage.getItem(getSheetDraftKey('pj', UID, 'ficha-2'))).toBeNull()
   })
 })
 
@@ -430,6 +583,7 @@ describe('D2 — rascunho não confiável nunca é adotado às cegas', () => {
         data: { title: 'De outra versão', notes: '' },
         savedAt: '2026-01-02T12:00:00.000Z',
         baseUpdatedAt: REMOTE_UPDATED_AT,
+        inFlightUpdatedAt: null,
       }),
     )
 
@@ -447,7 +601,7 @@ describe('D2 — rascunho não confiável nunca é adotado às cegas', () => {
       UID,
       ID,
       { character: { name: 'Formato antigo' } },
-      REMOTE_UPDATED_AT,
+      { baseUpdatedAt: REMOTE_UPDATED_AT, inFlightUpdatedAt: null },
       '2026-01-02T12:00:00.000Z',
     )
 
@@ -464,7 +618,7 @@ describe('D2 — rascunho não confiável nunca é adotado às cegas', () => {
       UID,
       ID,
       { title: 'Explode', notes: '' },
-      REMOTE_UPDATED_AT,
+      { baseUpdatedAt: REMOTE_UPDATED_AT, inFlightUpdatedAt: null },
       '2026-01-02T12:00:00.000Z',
     )
 
@@ -502,6 +656,42 @@ describe('D5 — falha da cópia local de segurança é visível', () => {
     expect(view.result.current.savingStatus).toBe('pending')
 
     setItemSpy.mockRestore()
+  })
+
+  it('D12a — limpa o aviso quando a escrita remota confirma (o risco acabou)', async () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('cheio', 'QuotaExceededError')
+    })
+
+    const { view } = setup()
+    act(() => view.result.current.commit({ title: 'Sem espaço', notes: '' }))
+    expect(view.result.current.localBackupError).toBe('quota')
+
+    await advance(900)
+
+    // Dado confirmado no servidor: manter o alerta "pode perder alterações" na
+    // tela ao lado de "Salvo" seria mentira.
+    expect(view.result.current.savingStatus).toBe('saved')
+    expect(view.result.current.localBackupError).toBeNull()
+
+    setItemSpy.mockRestore()
+  })
+
+  it('D12b — "Salvar agora" escreve mesmo sem pendência', async () => {
+    const { save, view } = setup()
+
+    act(() => view.result.current.commit({ title: 'Salva', notes: '' }))
+    await advance(900)
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(view.result.current.savingStatus).toBe('saved')
+
+    // Sem nada pendente, o botão precisa escrever de verdade.
+    await act(async () => {
+      view.result.current.saveNow()
+    })
+
+    expect(save).toHaveBeenCalledTimes(2)
+    expect(save.mock.calls[1][2]).toEqual({ title: 'Salva', notes: '' })
   })
 
   it('limpa o aviso quando a gravação local volta a funcionar', async () => {
@@ -621,7 +811,7 @@ describe('P4 — status de salvamento honesto', () => {
     expect(view.result.current.savingStatus).toBe('error')
 
     await act(async () => {
-      view.result.current.retry()
+      view.result.current.saveNow()
     })
 
     expect(save).toHaveBeenCalledTimes(2)
@@ -740,11 +930,19 @@ describe('D4 — atalho de desfazer não sequestra campos nem modais', () => {
     expect(view.result.current.sheet?.title).toBe('Original')
   })
 
-  it('ignora o atalho dentro de input, textarea e contenteditable', async () => {
+  it('ignora o atalho em campos de digitação (texto, número, textarea, contenteditable)', async () => {
     const { view } = await setupWithHistory()
 
-    for (const tag of ['input', 'textarea'] as const) {
-      const field = document.createElement(tag)
+    const textInput = document.createElement('input')
+    textInput.setAttribute('type', 'text')
+    // `NumberInput` renderiza type="number" e tem buffer próprio.
+    const numberInput = document.createElement('input')
+    numberInput.setAttribute('type', 'number')
+    const textarea = document.createElement('textarea')
+    const editable = document.createElement('div')
+    editable.setAttribute('contenteditable', 'true')
+
+    for (const field of [textInput, numberInput, textarea, editable]) {
       document.body.appendChild(field)
       act(() => {
         field.dispatchEvent(
@@ -753,16 +951,34 @@ describe('D4 — atalho de desfazer não sequestra campos nem modais', () => {
       })
       expect(view.result.current.sheet?.title).toBe('Com atalho')
     }
+  })
 
-    const editable = document.createElement('div')
-    editable.setAttribute('contenteditable', 'true')
-    document.body.appendChild(editable)
-    act(() => {
-      editable.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }),
-      )
-    })
-    expect(view.result.current.sheet?.title).toBe('Com atalho')
+  it('D13 — funciona em controles sem desfazer nativo (checkbox, radio, select)', async () => {
+    const { view } = await setupWithHistory()
+
+    const checkbox = document.createElement('input')
+    checkbox.setAttribute('type', 'checkbox')
+    const radio = document.createElement('input')
+    radio.setAttribute('type', 'radio')
+    const select = document.createElement('select')
+
+    for (const field of [checkbox, radio, select]) {
+      document.body.appendChild(field)
+
+      act(() => view.result.current.commit({ title: 'Marquei errado', notes: '' }))
+      await advance(1000)
+      expect(view.result.current.sheet?.title).toBe('Marquei errado')
+
+      act(() => {
+        field.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }),
+        )
+      })
+
+      // "Marquei a caixa errada" é o arrependimento mais comum numa ficha: o
+      // atalho tem de funcionar com o foco nesses controles.
+      expect(view.result.current.sheet?.title).not.toBe('Marquei errado')
+    }
   })
 
   it('ignora o atalho enquanto há diálogo modal aberto', async () => {
