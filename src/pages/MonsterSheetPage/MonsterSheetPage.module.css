@@ -15,9 +15,15 @@
 
 .topBarActions {
     display: flex;
+    /*
+     * Envolve em telas estreitas: a barra ganhou indicador de salvamento,
+     * controles de histórico e menu de ações, e sem isto os itens eram
+     * espremidos ou transbordavam a viewport no celular.
+     */
+    flex-wrap: wrap;
+    justify-content: flex-end;
     align-items: center;
     gap: var(--space-2);
-    flex-shrink: 0;
     margin-left: auto;
 }
 

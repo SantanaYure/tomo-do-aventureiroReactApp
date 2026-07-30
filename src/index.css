@@ -85,9 +85,25 @@ textarea {
   border: 1px solid var(--input-border);
   border-radius: var(--radius-sm);
   padding: var(--space-1) var(--space-2);
-  outline: none;
   transition: border-color var(--transition), box-shadow var(--transition);
   width: 100%;
+}
+
+/*
+ * Realce de foco por teclado, aplicado a tudo que é interativo.
+ *
+ * Só `:focus-visible`, não `:focus`: o navegador decide, então clicar com o
+ * mouse não deixa anel, mas navegar por Tab deixa. Antes o projeto usava
+ * `outline: none` e substituía por um anel de 12% de opacidade — ou por nada,
+ * como no seletor de mesa —, e 25 dos 41 módulos CSS não tinham realce algum.
+ *
+ * `outline` (e não `box-shadow`) porque continua visível no modo de alto
+ * contraste do Windows, onde sombras são descartadas.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 input:focus,

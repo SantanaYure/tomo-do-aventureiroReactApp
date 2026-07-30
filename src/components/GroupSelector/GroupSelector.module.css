@@ -29,7 +29,6 @@
   font-family: var(--font-body);
   font-size: var(--text-sm);
   color: var(--ink);
-  outline: none;
   cursor: pointer;
   padding: var(--space-1) 0;
   max-width: 14rem;

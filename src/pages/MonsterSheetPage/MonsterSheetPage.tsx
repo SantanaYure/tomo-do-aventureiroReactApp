@@ -12,6 +12,7 @@ import { MonsterCombatSummary } from '../../components/monster/MonsterCombatSumm
 import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
 import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
 import { SheetNotices } from '../../components/SheetNotices/SheetNotices'
+import { SheetTabs } from '../../components/SheetTabs/SheetTabs'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
 import { useSheetAutosave } from '../../hooks/useSheetAutosave'
 import type { DeepPartial } from '../../components/monster/shared'
@@ -463,6 +464,20 @@ export function MonsterSheetPage() {
         onSaveNow={saveNow}
         onDismissRecovery={dismissRecovery}
       />
+      <div ref={tabBarRef} className={styles.tabBarShell}>
+        <SheetTabs
+          tabs={TABS}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          tabButtonIds={TAB_BUTTON_IDS}
+          tabPanelIds={TAB_PANEL_IDS}
+          ariaLabel="Seções da ficha de monstro"
+          className={styles.tabBar}
+          tabClassName={styles.tab}
+          activeTabClassName={styles.tabActive}
+        />
+      </div>
+
       <div className={styles.restBar}>
         <button type="button" className={styles.restButton} onClick={handleShortRest}>
           Descanso curto

@@ -31,6 +31,7 @@ import { ShortRestModal } from '../../components/ShortRestModal/ShortRestModal'
 import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
 import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
 import { SheetNotices } from '../../components/SheetNotices/SheetNotices'
+import { SheetTabs } from '../../components/SheetTabs/SheetTabs'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
 import { useSheetAutosave } from '../../hooks/useSheetAutosave'
 import { SAVING_STATUS_LABELS } from '../../types/savingStatus'
@@ -552,26 +553,17 @@ export function CharacterSheetPage() {
       />
 
       <div ref={tabBarRef} className={styles.tabBarShell}>
-        <nav
+        <SheetTabs
+          tabs={TABS}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          tabButtonIds={TAB_BUTTON_IDS}
+          tabPanelIds={TAB_PANEL_IDS}
+          ariaLabel="Seções da ficha"
           className={styles.tabBar}
-          aria-label="Seções da ficha"
-          role="tablist"
-        >
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              id={TAB_BUTTON_IDS[tab]}
-              type="button"
-              role="tab"
-              aria-selected={tab === activeTab}
-              aria-controls={TAB_PANEL_IDS[tab]}
-              className={tab === activeTab ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-              onClick={() => handleTabChange(tab)}
-            >
-              {tab}
-            </button>
-          ))}
-        </nav>
+          tabClassName={styles.tab}
+          activeTabClassName={styles.tabActive}
+        />
       </div>
 
       <CharacterCombatSummary

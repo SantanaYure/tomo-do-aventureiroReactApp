@@ -168,7 +168,6 @@
   font-family: var(--font-body);
   font-size: var(--text-base);
   color: var(--ink);
-  outline: none;
   transition: border-color var(--transition);
 }
 
@@ -238,7 +237,6 @@
   line-height: 1.2;
   color: var(--ink);
   cursor: pointer;
-  outline: none;
   transition: border-color var(--transition), background var(--transition);
   appearance: auto;
 }
