@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
 import { Home } from './pages/Home/Home'
 import { LoginPage } from './pages/LoginPage/LoginPage'
+import { ErrorBoundary } from './components/ErrorBoundary/ErrorBoundary'
 import { ProtectedRoute } from './components/ProtectedRoute/ProtectedRoute'
 import { RouteFallback } from './components/RouteFallback/RouteFallback'
 import { Sidebar } from './components/Sidebar/Sidebar'
@@ -54,6 +55,12 @@ export default function App() {
   return (
     <BrowserRouter>
       {/*
+        ErrorBoundary por fora do Suspense: um erro de renderização em qualquer
+        rota vira uma tela contornável, em vez de derrubar o app inteiro e
+        deixar a página em branco.
+      */}
+      <ErrorBoundary>
+      {/*
         Suspense em volta de todas as rotas, e não por rota: o Sidebar e o
         layout permanecem montados durante a troca, então só a área de
         conteúdo troca — a moldura do app não pisca.
@@ -77,6 +84,7 @@ export default function App() {
           </Route>
         </Routes>
       </Suspense>
+      </ErrorBoundary>
     </BrowserRouter>
   )
 }

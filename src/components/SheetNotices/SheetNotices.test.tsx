@@ -28,8 +28,10 @@ describe('SheetNotices', () => {
       <SheetNotices
         localBackupError={null}
         recoveredDraftAt={null}
+        remoteChangedElsewhere={false}
         onSaveNow={NOOP}
         onDismissRecovery={NOOP}
+        onDismissRemoteChange={NOOP}
       />,
     )
 
@@ -53,8 +55,10 @@ describe('SheetNotices', () => {
       <SheetNotices
         localBackupError="quota"
         recoveredDraftAt={null}
+        remoteChangedElsewhere={false}
         onSaveNow={NOOP}
         onDismissRecovery={NOOP}
+        onDismissRemoteChange={NOOP}
       />,
     )
 
@@ -67,8 +71,10 @@ describe('SheetNotices', () => {
       <SheetNotices
         localBackupError={null}
         recoveredDraftAt="2026-01-02T10:00:00.000Z"
+        remoteChangedElsewhere={false}
         onSaveNow={NOOP}
         onDismissRecovery={NOOP}
+        onDismissRemoteChange={NOOP}
       />,
     )
 
@@ -83,12 +89,34 @@ describe('SheetNotices', () => {
       <SheetNotices
         localBackupError="unavailable"
         recoveredDraftAt="2026-01-02T10:00:00.000Z"
+        remoteChangedElsewhere={false}
         onSaveNow={NOOP}
         onDismissRecovery={NOOP}
+        onDismissRemoteChange={NOOP}
       />,
     )
 
     expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(screen.getByRole('status')).toBeInTheDocument()
+  })
+
+  it('avisa quando a ficha foi alterada em outro lugar, sem esconder a regra', () => {
+    render(
+      <SheetNotices
+        localBackupError={null}
+        recoveredDraftAt={null}
+        remoteChangedElsewhere
+        onSaveNow={NOOP}
+        onDismissRecovery={NOOP}
+        onDismissRemoteChange={NOOP}
+      />,
+    )
+
+    const aviso = screen.getByRole('alert')
+    expect(aviso).toHaveTextContent(/também foi alterada em outro lugar/i)
+    // O app é last-write-wins: dizer isso é melhor que deixar a pessoa
+    // descobrir depois que sobrescreveu a outra aba.
+    expect(aviso).toHaveTextContent(/o que está nesta tela vai prevalecer/i)
+    expect(screen.getByRole('button', { name: 'Entendi' })).toBeInTheDocument()
   })
 })

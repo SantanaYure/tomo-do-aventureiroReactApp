@@ -111,6 +111,8 @@ export function CharacterSheetPage() {
     recoveredDraftAt,
     dismissRecovery,
     localBackupError,
+    remoteChangedElsewhere,
+    dismissRemoteChange,
   } = useSheetAutosave<CharacterSheet>({
     uid,
     id: id ?? null,
@@ -534,8 +536,10 @@ export function CharacterSheetPage() {
       <SheetNotices
         localBackupError={localBackupError}
         recoveredDraftAt={recoveredDraftAt}
+        remoteChangedElsewhere={remoteChangedElsewhere}
         onSaveNow={saveNow}
         onDismissRecovery={dismissRecovery}
+        onDismissRemoteChange={dismissRemoteChange}
       />
 
       <CharacterHeader

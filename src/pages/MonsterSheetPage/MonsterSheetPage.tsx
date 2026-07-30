@@ -149,6 +149,8 @@ export function MonsterSheetPage() {
     recoveredDraftAt,
     dismissRecovery,
     localBackupError,
+    remoteChangedElsewhere,
+    dismissRemoteChange,
   } = useSheetAutosave<MonsterSheet>({
     uid,
     id: id ?? null,
@@ -461,8 +463,10 @@ export function MonsterSheetPage() {
       <SheetNotices
         localBackupError={localBackupError}
         recoveredDraftAt={recoveredDraftAt}
+        remoteChangedElsewhere={remoteChangedElsewhere}
         onSaveNow={saveNow}
         onDismissRecovery={dismissRecovery}
+        onDismissRemoteChange={dismissRemoteChange}
       />
       <div ref={tabBarRef} className={styles.tabBarShell}>
         <SheetTabs

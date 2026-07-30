@@ -115,6 +115,14 @@ export interface UseSheetAutosaveResult<T> {
    * fechamento da aba volta a perder trabalho.
    */
   localBackupError: LocalBackupError | null
+  /**
+   * `true` quando outra aba ou aparelho gravou esta mesma ficha enquanto havia
+   * edição pendente aqui. A escrita local ainda vence (o app é last-write-wins,
+   * sem mesclagem de campos), então isto existe para avisar em vez de deixar a
+   * sobrescrita acontecer em silêncio.
+   */
+  remoteChangedElsewhere: boolean
+  dismissRemoteChange: () => void
 }
 
 type HistoryStacks<T> = { past: T[]; future: T[] }
@@ -196,6 +204,8 @@ export function useSheetAutosave<T>(
   const [historyCounts, setHistoryCounts] = useState({ past: 0, future: 0 })
   const [recoveredDraftAt, setRecoveredDraftAt] = useState<string | null>(null)
   const [localBackupError, setLocalBackupError] = useState<LocalBackupError | null>(null)
+  // Outra aba ou aparelho escreveu esta ficha enquanto havia edição pendente aqui.
+  const [remoteChangedElsewhere, setRemoteChangedElsewhere] = useState(false)
 
   // ── Refs (acesso síncrono ao estado mais recente em listeners e timers) ────
   const sheetRef = useRef<T | null>(null)
@@ -470,6 +480,7 @@ export function useSheetAutosave<T>(
 
         // Reancora: daqui para frente o estado local é baseado NESTA escrita.
         baseUpdatedAtRef.current = flightUpdatedAt
+        setRemoteChangedElsewhere(false)
 
         if (pendingRef.current !== null) {
           setStatus('pending')
@@ -654,6 +665,8 @@ export function useSheetAutosave<T>(
     discardLocalMirror()
   }, [clearSaveTimers, clearWatchdog, discardLocalMirror])
 
+  const dismissRemoteChange = useCallback(() => setRemoteChangedElsewhere(false), [])
+
   const dismissRecovery = useCallback(() => setRecoveredDraftAt(null), [])
 
   // ── Ciclo de vida ──────────────────────────────────────────────────────────
@@ -706,11 +719,29 @@ export function useSheetAutosave<T>(
     createdAtRef.current = remote.createdAt
 
     if (adoptedRef.current) {
-      // Só acompanha o remoto quando não há nada pendente nem em voo. Com
-      // trabalho em andamento, a âncora precisa continuar apontando para a última
-      // escrita NOSSA — é ela que diz se o rascunho ainda é aplicável.
+      const ehEscritaNossa =
+        remote.updatedAt === baseUpdatedAtRef.current ||
+        remote.updatedAt === inFlightUpdatedAtRef.current
+
       if (pendingRef.current === null && !inFlightRef.current) {
+        // Sem trabalho em andamento, adotar o remoto é seguro e é o que se
+        // espera de uma ficha sincronizada: outra aba salvou, esta acompanha.
+        // Antes o snapshot era descartado e a tela ficava desatualizada em
+        // silêncio até um recarregamento.
         baseUpdatedAtRef.current = remote.updatedAt
+        if (!ehEscritaNossa) {
+          applyLocal(remote.data)
+        }
+        return
+      }
+
+      // Com trabalho pendente, a âncora precisa continuar apontando para a
+      // última escrita NOSSA — é ela que diz se o rascunho ainda é aplicável.
+      // E se o remoto foi para um ponto que não reconhecemos, alguém escreveu
+      // esta mesma ficha em outro lugar: avisa, em vez de sobrescrever em
+      // silêncio na próxima gravação.
+      if (!ehEscritaNossa) {
+        setRemoteChangedElsewhere(true)
       }
       return
     }
@@ -821,5 +852,7 @@ export function useSheetAutosave<T>(
     recoveredDraftAt,
     dismissRecovery,
     localBackupError,
+    remoteChangedElsewhere,
+    dismissRemoteChange,
   }
 }

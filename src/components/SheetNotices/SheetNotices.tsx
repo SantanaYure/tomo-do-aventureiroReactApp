@@ -7,8 +7,11 @@ export interface SheetNoticesProps {
   localBackupError: LocalBackupError | null
   /** Momento do rascunho recuperado, em ISO, quando houver. */
   recoveredDraftAt: string | null
+  /** Outra aba ou aparelho gravou esta ficha enquanto havia edição pendente. */
+  remoteChangedElsewhere: boolean
   onSaveNow: () => void
   onDismissRecovery: () => void
+  onDismissRemoteChange: () => void
 }
 
 function formatRecoveredAt(isoTimestamp: string): string {
@@ -27,10 +30,12 @@ function formatRecoveredAt(isoTimestamp: string): string {
 export const SheetNotices = memo(function SheetNotices({
   localBackupError,
   recoveredDraftAt,
+  remoteChangedElsewhere,
   onSaveNow,
   onDismissRecovery,
+  onDismissRemoteChange,
 }: SheetNoticesProps) {
-  if (!localBackupError && !recoveredDraftAt) {
+  if (!localBackupError && !recoveredDraftAt && !remoteChangedElsewhere) {
     return null
   }
 
@@ -48,6 +53,19 @@ export const SheetNotices = memo(function SheetNotices({
           </span>
           <button type="button" className={styles.dismiss} onClick={onSaveNow}>
             Salvar agora
+          </button>
+        </div>
+      )}
+
+      {remoteChangedElsewhere && (
+        <div className={`${styles.notice} ${styles.noticeWarning}`} role="alert">
+          <span>
+            Esta ficha também foi alterada em outro lugar (outra aba ou aparelho).
+            Ao salvar, o que está nesta tela vai prevalecer. Recarregue se quiser
+            ver a outra versão antes de continuar.
+          </span>
+          <button type="button" className={styles.dismiss} onClick={onDismissRemoteChange}>
+            Entendi
           </button>
         </div>
       )}

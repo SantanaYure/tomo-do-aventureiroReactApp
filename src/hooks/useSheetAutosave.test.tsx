@@ -1022,3 +1022,71 @@ describe('descarte de pendências', () => {
     expect(readDraftRaw()).toBeNull()
   })
 })
+
+describe('escrita concorrente em outra aba', () => {
+  it('adota o snapshot de outra aba quando não há nada pendente aqui', async () => {
+    const { view } = setup()
+
+    // Sem edição local, acompanhar o remoto é seguro — e é o que se espera de
+    // uma ficha sincronizada. Antes o snapshot era descartado e a tela ficava
+    // desatualizada em silêncio até um recarregamento.
+    await act(async () => {
+      view.rerender({ remote: makeRemote({ title: 'Escrito pela aba B' }, 'updated-B') })
+    })
+
+    expect(view.result.current.sheet?.title).toBe('Escrito pela aba B')
+    expect(view.result.current.remoteChangedElsewhere).toBe(false)
+  })
+
+  it('avisa, sem descartar o que está sendo digitado, quando há edição pendente', async () => {
+    const { view } = setup()
+
+    await act(async () => {
+      view.result.current.commit({ title: 'Digitando aqui', notes: '' })
+    })
+
+    await act(async () => {
+      view.rerender({ remote: makeRemote({ title: 'Escrito pela aba B' }, 'updated-B') })
+    })
+
+    // O trabalho local não pode sumir embaixo de quem está digitando.
+    expect(view.result.current.sheet?.title).toBe('Digitando aqui')
+    // Mas a pessoa precisa saber que vai sobrescrever a outra aba.
+    expect(view.result.current.remoteChangedElsewhere).toBe(true)
+  })
+
+  it('não confunde a nossa própria escrita com escrita de terceiro', async () => {
+    const save = vi.fn<SheetSaveFn<Doc>>().mockResolvedValue('updated-nosso')
+    const { view } = setup({ save })
+
+    await act(async () => {
+      view.result.current.commit({ title: 'Nossa edição', notes: '' })
+    })
+    await advance(900)
+
+    // O snapshot que volta é o eco da nossa escrita — não é conflito.
+    await act(async () => {
+      view.rerender({ remote: makeRemote({ title: 'Nossa edição' }, 'updated-nosso') })
+    })
+
+    expect(view.result.current.remoteChangedElsewhere).toBe(false)
+  })
+
+  it('dismissRemoteChange dispensa o aviso', async () => {
+    const { view } = setup()
+
+    await act(async () => {
+      view.result.current.commit({ title: 'Digitando aqui', notes: '' })
+    })
+    await act(async () => {
+      view.rerender({ remote: makeRemote({ title: 'Aba B' }, 'updated-B') })
+    })
+    expect(view.result.current.remoteChangedElsewhere).toBe(true)
+
+    await act(async () => {
+      view.result.current.dismissRemoteChange()
+    })
+
+    expect(view.result.current.remoteChangedElsewhere).toBe(false)
+  })
+})
