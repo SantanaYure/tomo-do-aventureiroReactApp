@@ -30,7 +30,8 @@ import { ShortRestModal } from '../../components/ShortRestModal/ShortRestModal'
 import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
 import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
-import type { SavingStatus } from '../../types/savingStatus'
+import { useSheetAutosave } from '../../hooks/useSheetAutosave'
+import { SAVING_STATUS_LABELS } from '../../types/savingStatus'
 import styles from './CharacterSheetPage.module.css'
 
 const TABS = [
@@ -67,7 +68,11 @@ const TAB_BUTTON_IDS: Record<Tab, string> = {
   Detalhes: 'character-sheet-tab-detalhes',
 }
 
-const SAVE_DEBOUNCE_MS = 800
+function formatRecoveredAt(isoTimestamp: string): string {
+  const parsed = new Date(isoTimestamp)
+  if (Number.isNaN(parsed.getTime())) return ''
+  return parsed.toLocaleString('pt-BR')
+}
 
 function getTabStorageKey(id?: string) {
   return `character-sheet-active-tab:${id ?? 'default'}`
@@ -96,8 +101,25 @@ export function CharacterSheetPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { sheet: storedSheet, notFound, error } = useCharacterSheet(uid, id ?? null)
-  const [sheet, setSheet] = useState<CharacterSheet | null>(null)
-  const [savingStatus, setSavingStatus] = useState<SavingStatus>('idle')
+  const {
+    sheet,
+    commit,
+    savingStatus,
+    retry: retrySave,
+    discardPending,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    recoveredDraftAt,
+    dismissRecovery,
+  } = useSheetAutosave<CharacterSheet>({
+    uid,
+    id: id ?? null,
+    remote: storedSheet,
+    scope: 'pj',
+    save: saveCharacterSheet,
+  })
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isAtBottom, setIsAtBottom] = useState(false)
   const [restFeedback, setRestFeedback] = useState<string | null>(null)
@@ -108,30 +130,12 @@ export function CharacterSheetPage() {
   const { groups, isLoading: isLoadingGroups } = useSheetGroups(uid)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const restFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasSheet = sheet !== null
-
-  function updateSavingStatus(nextStatus: SavingStatus) {
-    setSavingStatus((currentStatus) =>
-      currentStatus === nextStatus ? currentStatus : nextStatus
-    )
-  }
 
   // Registra abertura da ficha para a lista de recentes
   useEffect(() => {
     if (id) recordOpened(id)
-  }, [id])
-
-  // Sync Firestore snapshot → local state (only on first load)
-  useEffect(() => {
-    if (storedSheet && sheet === null) {
-      setSheet(storedSheet.data)
-    }
-  }, [storedSheet, sheet])
-
-  useEffect(() => {
-    updateSavingStatus('idle')
   }, [id])
 
   useEffect(() => {
@@ -162,25 +166,16 @@ export function CharacterSheetPage() {
     return () => { document.title = 'Tomo do Aventureiro' }
   }, [sheet?.character.name])
 
-  // Cleanup debounce timer on unmount
   useEffect(() => {
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
     }
   }, [])
 
+  // A persistência (debounce + teto de espera + rascunho local + histórico)
+  // vive em `useSheetAutosave`.
   function handleUpdate(updated: CharacterSheet) {
-    if (!id || !uid) return
-    setSheet(updated)
-    updateSavingStatus('saving')
-
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(() => {
-      saveCharacterSheet(uid, id, updated)
-        .then(() => updateSavingStatus('saved'))
-        .catch(() => updateSavingStatus('error'))
-    }, SAVE_DEBOUNCE_MS)
+    commit(updated)
   }
 
   function handleExport() {
@@ -207,10 +202,7 @@ export function CharacterSheetPage() {
   async function handleConfirmDelete() {
     if (!uid || !id || isDeleting) return
     setIsDeleting(true)
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current)
-      saveTimerRef.current = null
-    }
+    discardPending()
     try {
       await deleteCharacterSheet(uid, id)
       setShowDeleteDialog(false)
@@ -452,11 +444,45 @@ export function CharacterSheetPage() {
       <div className={styles.topBar}>
         <Link className={styles.backLink} to="/">← Voltar</Link>
         <div className={styles.topBarActions}>
+          <div className={styles.historyControls}>
+            <button
+              type="button"
+              className={styles.historyButton}
+              onClick={undo}
+              disabled={!canUndo}
+              title="Desfazer (Ctrl+Z)"
+              aria-label="Desfazer última alteração"
+            >
+              ↶ Desfazer
+            </button>
+            <button
+              type="button"
+              className={styles.historyButton}
+              onClick={redo}
+              disabled={!canRedo}
+              title="Refazer (Ctrl+Shift+Z)"
+              aria-label="Refazer alteração desfeita"
+            >
+              ↷ Refazer
+            </button>
+          </div>
           {savingStatus !== 'idle' && (
-            <span className={styles.savingIndicator} data-status={savingStatus}>
-              {savingStatus === 'saving' && 'Salvando...'}
-              {savingStatus === 'saved' && 'Salvo'}
-              {savingStatus === 'error' && 'Erro ao salvar'}
+            <span
+              className={styles.savingIndicator}
+              data-status={savingStatus}
+              role="status"
+              aria-live="polite"
+            >
+              {SAVING_STATUS_LABELS[savingStatus]}
+              {savingStatus === 'error' && (
+                <button
+                  type="button"
+                  className={styles.retryButton}
+                  onClick={retrySave}
+                >
+                  Tentar novamente
+                </button>
+              )}
             </span>
           )}
           <SheetActionsMenu
@@ -468,6 +494,23 @@ export function CharacterSheetPage() {
           />
         </div>
       </div>
+
+      {recoveredDraftAt && (
+        <div className={styles.recoveryBanner} role="status" aria-live="polite">
+          <span>
+            Recuperamos alterações que não chegaram a ser salvas
+            {formatRecoveredAt(recoveredDraftAt) && ` (${formatRecoveredAt(recoveredDraftAt)})`}.
+            Elas já estão sendo enviadas.
+          </span>
+          <button
+            type="button"
+            className={styles.recoveryDismiss}
+            onClick={dismissRecovery}
+          >
+            Entendi
+          </button>
+        </div>
+      )}
 
       <CharacterHeader
         character={currentSheet.character}

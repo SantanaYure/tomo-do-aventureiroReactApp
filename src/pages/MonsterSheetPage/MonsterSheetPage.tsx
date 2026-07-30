@@ -12,6 +12,7 @@ import { MonsterCombatSummary } from '../../components/monster/MonsterCombatSumm
 import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
 import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
+import { useSheetAutosave } from '../../hooks/useSheetAutosave'
 import type { DeepPartial } from '../../components/monster/shared'
 import {
   saveMonsterSheet,
@@ -24,7 +25,7 @@ import { applyRestToMonsterSheet } from '../../utils/restRules'
 import { recordOpened } from '../../utils/recentlyOpened'
 import { useAuth } from '../../context/AuthContext'
 import { useMonsterSheet } from '../../hooks/useMonsterSheet'
-import type { SavingStatus } from '../../types/savingStatus'
+import { SAVING_STATUS_LABELS } from '../../types/savingStatus'
 import type { MonsterSheet } from '../../types/system/dnd/monsterSheet'
 import styles from './MonsterSheetPage.module.css'
 
@@ -43,7 +44,12 @@ type MonsterLocationState = {
 }
 
 const DEFAULT_TAB: Tab = 'Detalhes'
-const SAVE_DEBOUNCE_MS = 800
+
+function formatRecoveredAt(isoTimestamp: string): string {
+  const parsed = new Date(isoTimestamp)
+  if (Number.isNaN(parsed.getTime())) return ''
+  return parsed.toLocaleString('pt-BR')
+}
 
 const TAB_PANEL_IDS: Record<Tab, string> = {
   Mesa: 'monster-sheet-panel-mesa',
@@ -133,8 +139,25 @@ export function MonsterSheetPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { monster: storedMonster, notFound, error } = useMonsterSheet(uid, id ?? null)
-  const [sheet, setSheet] = useState<MonsterSheet | null>(null)
-  const [savingStatus, setSavingStatus] = useState<SavingStatus>('idle')
+  const {
+    sheet,
+    commit,
+    savingStatus,
+    retry: retrySave,
+    discardPending,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    recoveredDraftAt,
+    dismissRecovery,
+  } = useSheetAutosave<MonsterSheet>({
+    uid,
+    id: id ?? null,
+    remote: storedMonster,
+    scope: 'monstro',
+    save: saveMonsterSheet,
+  })
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isEditing, setIsEditing] = useState(false)
   const [isAtBottom, setIsAtBottom] = useState(false)
@@ -145,30 +168,12 @@ export function MonsterSheetPage() {
   const { groups, isLoading: isLoadingGroups } = useSheetGroups(uid)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const restFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasSheet = sheet !== null
-
-  function updateSavingStatus(nextStatus: SavingStatus) {
-    setSavingStatus((currentStatus) =>
-      currentStatus === nextStatus ? currentStatus : nextStatus
-    )
-  }
 
   // Registra abertura da ficha para a lista de recentes
   useEffect(() => {
     if (id) recordOpened(id)
-  }, [id])
-
-  // Sync Firestore snapshot → local state (only on first load)
-  useEffect(() => {
-    if (storedMonster && sheet === null) {
-      setSheet(storedMonster.data)
-    }
-  }, [storedMonster, sheet])
-
-  useEffect(() => {
-    updateSavingStatus('idle')
   }, [id])
 
   useEffect(() => {
@@ -201,10 +206,8 @@ export function MonsterSheetPage() {
     window.sessionStorage.setItem(getTabStorageKey(id), activeTab)
   }, [activeTab, id])
 
-  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
     }
   }, [])
@@ -216,19 +219,10 @@ export function MonsterSheetPage() {
     return () => { document.title = 'Tomo do Aventureiro' }
   }, [sheet?.details.name])
 
+  // A persistência (debounce + teto de espera + rascunho local + histórico)
+  // vive em `useSheetAutosave`.
   function handleSheetChange(patch: DeepPartial<MonsterSheet>) {
-    if (!sheet || !id || !uid) {
-      return
-    }
-
-    const updatedSheet = mergeDeepPatch(sheet, patch)
-    setSheet(updatedSheet)
-    updateSavingStatus('saving')
-
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(() => {
-      saveMonsterSheet(uid, id, updatedSheet).catch(console.error)
-    }, SAVE_DEBOUNCE_MS)
+    commit((current) => mergeDeepPatch(current, patch))
   }
 
   function showRestFeedback(message: string) {
@@ -268,10 +262,7 @@ export function MonsterSheetPage() {
   async function handleConfirmDelete() {
     if (!uid || !id || isDeleting) return
     setIsDeleting(true)
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current)
-      saveTimerRef.current = null
-    }
+    discardPending()
     try {
       await deleteMonsterSheet(uid, id)
       setShowDeleteDialog(false)
@@ -410,6 +401,47 @@ export function MonsterSheetPage() {
       <div className={styles.topBar}>
         <Link className={styles.backLink} to="/">← Voltar</Link>
         <div className={styles.topBarActions}>
+          <div className={styles.historyControls}>
+            <button
+              type="button"
+              className={styles.historyButton}
+              onClick={undo}
+              disabled={!canUndo}
+              title="Desfazer (Ctrl+Z)"
+              aria-label="Desfazer última alteração"
+            >
+              ↶ Desfazer
+            </button>
+            <button
+              type="button"
+              className={styles.historyButton}
+              onClick={redo}
+              disabled={!canRedo}
+              title="Refazer (Ctrl+Shift+Z)"
+              aria-label="Refazer alteração desfeita"
+            >
+              ↷ Refazer
+            </button>
+          </div>
+          {savingStatus !== 'idle' && (
+            <span
+              className={styles.savingIndicator}
+              data-status={savingStatus}
+              role="status"
+              aria-live="polite"
+            >
+              {SAVING_STATUS_LABELS[savingStatus]}
+              {savingStatus === 'error' && (
+                <button
+                  type="button"
+                  className={styles.retryButton}
+                  onClick={retrySave}
+                >
+                  Tentar novamente
+                </button>
+              )}
+            </span>
+          )}
           <SheetActionsMenu
             onExport={handleExport}
             onDelete={handleRequestDelete}
@@ -419,6 +451,23 @@ export function MonsterSheetPage() {
           />
         </div>
       </div>
+
+      {recoveredDraftAt && (
+        <div className={styles.recoveryBanner} role="status" aria-live="polite">
+          <span>
+            Recuperamos alterações que não chegaram a ser salvas
+            {formatRecoveredAt(recoveredDraftAt) && ` (${formatRecoveredAt(recoveredDraftAt)})`}.
+            Elas já estão sendo enviadas.
+          </span>
+          <button
+            type="button"
+            className={styles.recoveryDismiss}
+            onClick={dismissRecovery}
+          >
+            Entendi
+          </button>
+        </div>
+      )}
 
       <div ref={tabBarRef} className={styles.tabBarShell}>
         <nav className={styles.tabBar} aria-label="Seções da ficha de monstro" role="tablist">
