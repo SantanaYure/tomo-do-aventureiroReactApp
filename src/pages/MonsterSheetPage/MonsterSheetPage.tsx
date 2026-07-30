@@ -11,6 +11,7 @@ import { MonsterTableMode } from '../../components/monster/MonsterTableMode/Mons
 import { MonsterCombatSummary } from '../../components/monster/MonsterCombatSummary/MonsterCombatSummary'
 import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
 import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
+import { SheetNotices } from '../../components/SheetNotices/SheetNotices'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
 import { useSheetAutosave } from '../../hooks/useSheetAutosave'
 import type { DeepPartial } from '../../components/monster/shared'
@@ -45,12 +46,6 @@ type MonsterLocationState = {
 }
 
 const DEFAULT_TAB: Tab = 'Detalhes'
-
-function formatRecoveredAt(isoTimestamp: string): string {
-  const parsed = new Date(isoTimestamp)
-  if (Number.isNaN(parsed.getTime())) return ''
-  return parsed.toLocaleString('pt-BR')
-}
 
 const TAB_PANEL_IDS: Record<Tab, string> = {
   Mesa: 'monster-sheet-panel-mesa',
@@ -462,56 +457,12 @@ export function MonsterSheetPage() {
         </div>
       </div>
 
-      {localBackupError && (
-        <div className={styles.backupWarning} role="alert">
-          <span>
-            {localBackupError === 'quota'
-              ? 'O armazenamento do navegador está cheio: não foi possível guardar uma cópia local de segurança desta ficha.'
-              : 'Não foi possível guardar uma cópia local de segurança desta ficha neste navegador.'}{' '}
-            Se a conexão cair agora, alterações recentes podem ser perdidas.
-          </span>
-          <button type="button" className={styles.recoveryDismiss} onClick={saveNow}>
-            Salvar agora
-          </button>
-        </div>
-      )}
-
-      {recoveredDraftAt && (
-        <div className={styles.recoveryBanner} role="status" aria-live="polite">
-          <span>
-            Recuperamos alterações que não chegaram a ser salvas
-            {formatRecoveredAt(recoveredDraftAt) && ` (${formatRecoveredAt(recoveredDraftAt)})`}.
-            Elas já estão sendo enviadas.
-          </span>
-          <button
-            type="button"
-            className={styles.recoveryDismiss}
-            onClick={dismissRecovery}
-          >
-            Entendi
-          </button>
-        </div>
-      )}
-
-      <div ref={tabBarRef} className={styles.tabBarShell}>
-        <nav className={styles.tabBar} aria-label="Seções da ficha de monstro" role="tablist">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              id={TAB_BUTTON_IDS[tab]}
-              type="button"
-              role="tab"
-              aria-selected={tab === activeTab}
-              aria-controls={TAB_PANEL_IDS[tab]}
-              className={tab === activeTab ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-              onClick={() => handleTabChange(tab)}
-            >
-              {tab}
-            </button>
-          ))}
-        </nav>
-      </div>
-
+      <SheetNotices
+        localBackupError={localBackupError}
+        recoveredDraftAt={recoveredDraftAt}
+        onSaveNow={saveNow}
+        onDismissRecovery={dismissRecovery}
+      />
       <div className={styles.restBar}>
         <button type="button" className={styles.restButton} onClick={handleShortRest}>
           Descanso curto

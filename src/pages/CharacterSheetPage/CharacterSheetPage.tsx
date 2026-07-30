@@ -30,6 +30,7 @@ import { CharacterCombatSummary } from '../../components/CharacterCombatSummary/
 import { ShortRestModal } from '../../components/ShortRestModal/ShortRestModal'
 import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
 import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
+import { SheetNotices } from '../../components/SheetNotices/SheetNotices'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
 import { useSheetAutosave } from '../../hooks/useSheetAutosave'
 import { SAVING_STATUS_LABELS } from '../../types/savingStatus'
@@ -67,12 +68,6 @@ const TAB_BUTTON_IDS: Record<Tab, string> = {
   Habilidades: 'character-sheet-tab-habilidades',
   Inventário: 'character-sheet-tab-inventario',
   Detalhes: 'character-sheet-tab-detalhes',
-}
-
-function formatRecoveredAt(isoTimestamp: string): string {
-  const parsed = new Date(isoTimestamp)
-  if (Number.isNaN(parsed.getTime())) return ''
-  return parsed.toLocaleString('pt-BR')
 }
 
 function getTabStorageKey(id?: string) {
@@ -535,36 +530,12 @@ export function CharacterSheetPage() {
         </div>
       </div>
 
-      {localBackupError && (
-        <div className={styles.backupWarning} role="alert">
-          <span>
-            {localBackupError === 'quota'
-              ? 'O armazenamento do navegador está cheio: não foi possível guardar uma cópia local de segurança desta ficha.'
-              : 'Não foi possível guardar uma cópia local de segurança desta ficha neste navegador.'}{' '}
-            Se a conexão cair agora, alterações recentes podem ser perdidas.
-          </span>
-          <button type="button" className={styles.recoveryDismiss} onClick={saveNow}>
-            Salvar agora
-          </button>
-        </div>
-      )}
-
-      {recoveredDraftAt && (
-        <div className={styles.recoveryBanner} role="status" aria-live="polite">
-          <span>
-            Recuperamos alterações que não chegaram a ser salvas
-            {formatRecoveredAt(recoveredDraftAt) && ` (${formatRecoveredAt(recoveredDraftAt)})`}.
-            Elas já estão sendo enviadas.
-          </span>
-          <button
-            type="button"
-            className={styles.recoveryDismiss}
-            onClick={dismissRecovery}
-          >
-            Entendi
-          </button>
-        </div>
-      )}
+      <SheetNotices
+        localBackupError={localBackupError}
+        recoveredDraftAt={recoveredDraftAt}
+        onSaveNow={saveNow}
+        onDismissRecovery={dismissRecovery}
+      />
 
       <CharacterHeader
         character={currentSheet.character}
