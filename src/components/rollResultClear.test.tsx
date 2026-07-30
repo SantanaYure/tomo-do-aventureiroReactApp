@@ -66,6 +66,10 @@ async function expectRollIsClearable(revealRollButton?: () => Promise<void>) {
   expect(screen.queryByText('Total: 4')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: CLEAR_LABEL })).not.toBeInTheDocument()
 
+  // O botão desmonta a si mesmo. Sem reposicionar o foco ele cai no <body> e
+  // quem navega por teclado volta ao topo do documento.
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: /Rolar dano/ }))
+
   await user.click(screen.getByRole('button', { name: /Rolar dano/ }))
   expect(screen.getByText('Total: 4')).toBeInTheDocument()
 }
@@ -272,6 +276,63 @@ describe('limpar resultado de rolagem — MonsterTableMode', () => {
     const { container } = render(<MonsterTableMode sheet={sheet} onChange={() => {}} />)
     const section = within(container)
     expect(section.getByText('Habilidades Especiais')).toBeInTheDocument()
+
+    await expectRollIsClearable()
+  })
+
+  it('limpa o resultado de uma ação no modo mesa', async () => {
+    const sheet = monsterSheetWith({
+      actions: [
+        {
+          id: '',
+          name: 'Mordida',
+          description: 'Morde o alvo.',
+          hasLimitedUses: false,
+          maxUses: 1,
+          currentUses: 1,
+          recharge: 'none',
+          isAttack: true,
+          isMultiattack: false,
+          attackCount: 1,
+          attackType: 'Corpo-a-corpo',
+          attackBonus: '+5',
+          damage: '',
+          damageType: '',
+          reach: '1,5 m',
+          castingTime: '',
+          damages: DAMAGES,
+        },
+      ],
+    })
+
+    const { container } = render(<MonsterTableMode sheet={sheet} onChange={() => {}} />)
+    expect(within(container).getByText('Ações')).toBeInTheDocument()
+
+    await expectRollIsClearable()
+  })
+
+  it('limpa o resultado de uma reação no modo mesa', async () => {
+    const sheet = monsterSheetWith({
+      reactions: [
+        {
+          id: '',
+          name: 'Aparar',
+          description: 'Apara o golpe.',
+          hasLimitedUses: false,
+          maxUses: 1,
+          currentUses: 1,
+          recharge: 'none',
+          duration: '',
+          range: '',
+          requirements: '',
+          castingTime: '',
+          damages: DAMAGES,
+        },
+      ],
+    })
+
+    const { container } = render(<MonsterTableMode sheet={sheet} onChange={() => {}} />)
+    expect(within(container).getByText('Reações')).toBeInTheDocument()
 
     await expectRollIsClearable()
   })
