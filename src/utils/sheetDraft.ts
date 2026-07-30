@@ -16,23 +16,32 @@ export const SHEET_DRAFT_PREFIX = 'tomo:draft:'
  * Versão do formato do envelope. Rascunho com versão diferente é descartado em
  * vez de adotado — trocar o formato do rascunho nunca deve travar uma ficha.
  */
-export const SHEET_DRAFT_SCHEMA_VERSION = 1
+export const SHEET_DRAFT_SCHEMA_VERSION = 2
 
 /** Escopo do rascunho — separa fichas de PJ das de monstro/NPC. */
 export type SheetDraftScope = 'pj' | 'monstro'
 
-export interface StoredSheetDraft {
+/**
+ * Estados do documento remoto sobre os quais o rascunho pode ser aplicado.
+ *
+ * São dois porque existe uma janela real: o servidor pode já ter aplicado a
+ * escrita em voo enquanto o ack ainda está em trânsito. Nesse instante o remoto
+ * está em `inFlightUpdatedAt`, não em `baseUpdatedAt` — e o `updatedAt` é gerado
+ * no cliente antes de a escrita sair, então esse valor é conhecido de antemão.
+ */
+export interface SheetDraftAnchors {
+  /** `updatedAt` da última escrita CONFIRMADA que o estado local conhece. */
+  baseUpdatedAt: string | null
+  /** `updatedAt` que a escrita em voo vai gravar (ou `null` se não há escrita em voo). */
+  inFlightUpdatedAt: string | null
+}
+
+export interface StoredSheetDraft extends SheetDraftAnchors {
   version: number
   /** Conteúdo não confiável: precisa passar por `normalize*` antes de ser usado. */
   data: unknown
   /** ISO timestamp de quando o rascunho foi gravado (relógio local). */
   savedAt: string
-  /**
-   * `updatedAt` do documento remoto conhecido quando o rascunho foi criado.
-   * É a âncora usada para decidir se o rascunho ainda é aplicável: se o remoto
-   * avançou além dela, alguém escreveu depois e o rascunho está obsoleto.
-   */
-  baseUpdatedAt: string | null
 }
 
 /** Resultado da tentativa de gravar o rascunho. */
@@ -55,6 +64,10 @@ function getStorage(): Storage | null {
   }
 }
 
+function isNullableString(value: unknown): boolean {
+  return value === null || typeof value === 'string'
+}
+
 function isStoredDraft(value: unknown): value is StoredSheetDraft {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const candidate = value as Record<string, unknown>
@@ -63,14 +76,60 @@ function isStoredDraft(value: unknown): value is StoredSheetDraft {
     typeof candidate.savedAt === 'string' &&
     candidate.data !== undefined &&
     candidate.data !== null &&
-    (candidate.baseUpdatedAt === null || typeof candidate.baseUpdatedAt === 'string')
+    isNullableString(candidate.baseUpdatedAt) &&
+    isNullableString(candidate.inFlightUpdatedAt)
   )
 }
 
 /**
+ * Limpeza de inicialização: remove APENAS o que este build não consegue usar
+ * (envelope de outra versão de formato ou string que não é sequer um envelope).
+ *
+ * Deliberadamente não apaga por idade: um rascunho antigo pode ser a única cópia
+ * de trabalho não salvo, e apagá-lo em silêncio no boot seria perda de dados.
+ * Também não faz `JSON.parse` integral — lê só o prefixo da string para achar a
+ * versão, porque isso roda antes do primeiro render e as fichas podem ter
+ * centenas de KB de avatar.
+ */
+export function purgeUnusableSheetDrafts(): number {
+  const storage = getStorage()
+  if (!storage) return 0
+
+  const doomed: string[] = []
+
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index)
+    if (!key || !key.startsWith(SHEET_DRAFT_PREFIX)) continue
+
+    let versionTag: number | null = null
+    try {
+      // O envelope é serializado com `version` como primeira chave, então o
+      // prefixo basta e não é preciso desserializar a ficha inteira.
+      const prefix = (storage.getItem(key) ?? '').slice(0, 64)
+      const match = /^\{"version":(\d+)/.exec(prefix)
+      versionTag = match ? Number(match[1]) : null
+    } catch {
+      versionTag = null
+    }
+
+    if (versionTag !== SHEET_DRAFT_SCHEMA_VERSION) doomed.push(key)
+  }
+
+  for (const key of doomed) {
+    try {
+      storage.removeItem(key)
+    } catch {
+      // ignora
+    }
+  }
+
+  return doomed.length
+}
+
+/**
  * Remove rascunhos inválidos, de versão desconhecida ou antigos (por padrão, mais
- * de 7 dias). Usado na inicialização (rascunhos órfãos) e como válvula de escape
- * quando a cota do localStorage estoura.
+ * de 7 dias). Usado SOMENTE como válvula de escape quando a cota do localStorage
+ * estoura — nesse ponto a alternativa é não conseguir gravar nada.
  */
 export function purgeStaleSheetDrafts(maxAgeMs = 7 * 24 * 60 * 60 * 1000): number {
   const storage = getStorage()
@@ -122,7 +181,7 @@ export function writeSheetDraft(
   uid: string,
   id: string,
   data: unknown,
-  baseUpdatedAt: string | null,
+  anchors: SheetDraftAnchors,
   savedAt = new Date().toISOString(),
 ): SheetDraftWriteResult {
   const storage = getStorage()
@@ -132,11 +191,14 @@ export function writeSheetDraft(
   let serialized: string
 
   try {
+    // `version` precisa continuar sendo a primeira chave: `purgeUnusableSheetDrafts`
+    // depende disso para descobrir a versão sem desserializar a ficha inteira.
     const envelope: StoredSheetDraft = {
       version: SHEET_DRAFT_SCHEMA_VERSION,
       data,
       savedAt,
-      baseUpdatedAt,
+      baseUpdatedAt: anchors.baseUpdatedAt,
+      inFlightUpdatedAt: anchors.inFlightUpdatedAt,
     }
     serialized = JSON.stringify(envelope)
   } catch {
@@ -212,17 +274,23 @@ export function clearSheetDraft(
  *
  * A decisão é por ÂNCORA, não por comparação de timestamps: `savedAt` vem do
  * relógio de quem gravou o rascunho e `updatedAt` pode ter sido escrito por
- * outro dispositivo, com outro relógio — comparar os dois não prova nada. O
- * rascunho só é aplicável quando o remoto continua exatamente no ponto em que
- * estava quando o rascunho foi criado. Se avançou, houve escrita posterior
- * (outra aba ou outro aparelho) e o remoto vence.
+ * outro dispositivo, com outro relógio — comparar os dois não prova nada.
+ *
+ * O rascunho é aplicável quando o remoto está em um dos dois estados que as
+ * NOSSAS escritas produzem: a última confirmada (`baseUpdatedAt`) ou a que
+ * estava em voo quando o rascunho foi gravado (`inFlightUpdatedAt`) — o servidor
+ * pode ter aplicado essa última sem que o ack tenha chegado. Qualquer outro
+ * `updatedAt` é escrita de terceiro (outra aba ou aparelho), e aí o remoto vence.
  */
 export function isSheetDraftBasedOnRemote(
   draft: StoredSheetDraft,
   remoteUpdatedAt: string | null,
 ): boolean {
-  if (typeof draft.baseUpdatedAt !== 'string' || draft.baseUpdatedAt.length === 0) {
-    return false
-  }
-  return draft.baseUpdatedAt === remoteUpdatedAt
+  if (typeof remoteUpdatedAt !== 'string' || remoteUpdatedAt.length === 0) return false
+
+  const anchors = [draft.baseUpdatedAt, draft.inFlightUpdatedAt]
+
+  return anchors.some(
+    (anchor) => typeof anchor === 'string' && anchor.length > 0 && anchor === remoteUpdatedAt,
+  )
 }
