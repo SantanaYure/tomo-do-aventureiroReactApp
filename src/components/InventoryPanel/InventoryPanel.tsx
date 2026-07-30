@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { useCallback, useRef, memo } from 'react'
 // src/components/InventoryPanel/InventoryPanel.tsx
 import type { Character, Currency, InventoryItem } from '../../types/system/dnd'
 import { NumberInput } from '../NumberInput/NumberInput'
@@ -34,6 +34,49 @@ interface InventoryPanelProps {
   onChangeCharacter: (updated: Character) => void
 }
 
+interface InventoryRowProps {
+  item: InventoryItem
+  index: number
+  isEditMode: boolean
+  onChangeItem: (index: number, partial: Partial<InventoryItem>) => void
+  onRemoveItem: (index: number) => void
+}
+
+// Cada linha é memoizada: sem isso, digitar no item 3 de uma lista de 200
+// re-renderiza os 200. Medido: ~13 nós de DOM por item.
+const InventoryRow = memo(function InventoryRow({
+  item,
+  index,
+  isEditMode,
+  onChangeItem,
+  onRemoveItem,
+}: InventoryRowProps) {
+  return (
+    <tr>
+      <td className={styles.equippedTd}>
+        <input type="checkbox" checked={item.equipped ?? false} onChange={(e) => onChangeItem(index, { equipped: e.target.checked })} />
+      </td>
+      <td className={styles.nameTd}>
+        {isEditMode
+          ? <input type="text" value={item.name ?? ''} placeholder="Nome do item" onChange={(e) => onChangeItem(index, { name: e.target.value })} />
+          : <span>{item.name || '—'}</span>}
+      </td>
+      <td className={styles.qtyTd}>
+        {isEditMode
+          ? <NumberInput min={0} value={item.quantity ?? 1} emptyValue={1} onChange={(value) => onChangeItem(index, { quantity: value })} />
+          : <span>{item.quantity ?? 1}</span>}
+      </td>
+      <td className={styles.weightTd}>
+        {isEditMode
+          ? <NumberInput min={0} step={0.1} value={item.weight ?? 0} onChange={(value) => onChangeItem(index, { weight: value })} />
+          : <span>{item.weight ?? 0}</span>}
+      </td>
+      {isEditMode && <td><input type="text" value={String(item.description ?? '')} placeholder="Descrição" onChange={(e) => onChangeItem(index, { description: e.target.value })} /></td>}
+      {isEditMode && <td><button className={panelStyles.removeButton} onClick={() => onRemoveItem(index)}>✕</button></td>}
+    </tr>
+  )
+})
+
 function InventoryPanelImpl({
   inventory,
   character,
@@ -41,19 +84,25 @@ function InventoryPanelImpl({
   onChangeInventory,
   onChangeCharacter,
 }: InventoryPanelProps) {
-  function setItem(index: number, partial: Partial<InventoryItem>) {
+  // Estáveis entre renders: são props das linhas memoizadas, e um handler novo
+  // a cada render anularia o memo de todas elas. Leem `inventory` de uma ref
+  // para não depender da identidade do array.
+  const inventoryRef = useRef(inventory)
+  inventoryRef.current = inventory
+
+  const setItem = useCallback((index: number, partial: Partial<InventoryItem>) => {
     onChangeInventory(
-      inventory.map((item, i) => (i === index ? { ...item, ...partial } : item))
+      inventoryRef.current.map((item, i) => (i === index ? { ...item, ...partial } : item))
     )
-  }
+  }, [onChangeInventory])
 
   function addItem() {
     onChangeInventory([...inventory, createItem()])
   }
 
-  function removeItem(index: number) {
-    onChangeInventory(inventory.filter((_, i) => i !== index))
-  }
+  const removeItem = useCallback((index: number) => {
+    onChangeInventory(inventoryRef.current.filter((_, i) => i !== index))
+  }, [onChangeInventory])
 
   function setCurrency(key: keyof Currency, value: number) {
     onChangeCharacter({
@@ -102,28 +151,14 @@ function InventoryPanelImpl({
             </thead>
             <tbody>
               {inventory.map((item, i) => (
-                <tr key={String(item.id ?? i)}>
-                  <td className={styles.equippedTd}>
-                    <input type="checkbox" checked={item.equipped ?? false} onChange={(e) => setItem(i, { equipped: e.target.checked })} />
-                  </td>
-                  <td className={styles.nameTd}>
-                    {isEditMode
-                      ? <input type="text" value={item.name ?? ''} placeholder="Nome do item" onChange={(e) => setItem(i, { name: e.target.value })} />
-                      : <span>{item.name || '—'}</span>}
-                  </td>
-                  <td className={styles.qtyTd}>
-                    {isEditMode
-                      ? <NumberInput min={0} value={item.quantity ?? 1} emptyValue={1} onChange={(value) => setItem(i, { quantity: value })} />
-                      : <span>{item.quantity ?? 1}</span>}
-                  </td>
-                  <td className={styles.weightTd}>
-                    {isEditMode
-                      ? <NumberInput min={0} step={0.1} value={item.weight ?? 0} onChange={(value) => setItem(i, { weight: value })} />
-                      : <span>{item.weight ?? 0}</span>}
-                  </td>
-                  {isEditMode && <td><input type="text" value={String(item.description ?? '')} placeholder="Descrição" onChange={(e) => setItem(i, { description: e.target.value })} /></td>}
-                  {isEditMode && <td><button className={panelStyles.removeButton} onClick={() => removeItem(i)}>✕</button></td>}
-                </tr>
+                <InventoryRow
+                  key={String(item.id ?? i)}
+                  item={item}
+                  index={i}
+                  isEditMode={isEditMode}
+                  onChangeItem={setItem}
+                  onRemoveItem={removeItem}
+                />
               ))}
             </tbody>
           </table>
