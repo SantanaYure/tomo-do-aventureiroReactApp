@@ -3,7 +3,8 @@ import type { Attack, AttackAttributeKey, Character, DamagePart } from '../../ty
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
 import { NumberInput } from '../NumberInput/NumberInput'
 import { DamagesEditor } from '../DamagesEditor/DamagesEditor'
-import { rollDamages, formatRollLine, type DamageRollSummary } from '../../utils/diceRoller'
+import { rollDamages, type DamageRollSummary } from '../../utils/diceRoller'
+import { RollResultBlock } from '../RollResultBlock/RollResultBlock'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './AttacksPanel.module.css'
 
@@ -98,6 +99,15 @@ function AttacksPanelImpl({
 
   function handleRollDamage(index: number, damages: DamagePart[]) {
     setRollResults((previous) => new Map(previous).set(index, rollDamages(damages)))
+  }
+
+  function clearRollResult(index: number) {
+    setRollResults((previous) => {
+      if (!previous.has(index)) return previous
+      const next = new Map(previous)
+      next.delete(index)
+      return next
+    })
   }
 
   function setAttack(index: number, partial: Partial<Attack>) {
@@ -327,16 +337,11 @@ function AttacksPanelImpl({
                                     Rolar dano
                                   </button>
                                   {rollResults.has(i) && (
-                                    <div className={styles.rollResult}>
-                                      {rollResults.get(i)!.results.map((r, ri) => (
-                                        <span key={ri} className={styles.rollLine}>
-                                          {formatRollLine(r)}
-                                        </span>
-                                      ))}
-                                      <span className={styles.rollTotal}>
-                                        Total: {rollResults.get(i)!.total}
-                                      </span>
-                                    </div>
+                                    <RollResultBlock
+                                      summary={rollResults.get(i)!}
+                                      itemName={attack.name}
+                                      onClear={() => clearRollResult(i)}
+                                    />
                                   )}
                                 </div>
                               )}

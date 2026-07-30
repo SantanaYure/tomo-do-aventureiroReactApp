@@ -11,7 +11,8 @@ import {
   spendResource,
 } from '../../utils/manageableResource'
 import { isRestBasedReset } from '../../utils/restRules'
-import { rollDamages, formatRollLine, type DamageRollSummary } from '../../utils/diceRoller'
+import { rollDamages, type DamageRollSummary } from '../../utils/diceRoller'
+import { RollResultBlock } from '../RollResultBlock/RollResultBlock'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './ResourcesPanel.module.css'
 
@@ -89,6 +90,15 @@ function ResourcesPanelImpl({
 
   function handleRollDamage(resourceId: string, damages: DamagePart[]) {
     setRollResults((previous) => new Map(previous).set(resourceId, rollDamages(damages)))
+  }
+
+  function clearRollResult(resourceId: string) {
+    setRollResults((previous) => {
+      if (!previous.has(resourceId)) return previous
+      const next = new Map(previous)
+      next.delete(resourceId)
+      return next
+    })
   }
 
   const areAllCollapsed =
@@ -448,12 +458,11 @@ function ResourcesPanelImpl({
                             🎲 Rolar dano
                           </button>
                           {rollResults.has(resourceId) && (
-                            <div className={styles.rollResult}>
-                              {rollResults.get(resourceId)!.results.map((r, i) => (
-                                <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
-                              ))}
-                              <span className={styles.rollTotal}>Total: {rollResults.get(resourceId)!.total}</span>
-                            </div>
+                            <RollResultBlock
+                              summary={rollResults.get(resourceId)!}
+                              itemName={resource.name}
+                              onClear={() => clearRollResult(resourceId)}
+                            />
                           )}
                         </div>
                       )}

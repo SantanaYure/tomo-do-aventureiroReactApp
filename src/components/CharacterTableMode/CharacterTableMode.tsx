@@ -6,10 +6,10 @@ import { spendResource, restoreResource, restoreResourceFull } from '../../utils
 import { isRestBasedReset } from '../../utils/restRules'
 import {
   rollDamages,
-  formatRollLine,
   formatDamagePartsSummary,
   type DamageRollSummary,
 } from '../../utils/diceRoller'
+import { RollResultBlock } from '../RollResultBlock/RollResultBlock'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './CharacterTableMode.module.css'
 
@@ -80,6 +80,15 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
 
   function handleRollDamage(id: string, damages: DamagePart[]) {
     setRollResults((prev) => new Map(prev).set(id, rollDamages(damages)))
+  }
+
+  function clearRollResult(id: string) {
+    setRollResults((prev) => {
+      if (!prev.has(id)) return prev
+      const next = new Map(prev)
+      next.delete(id)
+      return next
+    })
   }
 
   function updateInventory(updated: CharacterSheet['inventory']) {
@@ -221,12 +230,11 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
                               🎲 Rolar dano
                             </button>
                             {rollResults.has(id) && (
-                              <div className={styles.rollResult}>
-                                {rollResults.get(id)!.results.map((r, i) => (
-                                  <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
-                                ))}
-                                <span className={styles.rollTotal}>Total: {rollResults.get(id)!.total}</span>
-                              </div>
+                              <RollResultBlock
+                                summary={rollResults.get(id)!}
+                                itemName={resource.name}
+                                onClear={() => clearRollResult(id)}
+                              />
                             )}
                           </div>
                         )}
@@ -303,12 +311,11 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
                             🎲 Rolar dano
                           </button>
                           {rollResults.has(id) && (
-                            <div className={styles.rollResult}>
-                              {rollResults.get(id)!.results.map((r, i) => (
-                                <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
-                              ))}
-                              <span className={styles.rollTotal}>Total: {rollResults.get(id)!.total}</span>
-                            </div>
+                            <RollResultBlock
+                              summary={rollResults.get(id)!}
+                              itemName={attack.name}
+                              onClear={() => clearRollResult(id)}
+                            />
                           )}
                         </div>
                       )}

@@ -1,0 +1,62 @@
+/* Aparência herdada dos seis blocos de resultado que este componente
+   substituiu — apenas a coluna de linhas foi separada do botão de limpar. */
+.rollResult {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: rgba(212, 196, 154, 0.25);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+}
+
+.rollLines {
+  display: grid;
+  gap: var(--space-1);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rollLine {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  font-family: var(--font-display);
+}
+
+.rollTotal {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--accent);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--border-light);
+}
+
+.clearButton {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  line-height: 1;
+  color: var(--ink-muted);
+  background: rgba(255, 249, 235, 0.9);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.clearButton:hover {
+  background: rgba(241, 227, 189, 0.9);
+  color: var(--ink);
+}
+
+.clearButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
