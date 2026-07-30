@@ -8,6 +8,7 @@ import {
   purgeUnusableSheetDrafts,
   readSheetDraft,
   writeSheetDraft,
+  SHEET_DRAFT_PREFIX,
   SHEET_DRAFT_SCHEMA_VERSION,
   type StoredSheetDraft,
 } from './sheetDraft'
@@ -15,29 +16,72 @@ import {
 const UID = 'uid-1'
 const ID = 'ficha-1'
 const OITO_DIAS_MS = 8 * 24 * 60 * 60 * 1000
+const CONTEUDO = { conteudo: 'trabalho não salvo' }
+const ANCORAS = { baseUpdatedAt: '2026-01-01T00:00:00.000Z', inFlightUpdatedAt: null }
 
-function makeDraft(overrides: Partial<StoredSheetDraft> = {}): StoredSheetDraft {
-  return {
-    version: SHEET_DRAFT_SCHEMA_VERSION,
-    data: { conteudo: 'trabalho não salvo' },
-    savedAt: new Date().toISOString(),
-    baseUpdatedAt: '2026-01-01T00:00:00.000Z',
-    inFlightUpdatedAt: null,
-    ...overrides,
-  }
+/**
+ * Grava usando o ESCRITOR DE PRODUÇÃO. Nenhum teste deste arquivo monta o
+ * envelope à mão: um teste que constrói sua própria versão do dado fixa o
+ * formato do helper de teste, não o do produtor real — e foi assim que a purga
+ * chegou a depender da ordem das chaves sem nenhum teste perceber.
+ */
+function gravarRascunho(id = ID, savedAt?: string) {
+  return writeSheetDraft('pj', UID, id, CONTEUDO, ANCORAS, savedAt)
+}
+
+/** Chave de uma versão de formato que este build não conhece. */
+function chaveDeOutraVersao(id: string) {
+  return getSheetDraftKey('pj', UID, id).replace(
+    `v${SHEET_DRAFT_SCHEMA_VERSION}:`,
+    `v${SHEET_DRAFT_SCHEMA_VERSION + 1}:`,
+  )
 }
 
 beforeEach(() => {
   window.localStorage.clear()
 })
 
+describe('R3-D — ida e volta pelo produtor de produção', () => {
+  it('rascunho recém-gravado sobrevive à purga de boot e volta legível', () => {
+    expect(gravarRascunho()).toBe('ok')
+
+    const removidos = purgeUnusableSheetDrafts()
+
+    expect(removidos).toBe(0)
+    const draft = readSheetDraft('pj', UID, ID)
+    expect(draft).not.toBeNull()
+    expect(draft?.data).toEqual(CONTEUDO)
+    expect(draft?.baseUpdatedAt).toBe(ANCORAS.baseUpdatedAt)
+    expect(draft?.inFlightUpdatedAt).toBeNull()
+    expect(draft?.version).toBe(SHEET_DRAFT_SCHEMA_VERSION)
+  })
+
+  it('vários rascunhos gravados pelo produtor sobrevivem juntos', () => {
+    gravarRascunho('ficha-1')
+    gravarRascunho('ficha-2')
+    expect(writeSheetDraft('monstro', UID, 'monstro-1', CONTEUDO, ANCORAS)).toBe('ok')
+
+    expect(purgeUnusableSheetDrafts()).toBe(0)
+
+    expect(readSheetDraft('pj', UID, 'ficha-1')).not.toBeNull()
+    expect(readSheetDraft('pj', UID, 'ficha-2')).not.toBeNull()
+    expect(readSheetDraft('monstro', UID, 'monstro-1')).not.toBeNull()
+  })
+
+  it('a purga não depende de nada do conteúdo do envelope', () => {
+    gravarRascunho()
+    const gravado = window.localStorage.getItem(getSheetDraftKey('pj', UID, ID))
+
+    purgeUnusableSheetDrafts()
+
+    // Byte a byte intacto: a purga só olha nomes de chave.
+    expect(window.localStorage.getItem(getSheetDraftKey('pj', UID, ID))).toBe(gravado)
+  })
+})
+
 describe('D14 — limpeza de inicialização é conservadora', () => {
   it('preserva rascunho antigo com conteúdo (pode ser a única cópia)', () => {
-    const key = getSheetDraftKey('pj', UID, ID)
-    window.localStorage.setItem(
-      key,
-      JSON.stringify(makeDraft({ savedAt: new Date(Date.now() - OITO_DIAS_MS).toISOString() })),
-    )
+    gravarRascunho(ID, new Date(Date.now() - OITO_DIAS_MS).toISOString())
 
     const removed = purgeUnusableSheetDrafts()
 
@@ -46,10 +90,7 @@ describe('D14 — limpeza de inicialização é conservadora', () => {
   })
 
   it('preserva rascunho cujo savedAt está no passado por relógio errado', () => {
-    window.localStorage.setItem(
-      getSheetDraftKey('pj', UID, ID),
-      JSON.stringify(makeDraft({ savedAt: '2001-01-01T00:00:00.000Z' })),
-    )
+    gravarRascunho(ID, '2001-01-01T00:00:00.000Z')
 
     purgeUnusableSheetDrafts()
 
@@ -57,36 +98,56 @@ describe('D14 — limpeza de inicialização é conservadora', () => {
   })
 
   it('remove apenas o que este build não consegue usar', () => {
-    const usable = getSheetDraftKey('pj', UID, ID)
-    const outraVersao = getSheetDraftKey('pj', UID, 'ficha-2')
-    const lixo = getSheetDraftKey('monstro', UID, 'ficha-3')
+    gravarRascunho(ID)
 
-    window.localStorage.setItem(usable, JSON.stringify(makeDraft()))
-    window.localStorage.setItem(
-      outraVersao,
-      JSON.stringify(makeDraft({ version: SHEET_DRAFT_SCHEMA_VERSION + 1 })),
-    )
-    window.localStorage.setItem(lixo, 'nem json é')
+    // Entradas que o build atual não produz: versão de formato desconhecida e
+    // chave legada sem versão nenhuma.
+    const outraVersao = chaveDeOutraVersao('ficha-2')
+    const chaveLegada = `${SHEET_DRAFT_PREFIX}pj:${UID}:ficha-3`
+    window.localStorage.setItem(outraVersao, '{"seja o que for":1}')
+    window.localStorage.setItem(chaveLegada, '{"version":1,"data":{}}')
     window.localStorage.setItem('tomo:recentlyOpened', '{"a":"b"}')
 
     const removed = purgeUnusableSheetDrafts()
 
     expect(removed).toBe(2)
-    expect(window.localStorage.getItem(usable)).not.toBeNull()
+    expect(readSheetDraft('pj', UID, ID)).not.toBeNull()
     expect(window.localStorage.getItem(outraVersao)).toBeNull()
-    expect(window.localStorage.getItem(lixo)).toBeNull()
+    expect(window.localStorage.getItem(chaveLegada)).toBeNull()
     // Não mexe em chaves que não são rascunho.
     expect(window.localStorage.getItem('tomo:recentlyOpened')).toBe('{"a":"b"}')
   })
 
   it('a limpeza por idade continua disponível, mas só para a válvula de cota', () => {
-    window.localStorage.setItem(
-      getSheetDraftKey('pj', UID, ID),
-      JSON.stringify(makeDraft({ savedAt: new Date(Date.now() - OITO_DIAS_MS).toISOString() })),
-    )
+    gravarRascunho(ID, new Date(Date.now() - OITO_DIAS_MS).toISOString())
 
     expect(purgeStaleSheetDrafts()).toBe(1)
     expect(readSheetDraft('pj', UID, ID)).toBeNull()
+  })
+})
+
+describe('leitura valida o envelope (defesa em profundidade)', () => {
+  it('rejeita valor com versão divergente sob chave da versão atual', () => {
+    // Único caso que exige montar o dado à mão: por definição o produtor deste
+    // build não emite envelope de outra versão.
+    const foraDeForma: StoredSheetDraft = {
+      version: SHEET_DRAFT_SCHEMA_VERSION + 1,
+      data: CONTEUDO,
+      savedAt: new Date().toISOString(),
+      baseUpdatedAt: null,
+      inFlightUpdatedAt: null,
+    }
+    window.localStorage.setItem(getSheetDraftKey('pj', UID, ID), JSON.stringify(foraDeForma))
+
+    expect(readSheetDraft('pj', UID, ID)).toBeNull()
+    expect(window.localStorage.getItem(getSheetDraftKey('pj', UID, ID))).toBeNull()
+  })
+
+  it('rejeita e remove valor corrompido', () => {
+    window.localStorage.setItem(getSheetDraftKey('pj', UID, ID), 'nem json é')
+
+    expect(readSheetDraft('pj', UID, ID)).toBeNull()
+    expect(window.localStorage.getItem(getSheetDraftKey('pj', UID, ID))).toBeNull()
   })
 })
 

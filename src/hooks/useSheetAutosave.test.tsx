@@ -575,23 +575,29 @@ describe('D6 — troca de ficha/usuário preserva o pendente', () => {
 })
 
 describe('D2 — rascunho não confiável nunca é adotado às cegas', () => {
-  it('descarta rascunho de versão de formato desconhecida', () => {
+  it('não adota rascunho de outra versão de formato', () => {
+    // Gravado pelo produtor real e movido para uma chave de outra versão, que é
+    // o que aconteceria se o formato mudasse entre builds.
+    writeSheetDraft(
+      'pj',
+      UID,
+      ID,
+      { title: 'De outra versão', notes: '' },
+      { baseUpdatedAt: REMOTE_UPDATED_AT, inFlightUpdatedAt: null },
+      '2026-01-02T12:00:00.000Z',
+    )
+    const key = getSheetDraftKey('pj', UID, ID)
+    const gravado = window.localStorage.getItem(key) as string
+    window.localStorage.removeItem(key)
     window.localStorage.setItem(
-      getSheetDraftKey('pj', UID, ID),
-      JSON.stringify({
-        version: SHEET_DRAFT_SCHEMA_VERSION + 1,
-        data: { title: 'De outra versão', notes: '' },
-        savedAt: '2026-01-02T12:00:00.000Z',
-        baseUpdatedAt: REMOTE_UPDATED_AT,
-        inFlightUpdatedAt: null,
-      }),
+      key.replace(`v${SHEET_DRAFT_SCHEMA_VERSION}:`, `v${SHEET_DRAFT_SCHEMA_VERSION + 1}:`),
+      gravado,
     )
 
     const { view } = setup()
 
     expect(view.result.current.sheet?.title).toBe('Original')
     expect(view.result.current.recoveredDraftAt).toBeNull()
-    expect(readDraftRaw()).toBeNull()
   })
 
   it('descarta rascunho de formato antigo que o normalizador rejeita', () => {

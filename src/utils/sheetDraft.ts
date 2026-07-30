@@ -47,12 +47,21 @@ export interface StoredSheetDraft extends SheetDraftAnchors {
 /** Resultado da tentativa de gravar o rascunho. */
 export type SheetDraftWriteResult = 'ok' | 'quota' | 'unavailable'
 
+/**
+ * Prefixo das chaves gravadas por ESTE build.
+ *
+ * A versão do formato fica na CHAVE, não só dentro do envelope, para que a
+ * limpeza de inicialização decida o que é utilizável olhando apenas nomes de
+ * chave — sem ler, desserializar ou depender de qualquer detalhe do conteúdo.
+ */
+export const SHEET_DRAFT_CURRENT_PREFIX = `${SHEET_DRAFT_PREFIX}v${SHEET_DRAFT_SCHEMA_VERSION}:`
+
 export function getSheetDraftKey(
   scope: SheetDraftScope,
   uid: string,
   id: string,
 ): string {
-  return `${SHEET_DRAFT_PREFIX}${scope}:${uid}:${id}`
+  return `${SHEET_DRAFT_CURRENT_PREFIX}${scope}:${uid}:${id}`
 }
 
 function getStorage(): Storage | null {
@@ -82,14 +91,22 @@ function isStoredDraft(value: unknown): value is StoredSheetDraft {
 }
 
 /**
- * Limpeza de inicialização: remove APENAS o que este build não consegue usar
- * (envelope de outra versão de formato ou string que não é sequer um envelope).
+ * Limpeza de inicialização: remove APENAS rascunhos de outra versão de formato,
+ * que este build não conseguiria ler de todo jeito.
  *
  * Deliberadamente não apaga por idade: um rascunho antigo pode ser a única cópia
  * de trabalho não salvo, e apagá-lo em silêncio no boot seria perda de dados.
- * Também não faz `JSON.parse` integral — lê só o prefixo da string para achar a
- * versão, porque isso roda antes do primeiro render e as fichas podem ter
- * centenas de KB de avatar.
+ *
+ * A decisão sai só do NOME da chave. Nenhum valor é lido nem desserializado, por
+ * dois motivos: roda antes do primeiro render (e uma ficha pode ter centenas de
+ * KB de avatar), e — mais importante — nada aqui pode depender do formato interno
+ * do envelope. Uma versão anterior desta função lia a versão por regex no início
+ * da string serializada, o que fazia a purga depender da ORDEM das chaves do
+ * literal: bastava reordenar um campo, sem mudar semântica alguma, para que todo
+ * rascunho válido fosse considerado inutilizável e apagado.
+ *
+ * Conteúdo corrompido sob uma chave da versão atual não é problema desta função:
+ * `readSheetDraft` valida e remove na leitura.
  */
 export function purgeUnusableSheetDrafts(): number {
   const storage = getStorage()
@@ -100,19 +117,8 @@ export function purgeUnusableSheetDrafts(): number {
   for (let index = 0; index < storage.length; index += 1) {
     const key = storage.key(index)
     if (!key || !key.startsWith(SHEET_DRAFT_PREFIX)) continue
-
-    let versionTag: number | null = null
-    try {
-      // O envelope é serializado com `version` como primeira chave, então o
-      // prefixo basta e não é preciso desserializar a ficha inteira.
-      const prefix = (storage.getItem(key) ?? '').slice(0, 64)
-      const match = /^\{"version":(\d+)/.exec(prefix)
-      versionTag = match ? Number(match[1]) : null
-    } catch {
-      versionTag = null
-    }
-
-    if (versionTag !== SHEET_DRAFT_SCHEMA_VERSION) doomed.push(key)
+    if (key.startsWith(SHEET_DRAFT_CURRENT_PREFIX)) continue
+    doomed.push(key)
   }
 
   for (const key of doomed) {
@@ -191,8 +197,8 @@ export function writeSheetDraft(
   let serialized: string
 
   try {
-    // `version` precisa continuar sendo a primeira chave: `purgeUnusableSheetDrafts`
-    // depende disso para descobrir a versão sem desserializar a ficha inteira.
+    // A ordem das chaves aqui é irrelevante para o comportamento: quem decide o
+    // que é utilizável é o prefixo da chave, e a leitura valida por campo.
     const envelope: StoredSheetDraft = {
       version: SHEET_DRAFT_SCHEMA_VERSION,
       data,
