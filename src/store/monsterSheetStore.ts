@@ -646,13 +646,16 @@ export async function createMonsterSheet(uid: string): Promise<StoredMonsterShee
  * `knownCreatedAt` evita o `getDoc` extra antes de cada escrita (a página já tem
  * o valor vindo do `onSnapshot`). O fallback de leitura permanece para chamadas
  * que não têm esse contexto.
+ *
+ * Devolve o `updatedAt` gravado, usado pelo autosave para reancorar o rascunho
+ * local na escrita que acabou de ser confirmada.
  */
 export async function saveMonsterSheet(
     uid: string,
     id: string,
     data: MonsterSheet,
     knownCreatedAt?: string,
-): Promise<void> {
+): Promise<string> {
     const normalizedId = normalizeId(id)
     const docRef = getDocRef(uid, normalizedId)
     const timestamp = new Date().toISOString()
@@ -665,6 +668,22 @@ export async function saveMonsterSheet(
     await setDoc(docRef, {
         ...createMonsterSheetPayload(data, timestamp, createdAt, normalizedId),
     })
+
+    return timestamp
+}
+
+/**
+ * Valida e normaliza uma ficha de monstro/NPC vinda de fonte NÃO confiável
+ * (rascunho local em localStorage, arquivo importado). Devolve `null` quando o
+ * conteúdo não é utilizável — nunca lança e nunca devolve algo fora de forma.
+ */
+export function parseUntrustedMonsterSheet(raw: unknown): MonsterSheet | null {
+    if (!isValidMonsterSheetPayload(raw)) return null
+    try {
+        return normalizeMonsterSheet(raw)
+    } catch {
+        return null
+    }
 }
 
 async function readStoredCreatedAt(

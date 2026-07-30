@@ -561,13 +561,16 @@ export async function createCharacterSheet(
  * em memória (ele vem do `onSnapshot`). Sem ele, é preciso um `getDoc` extra
  * antes de cada escrita só para preservar o campo — round-trip de rede em todo
  * autosave. O fallback continua existindo para chamadas sem esse contexto.
+ *
+ * Devolve o `updatedAt` gravado, usado pelo autosave para reancorar o rascunho
+ * local na escrita que acabou de ser confirmada.
  */
 export async function saveCharacterSheet(
   uid: string,
   id: string,
   sheet: CharacterSheet,
   knownCreatedAt?: string,
-): Promise<void> {
+): Promise<string> {
   const normalizedId = normalizeId(id)
   const docRef = getDocRef(uid, normalizedId)
   const timestamp = new Date().toISOString()
@@ -580,6 +583,22 @@ export async function saveCharacterSheet(
   await setDoc(docRef, {
     ...createCharacterSheetPayload(sheet, timestamp, createdAt, normalizedId),
   })
+
+  return timestamp
+}
+
+/**
+ * Valida e normaliza uma ficha vinda de fonte NÃO confiável (rascunho local em
+ * localStorage, arquivo importado). Devolve `null` quando o conteúdo não é uma
+ * ficha utilizável — nunca lança e nunca devolve algo fora de forma.
+ */
+export function parseUntrustedCharacterSheet(raw: unknown): CharacterSheet | null {
+  if (!isValidCharacterSheetPayload(raw)) return null
+  try {
+    return normalizeCharacterSheet(raw as CharacterSheet)
+  } catch {
+    return null
+  }
 }
 
 async function readStoredCreatedAt(
