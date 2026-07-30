@@ -215,6 +215,12 @@
 }
 
 .spellPrepared {
+  /* Vira botão de verdade: sem isto quem usa teclado não conseguia preparar
+     uma magia. Zera a aparência de botão para manter o visual da estrela. */
+  padding: 0;
+  border: none;
+  background: none;
+  width: auto;
   font-weight: 700;
   color: var(--accent);
   cursor: pointer;

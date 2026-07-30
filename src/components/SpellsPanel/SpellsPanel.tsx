@@ -376,12 +376,15 @@ const SpellRow = memo(function SpellRow({
                         <>
                           {/* Linha 1: preparada + nome + remover */}
                           <div className={styles.spellEditRow}>
-                            <span
+                            <button
+                              type="button"
                               className={styles.spellPrepared}
+                              aria-pressed={Boolean(spell.prepared)}
+                              aria-label={`Preparada: ${spell.name || 'magia sem nome'}`}
                               onClick={() => setSpell(globalIndex, { prepared: !spell.prepared })}
                             >
                               {spell.prepared ? '★' : '☆'}
-                            </span>
+                            </button>
                             <input
                               className={styles.spellNameInput}
                               type="text"
@@ -457,9 +460,15 @@ const SpellRow = memo(function SpellRow({
                         </>
                       ) : (
                         <>
-                          <span className={styles.spellPrepared} onClick={() => setSpell(globalIndex, { prepared: !spell.prepared })}>
+                          <button
+                            type="button"
+                            className={styles.spellPrepared}
+                            aria-pressed={Boolean(spell.prepared)}
+                            aria-label={`Preparada: ${spell.name || 'magia sem nome'}`}
+                            onClick={() => setSpell(globalIndex, { prepared: !spell.prepared })}
+                          >
                             {spell.prepared ? '★' : '☆'}
-                          </span>
+                          </button>
                           <span className={styles.spellConc}>{spell.concentration ? 'C' : ''}</span>
                           <span className={styles.spellName}>{spell.name || '—'}</span>
                           {spell.school && <span className={styles.spellSchool}>{spell.school}</span>}
