@@ -340,6 +340,9 @@ export function useSheetAutosave<T>(
       pushHistory(current)
       applyLocal(next)
       pendingRef.current = next
+      // Uma nova edição merece um novo orçamento de tentativas, mesmo que a
+      // escrita anterior tenha esgotado o backoff.
+      retryCountRef.current = 0
       setStatus('pending')
       writeDraftThrottled(next)
       scheduleSaveRef.current()

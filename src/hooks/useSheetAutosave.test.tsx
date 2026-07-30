@@ -351,6 +351,24 @@ describe('P4 — status de salvamento honesto', () => {
     expect(readDraftRaw()?.data.title).toBe('Sem rede')
   })
 
+  it('uma nova edição depois do erro recupera o orçamento de tentativas', async () => {
+    const save = vi.fn<SheetSaveFn<Doc>>().mockRejectedValue(new Error('offline'))
+    const { view } = setup({ save, retryDelaysMs: [1000] })
+
+    act(() => view.result.current.commit({ title: 'Primeira', notes: '' }))
+    await advance(900)
+    await advance(1000)
+    expect(save).toHaveBeenCalledTimes(2)
+    expect(view.result.current.savingStatus).toBe('error')
+
+    act(() => view.result.current.commit({ title: 'Segunda', notes: '' }))
+    await advance(900)
+    expect(save).toHaveBeenCalledTimes(3)
+
+    await advance(1000)
+    expect(save).toHaveBeenCalledTimes(4)
+  })
+
   it('retry manual reenvia o pendente depois de um erro', async () => {
     const save = vi
       .fn<SheetSaveFn<Doc>>()
