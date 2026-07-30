@@ -570,10 +570,17 @@ export async function saveCharacterSheet(
   id: string,
   sheet: CharacterSheet,
   knownCreatedAt?: string,
+  knownUpdatedAt?: string,
 ): Promise<string> {
   const normalizedId = normalizeId(id)
   const docRef = getDocRef(uid, normalizedId)
-  const timestamp = new Date().toISOString()
+  // O `updatedAt` pode ser fornecido por quem chama para que o valor seja
+  // conhecido ANTES de a escrita sair (o autosave usa isso como âncora do
+  // rascunho local, já que o ack pode nunca chegar).
+  const timestamp =
+    typeof knownUpdatedAt === 'string' && knownUpdatedAt.trim().length > 0
+      ? knownUpdatedAt
+      : new Date().toISOString()
 
   const createdAt =
     typeof knownCreatedAt === 'string' && knownCreatedAt.trim().length > 0
