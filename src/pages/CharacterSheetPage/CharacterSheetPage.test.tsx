@@ -5,7 +5,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDefaultCharacterSheet } from '../../store/defaultCharacterSheet'
-import { writeSheetDraft } from '../../utils/sheetDraft'
+import { getSheetDraftKey, writeSheetDraft } from '../../utils/sheetDraft'
 import type { CharacterSheet } from '../../types/system/dnd'
 
 const UID = 'uid-teste'
@@ -79,7 +79,7 @@ describe('CharacterSheetPage — fiação da persistência', () => {
     expect(screen.queryByText(/Recuperamos alterações/)).not.toBeInTheDocument()
   })
 
-  it('recupera o rascunho local mais recente que o documento remoto', async () => {
+  it('recupera o rascunho local ancorado no documento remoto atual', async () => {
     const draft: CharacterSheet = {
       ...remoteSheet,
       character: { ...remoteSheet.character, name: 'Nome Não Salvo' },
@@ -99,5 +99,41 @@ describe('CharacterSheetPage — fiação da persistência', () => {
     expect(screen.getByText(/Recuperamos alterações/)).toBeInTheDocument()
     expect(screen.getByText('Alterações não salvas')).toBeInTheDocument()
     expect(document.title).toBe('Nome Não Salvo')
+  })
+
+  it('não trava a ficha com rascunho de formato antigo (sem tela branca)', () => {
+    // Formato de uma versão anterior do app: adotar isso direto quebrava a
+    // renderização e, sem ErrorBoundary, deixava a ficha inacessível para sempre.
+    writeSheetDraft(
+      'pj',
+      UID,
+      SHEET_ID,
+      { character: { name: 'Formato Antigo' } },
+      REMOTE_UPDATED_AT,
+      '2026-01-02T10:00:00.000Z',
+    )
+
+    renderPage()
+
+    expect(screen.getByRole('tablist', { name: 'Seções da ficha' })).toBeInTheDocument()
+    expect(screen.queryByText(/Recuperamos alterações/)).not.toBeInTheDocument()
+    expect(
+      window.localStorage.getItem(getSheetDraftKey('pj', UID, SHEET_ID)),
+    ).toBeNull()
+  })
+
+  it('ignora rascunho cuja âncora não é o documento remoto atual', () => {
+    const draft: CharacterSheet = {
+      ...remoteSheet,
+      character: { ...remoteSheet.character, name: 'Rascunho Obsoleto' },
+    }
+
+    // Âncora de uma versão anterior do documento: outra aba escreveu depois.
+    writeSheetDraft('pj', UID, SHEET_ID, draft, '2025-12-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z')
+
+    renderPage()
+
+    expect(screen.queryByText(/Recuperamos alterações/)).not.toBeInTheDocument()
+    expect(document.title).toBe('Nome Remoto')
   })
 })

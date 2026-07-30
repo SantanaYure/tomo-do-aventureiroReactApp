@@ -8,6 +8,7 @@ import {
   saveCharacterSheet,
   deleteCharacterSheet,
   exportCharacterSheetAsJSON,
+  parseUntrustedCharacterSheet,
   type StoredCharacterSheet,
 } from '../../store/characterSheetStore'
 import { normalizeFileName, downloadJsonFile } from '../../utils/exportSheet'
@@ -113,12 +114,15 @@ export function CharacterSheetPage() {
     canRedo,
     recoveredDraftAt,
     dismissRecovery,
+    localBackupError,
+    flushNow,
   } = useSheetAutosave<CharacterSheet>({
     uid,
     id: id ?? null,
     remote: storedSheet,
     scope: 'pj',
     save: saveCharacterSheet,
+    parseDraft: parseUntrustedCharacterSheet,
   })
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isAtBottom, setIsAtBottom] = useState(false)
@@ -494,6 +498,20 @@ export function CharacterSheetPage() {
           />
         </div>
       </div>
+
+      {localBackupError && (
+        <div className={styles.backupWarning} role="alert">
+          <span>
+            {localBackupError === 'quota'
+              ? 'O armazenamento do navegador está cheio: não foi possível guardar uma cópia local de segurança desta ficha.'
+              : 'Não foi possível guardar uma cópia local de segurança desta ficha neste navegador.'}{' '}
+            Se a conexão cair agora, alterações recentes podem ser perdidas.
+          </span>
+          <button type="button" className={styles.recoveryDismiss} onClick={flushNow}>
+            Salvar agora
+          </button>
+        </div>
+      )}
 
       {recoveredDraftAt && (
         <div className={styles.recoveryBanner} role="status" aria-live="polite">

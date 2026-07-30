@@ -18,6 +18,7 @@ import {
   saveMonsterSheet,
   deleteMonsterSheet,
   exportMonsterSheetAsJSON,
+  parseUntrustedMonsterSheet,
   type StoredMonsterSheet,
 } from '../../store/monsterSheetStore'
 import { normalizeFileName, downloadJsonFile } from '../../utils/exportSheet'
@@ -151,12 +152,15 @@ export function MonsterSheetPage() {
     canRedo,
     recoveredDraftAt,
     dismissRecovery,
+    localBackupError,
+    flushNow,
   } = useSheetAutosave<MonsterSheet>({
     uid,
     id: id ?? null,
     remote: storedMonster,
     scope: 'monstro',
     save: saveMonsterSheet,
+    parseDraft: parseUntrustedMonsterSheet,
   })
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isEditing, setIsEditing] = useState(false)
@@ -451,6 +455,20 @@ export function MonsterSheetPage() {
           />
         </div>
       </div>
+
+      {localBackupError && (
+        <div className={styles.backupWarning} role="alert">
+          <span>
+            {localBackupError === 'quota'
+              ? 'O armazenamento do navegador está cheio: não foi possível guardar uma cópia local de segurança desta ficha.'
+              : 'Não foi possível guardar uma cópia local de segurança desta ficha neste navegador.'}{' '}
+            Se a conexão cair agora, alterações recentes podem ser perdidas.
+          </span>
+          <button type="button" className={styles.recoveryDismiss} onClick={flushNow}>
+            Salvar agora
+          </button>
+        </div>
+      )}
 
       {recoveredDraftAt && (
         <div className={styles.recoveryBanner} role="status" aria-live="polite">
