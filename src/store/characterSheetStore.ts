@@ -554,22 +554,45 @@ export async function createCharacterSheet(
   return { id: ref.id, ...payload }
 }
 
+/**
+ * Persiste a ficha.
+ *
+ * `knownCreatedAt` deve ser passado sempre que a página já tiver o `createdAt`
+ * em memória (ele vem do `onSnapshot`). Sem ele, é preciso um `getDoc` extra
+ * antes de cada escrita só para preservar o campo — round-trip de rede em todo
+ * autosave. O fallback continua existindo para chamadas sem esse contexto.
+ */
 export async function saveCharacterSheet(
   uid: string,
   id: string,
   sheet: CharacterSheet,
+  knownCreatedAt?: string,
 ): Promise<void> {
   const normalizedId = normalizeId(id)
   const docRef = getDocRef(uid, normalizedId)
-  const existing = await getDoc(docRef)
+  const timestamp = new Date().toISOString()
+
   const createdAt =
-    existing.exists()
-      ? (existing.data().createdAt as string | undefined) ?? new Date().toISOString()
-      : new Date().toISOString()
+    typeof knownCreatedAt === 'string' && knownCreatedAt.trim().length > 0
+      ? knownCreatedAt
+      : (await readStoredCreatedAt(docRef)) ?? timestamp
 
   await setDoc(docRef, {
-    ...createCharacterSheetPayload(sheet, new Date().toISOString(), createdAt, normalizedId),
+    ...createCharacterSheetPayload(sheet, timestamp, createdAt, normalizedId),
   })
+}
+
+async function readStoredCreatedAt(
+  docRef: ReturnType<typeof getDocRef>,
+): Promise<string | undefined> {
+  try {
+    const existing = await getDoc(docRef)
+    if (!existing.exists()) return undefined
+    const value = existing.data().createdAt
+    return typeof value === 'string' ? value : undefined
+  } catch {
+    return undefined
+  }
 }
 
 export async function deleteCharacterSheet(uid: string, id: string): Promise<void> {
