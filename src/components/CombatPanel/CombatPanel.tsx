@@ -1,7 +1,7 @@
 // src/components/CombatPanel/CombatPanel.tsx
 // CA, iniciativa, HP (máx/atual/temp), velocidade, dados de vida e death saves
 
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import type { Character, HpBonusEntry } from '../../types/system/dnd'
 import { NumberInput } from '../NumberInput/NumberInput'
 import panelStyles from '../../styles/panel.module.css'
@@ -129,7 +129,7 @@ interface CombatPanelProps {
 
 // ─── componente ──────────────────────────────────────────────────────────────
 
-export function CombatPanel({
+function CombatPanelImpl({
   character,
   isEditMode,
   onChangeCharacter,
@@ -706,3 +706,8 @@ export function CombatPanel({
     </section>
   )
 }
+
+// Memoizado: os painéis recebem props estreitas e handlers estáveis da
+// página, então a comparação rasa aborta o render quando a edição foi em
+// outra parte da ficha.
+export const CombatPanel = memo(CombatPanelImpl)

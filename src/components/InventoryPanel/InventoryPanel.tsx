@@ -1,3 +1,4 @@
+import { memo } from 'react'
 // src/components/InventoryPanel/InventoryPanel.tsx
 import type { Character, Currency, InventoryItem } from '../../types/system/dnd'
 import { NumberInput } from '../NumberInput/NumberInput'
@@ -33,7 +34,7 @@ interface InventoryPanelProps {
   onChangeCharacter: (updated: Character) => void
 }
 
-export function InventoryPanel({
+function InventoryPanelImpl({
   inventory,
   character,
   isEditMode,
@@ -133,3 +134,8 @@ export function InventoryPanel({
     </section>
   )
 }
+
+// Memoizado: os painéis recebem props estreitas e handlers estáveis da
+// página, então a comparação rasa aborta o render quando a edição foi em
+// outra parte da ficha.
+export const InventoryPanel = memo(InventoryPanelImpl)

@@ -1,4 +1,4 @@
-import { useState, Fragment } from 'react'
+import { memo, useState, Fragment } from 'react'
 import type { Attack, AttackAttributeKey, Character, DamagePart } from '../../types/system/dnd'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
 import { NumberInput } from '../NumberInput/NumberInput'
@@ -75,7 +75,7 @@ interface AttacksPanelProps {
   onChangeAttacks: (updated: Attack[]) => void
 }
 
-export function AttacksPanel({
+function AttacksPanelImpl({
   attacks,
   character,
   isEditMode,
@@ -366,3 +366,8 @@ export function AttacksPanel({
     </section>
   )
 }
+
+// Memoizado: os painéis recebem props estreitas e handlers estáveis da
+// página, então a comparação rasa aborta o render quando a edição foi em
+// outra parte da ficha.
+export const AttacksPanel = memo(AttacksPanelImpl)

@@ -1,5 +1,5 @@
 // src/components/SpellsPanel/SpellsPanel.tsx
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import type { Character, Spell, SpellSlots, SpellcastingAbility } from '../../types/system/dnd'
 import { ManagedResourceControls } from '../ManagedResourceControls/ManagedResourceControls'
 import { NumberInput } from '../NumberInput/NumberInput'
@@ -77,7 +77,7 @@ interface SpellsPanelProps {
   onChangeSlotsData: (updated: SpellSlots) => void
 }
 
-export function SpellsPanel({
+function SpellsPanelImpl({
   spells,
   character,
   isEditMode,
@@ -417,3 +417,8 @@ export function SpellsPanel({
     </section>
   )
 }
+
+// Memoizado: os painéis recebem props estreitas e handlers estáveis da
+// página, então a comparação rasa aborta o render quando a edição foi em
+// outra parte da ficha.
+export const SpellsPanel = memo(SpellsPanelImpl)

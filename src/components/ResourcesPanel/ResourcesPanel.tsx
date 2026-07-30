@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import type { DamagePart, Resource, ResourceOrigin, ResourceReset } from '../../types/system/dnd'
 import { ManagedResourceControls } from '../ManagedResourceControls/ManagedResourceControls'
 import { ResourceDots } from '../ResourceDots/ResourceDots'
@@ -78,7 +78,7 @@ interface ResourcesPanelProps {
   onChangeResources: (updated: Resource[]) => void
 }
 
-export function ResourcesPanel({
+function ResourcesPanelImpl({
   resources,
   isEditMode,
   onChangeResources,
@@ -474,3 +474,8 @@ export function ResourcesPanel({
     </section>
   )
 }
+
+// Memoizado: os painéis recebem props estreitas e handlers estáveis da
+// página, então a comparação rasa aborta o render quando a edição foi em
+// outra parte da ficha.
+export const ResourcesPanel = memo(ResourcesPanelImpl)

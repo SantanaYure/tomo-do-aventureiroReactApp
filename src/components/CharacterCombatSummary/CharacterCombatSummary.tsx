@@ -1,24 +1,27 @@
-import { useState } from 'react'
-import type { Attribute, CharacterSheet } from '../../types/system/dnd'
+import { memo, useState } from 'react'
+import type { Attribute, Character } from '../../types/system/dnd'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './CharacterCombatSummary.module.css'
 
 export interface CharacterCombatSummaryProps {
-  sheet: CharacterSheet
-  onUpdate: (updated: CharacterSheet) => void
+  // Recebe apenas `character`, não a ficha inteira: o resumo fica montado em
+  // todas as abas, e depender da ficha o faria re-renderizar a cada tecla
+  // digitada em magias, inventário ou qualquer outro painel.
+  character: Character
+  onChangeCharacter: (updated: Character) => void
 }
 
 function fmt(mod: number): string {
   return mod >= 0 ? `+${mod}` : `${mod}`
 }
 
-function getAttrMod(character: CharacterSheet['character'], name: Attribute['name']): number {
+function getAttrMod(character: Character, name: Attribute['name']): number {
   const attr = character.attributes.find((a) => a.name === name)
   return attr ? calcModifier(attr.value) : 0
 }
 
-function calcEffectiveHpMax(character: CharacterSheet['character']): number {
+function calcEffectiveHpMax(character: Character): number {
   if (!character.hpAutoCalc) return Math.max(0, Math.trunc(character.hpMax))
   const conMod = getAttrMod(character, 'Constituição')
   let total = 0
@@ -41,7 +44,7 @@ function calcEffectiveHpMax(character: CharacterSheet['character']): number {
   return Math.max(0, total + bonus)
 }
 
-function calcPassivePerception(character: CharacterSheet['character'], profBonus: number): number {
+function calcPassivePerception(character: Character, profBonus: number): number {
   const wisMod = getAttrMod(character, 'Sabedoria')
   const perc = character.skills.perception
   const profLevel = Math.max(0, Math.min(2, Math.trunc(perc?.proficiency ?? 0)))
@@ -57,8 +60,10 @@ const ABILITIES = [
   { key: 'Carisma',      short: 'CAR' },
 ] as const
 
-export function CharacterCombatSummary({ sheet, onUpdate }: CharacterCombatSummaryProps) {
-  const { character } = sheet
+export const CharacterCombatSummary = memo(function CharacterCombatSummary({
+  character,
+  onChangeCharacter,
+}: CharacterCombatSummaryProps) {
   const [actionValue, setActionValue] = useState('')
 
   const profBonus = calcProficiencyBonus(character.classes)
@@ -83,7 +88,7 @@ export function CharacterCombatSummary({ sheet, onUpdate }: CharacterCombatSumma
     } else {
       nextTemp = value > nextTemp ? value : nextTemp
     }
-    onUpdate({ ...sheet, character: { ...character, hpCurrent: nextCurrent, hpTemp: nextTemp } })
+    onChangeCharacter({ ...character, hpCurrent: nextCurrent, hpTemp: nextTemp })
     setActionValue('')
   }
 
@@ -163,4 +168,4 @@ export function CharacterCombatSummary({ sheet, onUpdate }: CharacterCombatSumma
       </section>
     </>
   )
-}
+})

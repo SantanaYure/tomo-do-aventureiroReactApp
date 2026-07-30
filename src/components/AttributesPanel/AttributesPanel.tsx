@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { KeyboardEvent } from 'react'
 import type {
   Attribute,
@@ -70,7 +71,7 @@ interface AttributesPanelProps {
   onChangeCharacter: (updated: Character) => void
 }
 
-export function AttributesPanel({
+function AttributesPanelImpl({
   character,
   isEditMode,
   onChangeCharacter,
@@ -206,3 +207,8 @@ export function AttributesPanel({
     </section>
   )
 }
+
+// Memoizado: os painéis recebem props estreitas e handlers estáveis da
+// página, então a comparação rasa aborta o render quando a edição foi em
+// outra parte da ficha.
+export const AttributesPanel = memo(AttributesPanelImpl)

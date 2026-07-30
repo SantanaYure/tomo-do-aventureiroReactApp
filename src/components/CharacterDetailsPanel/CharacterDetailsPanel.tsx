@@ -1,5 +1,5 @@
 ﻿// src/components/CharacterDetailsPanel/CharacterDetailsPanel.tsx
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import type { AttunementItem, Character, ItemRarity } from '../../types/system/dnd'
 import panelStyles from '../../styles/panel.module.css'
 import styles from './CharacterDetailsPanel.module.css'
@@ -107,7 +107,7 @@ interface CharacterDetailsPanelProps {
   onChangeCharacter: (updated: Character) => void
 }
 
-export function CharacterDetailsPanel({ character, isEditMode, onChangeCharacter }: CharacterDetailsPanelProps) {
+function CharacterDetailsPanelImpl({ character, isEditMode, onChangeCharacter }: CharacterDetailsPanelProps) {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
 
   function toggleCollapse(id: string) {
@@ -288,3 +288,8 @@ export function CharacterDetailsPanel({ character, isEditMode, onChangeCharacter
     </section>
   )
 }
+
+// Memoizado: os painéis recebem props estreitas e handlers estáveis da
+// página, então a comparação rasa aborta o render quando a edição foi em
+// outra parte da ficha.
+export const CharacterDetailsPanel = memo(CharacterDetailsPanelImpl)
