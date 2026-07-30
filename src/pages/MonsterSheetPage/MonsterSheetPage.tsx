@@ -144,7 +144,7 @@ export function MonsterSheetPage() {
     sheet,
     commit,
     savingStatus,
-    retry: retrySave,
+    saveNow,
     discardPending,
     undo,
     redo,
@@ -153,7 +153,6 @@ export function MonsterSheetPage() {
     recoveredDraftAt,
     dismissRecovery,
     localBackupError,
-    flushNow,
   } = useSheetAutosave<MonsterSheet>({
     uid,
     id: id ?? null,
@@ -439,7 +438,7 @@ export function MonsterSheetPage() {
                 <button
                   type="button"
                   className={styles.retryButton}
-                  onClick={retrySave}
+                  onClick={saveNow}
                 >
                   Tentar novamente
                 </button>
@@ -464,7 +463,7 @@ export function MonsterSheetPage() {
               : 'Não foi possível guardar uma cópia local de segurança desta ficha neste navegador.'}{' '}
             Se a conexão cair agora, alterações recentes podem ser perdidas.
           </span>
-          <button type="button" className={styles.recoveryDismiss} onClick={flushNow}>
+          <button type="button" className={styles.recoveryDismiss} onClick={saveNow}>
             Salvar agora
           </button>
         </div>

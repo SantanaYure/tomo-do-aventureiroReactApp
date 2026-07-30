@@ -90,7 +90,7 @@ describe('CharacterSheetPage — fiação da persistência', () => {
       UID,
       SHEET_ID,
       draft,
-      REMOTE_UPDATED_AT,
+      { baseUpdatedAt: REMOTE_UPDATED_AT, inFlightUpdatedAt: null },
       '2026-01-02T10:00:00.000Z',
     )
 
@@ -109,7 +109,7 @@ describe('CharacterSheetPage — fiação da persistência', () => {
       UID,
       SHEET_ID,
       { character: { name: 'Formato Antigo' } },
-      REMOTE_UPDATED_AT,
+      { baseUpdatedAt: REMOTE_UPDATED_AT, inFlightUpdatedAt: null },
       '2026-01-02T10:00:00.000Z',
     )
 
@@ -129,7 +129,14 @@ describe('CharacterSheetPage — fiação da persistência', () => {
     }
 
     // Âncora de uma versão anterior do documento: outra aba escreveu depois.
-    writeSheetDraft('pj', UID, SHEET_ID, draft, '2025-12-01T00:00:00.000Z', '2030-01-01T00:00:00.000Z')
+    writeSheetDraft(
+      'pj',
+      UID,
+      SHEET_ID,
+      draft,
+      { baseUpdatedAt: '2025-12-01T00:00:00.000Z', inFlightUpdatedAt: null },
+      '2030-01-01T00:00:00.000Z',
+    )
 
     renderPage()
 

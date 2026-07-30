@@ -106,7 +106,7 @@ export function CharacterSheetPage() {
     sheet,
     commit,
     savingStatus,
-    retry: retrySave,
+    saveNow,
     discardPending,
     undo,
     redo,
@@ -115,7 +115,6 @@ export function CharacterSheetPage() {
     recoveredDraftAt,
     dismissRecovery,
     localBackupError,
-    flushNow,
   } = useSheetAutosave<CharacterSheet>({
     uid,
     id: id ?? null,
@@ -482,7 +481,7 @@ export function CharacterSheetPage() {
                 <button
                   type="button"
                   className={styles.retryButton}
-                  onClick={retrySave}
+                  onClick={saveNow}
                 >
                   Tentar novamente
                 </button>
@@ -507,7 +506,7 @@ export function CharacterSheetPage() {
               : 'Não foi possível guardar uma cópia local de segurança desta ficha neste navegador.'}{' '}
             Se a conexão cair agora, alterações recentes podem ser perdidas.
           </span>
-          <button type="button" className={styles.recoveryDismiss} onClick={flushNow}>
+          <button type="button" className={styles.recoveryDismiss} onClick={saveNow}>
             Salvar agora
           </button>
         </div>
