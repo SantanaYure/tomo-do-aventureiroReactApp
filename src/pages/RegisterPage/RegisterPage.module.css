@@ -253,7 +253,13 @@
   color: rgba(255, 245, 220, 0.96);
   letter-spacing: 0.06em;
   cursor: pointer;
-  transition: all var(--transition);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
 }
 
 .primaryButton:hover:not(:disabled) {
@@ -302,7 +308,13 @@
   color: var(--ink);
   letter-spacing: 0.03em;
   cursor: pointer;
-  transition: all var(--transition);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
 }
 
 .googleButton:hover:not(:disabled) {

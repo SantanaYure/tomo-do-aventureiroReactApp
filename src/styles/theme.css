@@ -79,6 +79,35 @@
   --page-max: 1180px;
 }
 
+/*
+ * Respeita quem pediu menos movimento no sistema operacional. Zerar o token
+ * desliga de uma vez as transições de todos os módulos que o usam, sem
+ * precisar tocar em cada arquivo.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition: 0ms linear;
+  }
+
+  /*
+   * Rede de segurança para durações escritas à mão e para animações e rolagem
+   * suave: quem pede menos movimento não deve receber movimento nenhum, nem
+   * mesmo de regras que não passam pelo token.
+   */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  html {
+    scroll-behavior: auto !important;
+  }
+}
+
 ::selection {
   background: var(--accent-faint);
   color: var(--ink);
