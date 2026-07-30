@@ -110,19 +110,22 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
 
   return (
     <>
-      {/* ── Seção C: Recursos gerenciáveis ── */}
-      {sheet.resources.some((r) => (r.max ?? 0) > 0) && (
+      {/* ── Seção C: Habilidades ──
+          Inclui as habilidades sem usos controláveis (max ausente ou 0): em
+          mesa elas são consulta, não contador. Quem tem usos continua com os
+          controles de gastar/recuperar. */}
+      {sheet.resources.length > 0 && (
         <section className={panelStyles.panel}>
-          <span className={styles.sectionTitle}>Recursos</span>
+          <span className={styles.sectionTitle}>Habilidades</span>
           <div className={styles.itemList}>
             {sheet.resources
               .map((resource, originalIndex) => ({ resource, originalIndex }))
-              .filter(({ resource: r }) => (r.max ?? 0) > 0)
               .map(({ resource, originalIndex }) => {
                 const id = `resource-${originalIndex}`
                 const isExpanded = expandedIds.has(id)
                 const current = resource.current ?? 0
                 const max = resource.max ?? 0
+                const hasUses = max > 0
                 const restBased = isRestBasedReset(resource.resetOn)
 
                 const hasBody =
@@ -130,6 +133,8 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
                   Boolean(resource.action?.trim()) ||
                   Boolean(resource.range?.trim()) ||
                   Boolean(resource.duration?.trim()) ||
+                  Boolean(resource.castingTime?.trim()) ||
+                  typeof resource.level === 'number' ||
                   (resource.damages ?? []).length > 0
 
                 const origin =
@@ -168,7 +173,7 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
                     <div className={styles.resourceCardHeader}>
                       <span className={styles.itemTitle}>{resource.name || '(sem nome)'}</span>
                       <div className={styles.resourceHeaderRight}>
-                        {resource.resetOn && resource.resetOn !== 'na' && (
+                        {hasUses && resource.resetOn && resource.resetOn !== 'na' && (
                           <span className={styles.resetBadge}>
                             {RESET_LABEL[resource.resetOn] ?? resource.resetOn}
                           </span>
@@ -186,18 +191,20 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
                         )}
                       </div>
                     </div>
-                    <div className={styles.resourceControls}>
-                      <ManagedResourceControls
-                        current={current}
-                        max={max}
-                        itemName={resource.name || ''}
-                        resourceKind="recurso"
-                        onSpend={spend}
-                        onRestore={restBased ? undefined : restore}
-                        onRestoreFull={restBased ? undefined : restoreFull}
-                        restoreFullText="Recarregar"
-                      />
-                    </div>
+                    {hasUses && (
+                      <div className={styles.resourceControls}>
+                        <ManagedResourceControls
+                          current={current}
+                          max={max}
+                          itemName={resource.name || ''}
+                          resourceKind="recurso"
+                          onSpend={spend}
+                          onRestore={restBased ? undefined : restore}
+                          onRestoreFull={restBased ? undefined : restoreFull}
+                          restoreFullText="Recarregar"
+                        />
+                      </div>
+                    )}
                     {isExpanded && (
                       <div className={styles.itemBody}>
                         {resource.description?.trim() && (
@@ -206,8 +213,16 @@ export function CharacterTableMode({ sheet, onUpdate }: CharacterTableModeProps)
                         {(resource.action?.trim() ||
                           resource.range?.trim() ||
                           resource.duration?.trim() ||
+                          resource.castingTime?.trim() ||
+                          typeof resource.level === 'number' ||
                           origin) && (
                           <div className={styles.metaRow}>
+                            {typeof resource.level === 'number' && (
+                              <span className={styles.metaChip}>Nível: {resource.level}</span>
+                            )}
+                            {resource.castingTime?.trim() && (
+                              <span className={styles.metaChip}>Tempo: {resource.castingTime}</span>
+                            )}
                             {resource.action?.trim() && (
                               <span className={styles.metaChip}>Ação: {resource.action}</span>
                             )}
