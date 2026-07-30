@@ -19,6 +19,7 @@ import { createDefaultCharacterSheet } from '../../store/defaultCharacterSheet'
 import { normalizeCharacterSheet } from '../../store/characterSheetStore'
 import type { CharacterSheet, Resource } from '../../types/system/dnd'
 import { CharacterTableMode } from './CharacterTableMode'
+import styles from './CharacterTableMode.module.css'
 
 function sheetWithResources(resources: Resource[]): CharacterSheet {
   return normalizeCharacterSheet({ ...createDefaultCharacterSheet(), resources })
@@ -71,7 +72,7 @@ describe('CharacterTableMode — habilidades', () => {
     expect(screen.getByText('Fúria')).toBeInTheDocument()
   })
 
-  it('mantém os controles de gasto apenas em quem tem usos', async () => {
+  it('gasta o uso da habilidade certa, preservando o índice real na ficha', async () => {
     const user = userEvent.setup()
     let saved: CharacterSheet | null = null
     const sheet = sheetWithResources([
@@ -81,13 +82,11 @@ describe('CharacterTableMode — habilidades', () => {
 
     render(<CharacterTableMode sheet={sheet} onUpdate={(updated) => { saved = updated }} />)
 
-    // As duas precisam estar na tela; só então a contagem de controles prova
-    // algo. Sem esta guarda, o teste passaria com a habilidade sem usos oculta.
+    // As duas precisam estar na tela; só então o resto prova algo. Sem esta
+    // guarda, o teste passaria com a habilidade sem usos oculta.
     expect(screen.getByText('Visão no Escuro')).toBeInTheDocument()
     expect(screen.getByText('Fúria')).toBeInTheDocument()
 
-    // Um único grupo de dots na seção: o da Fúria. Se a habilidade sem usos
-    // também renderizasse controles, haveria mais de um.
     const dotGroups = screen.getAllByRole('group')
     expect(dotGroups).toHaveLength(1)
     expect(dotGroups[0]).toHaveAccessibleName(/Fúria/)
@@ -100,6 +99,31 @@ describe('CharacterTableMode — habilidades', () => {
     // O índice real na ficha precisa ser preservado: a Fúria é o índice 1.
     expect(saved!.resources[1].current).toBe(1)
     expect(saved!.resources[0].name).toBe('Visão no Escuro')
+  })
+
+  it('não deixa uma faixa de controles vazia na habilidade sem usos', () => {
+    // O guarda `hasUses &&` no invólucro `.resourceControls` é VISUAL, não
+    // funcional: `ManagedResourceControls` já devolve null quando `max <= 0`
+    // (ManagedResourceControls.tsx: `if (resource.max <= 0) return null`).
+    // Contar dots ou botões, portanto, não prova nada — a asserção estaria
+    // satisfeita com ou sem o guarda. O que muda de verdade é o invólucro, que
+    // tem padding próprio (`.resourceControls { padding: 0 var(--space-3)
+    // var(--space-2) }`) e deixaria uma faixa vazia embaixo de toda habilidade
+    // sem usos. É isso que este teste tranca.
+    const sheet = sheetWithResources([
+      { name: 'Visão no Escuro', resetOn: 'na' },
+      { name: 'Fúria', max: 2, current: 2, resetOn: 'long-rest' },
+    ])
+
+    const { container } = render(<CharacterTableMode sheet={sheet} onUpdate={() => {}} />)
+
+    expect(screen.getByText('Visão no Escuro')).toBeInTheDocument()
+    expect(screen.getByText('Fúria')).toBeInTheDocument()
+
+    // Dois cards, um único invólucro de controles — o da Fúria.
+    const controlWrappers = container.querySelectorAll(`.${styles.resourceControls}`)
+    expect(controlWrappers).toHaveLength(1)
+    expect(controlWrappers[0].querySelector('[role="group"]')).toHaveAccessibleName(/Fúria/)
   })
 
   it('não mostra a seção quando não há habilidade cadastrada', () => {
