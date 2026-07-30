@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../services/firebase'
+import { resolveSheetTimestamps } from './resolveSheetTimestamps'
 import {
   normalizeMonsterSheet,
   type StoredMonsterSheet,
@@ -45,8 +46,7 @@ export function useMonsterSheet(
           setMonster({
             id: docSnap.id,
             data: normalizeMonsterSheet(raw.data ?? {}),
-            createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
-            updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
+            ...resolveSheetTimestamps(raw.createdAt, raw.updatedAt),
           })
           setNotFound(false)
         }
