@@ -22,7 +22,8 @@ Usar `.ai/loops/` como fonte canônica dos fluxos deste projeto.
    - `feature-delivery` — nova funcionalidade ou alteração de comportamento.
    - `bug-fix` — corrigir um comportamento incorreto.
    - `firebase-safety` — mudar tipos de ficha, funções `normalize*` ou `firestore.rules`.
-   - `doc-sync` — manter CLAUDE.md consistente após uma mudança.
+   - `doc-sync` — manter CLAUDE.md, README.md e design.md consistentes após uma mudança.
+   - `accessibility-check` — revisar teclado, foco, semântica e responsividade.
    - `pr-readiness` — revisar o diff antes de commit/push/PR.
    - `web-deploy` — validar um deploy de preview/produção na Vercel.
 3. Combinar outro loop apenas quando houver dependência explícita (ex.: `feature-delivery` que altera o modelo de dados encadeia `firebase-safety`).
@@ -35,7 +36,7 @@ Se nenhum loop corresponder, não improvisar um processo permanente. Executar um
 
 Este projeto não está em modo de fundação: já existe base técnica e documentação aprovada (CLAUDE.md). Não há gates de Briefing/PRD/Spec/DAG registrados no `registry.json`.
 
-Se uma iniciativa nova e ainda não iniciada precisar desse rigor (por exemplo, a Sala Online descrita em `tomo-do-aventureiro.md`, que ainda não tem código), ler `.ai/loops/references/foundation.md` antes de escrever qualquer código para essa iniciativa e seguir a sequência:
+Se uma iniciativa nova e ainda não iniciada precisar desse rigor, ler `.ai/loops/references/foundation.md` antes de escrever qualquer código para essa iniciativa e seguir a sequência:
 
 ```text
 Briefing aprovado
@@ -64,4 +65,4 @@ Quando o usuário pedir para ampliar, atualizar ou reavaliar:
 
 ## Limites
 
-Pedir aprovação antes de commit, push, PR, deploy, publicação, instalação de dependências, mudança de arquitetura, acesso a segredos, alteração de dados/schema (Firestore), integração externa ou ação destrutiva — ver `.ai/loops/contract.md`.
+Pedir aprovação antes de commit, merge, push, PR, deploy, publicação, instalação de dependências, mudança de arquitetura, acesso a segredos, alteração de dados/schema (Firestore), integração externa ou ação destrutiva — ver `.ai/loops/contract.md`.

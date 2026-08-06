@@ -3,11 +3,11 @@
 ## Fontes canônicas
 
 1. Solicitação atual do usuário.
-2. [CLAUDE.md](../../CLAUDE.md) — instruções do projeto, referência autoritativa sobre arquitetura, fluxos e cuidados.
+2. [CLAUDE.md](../../CLAUDE.md) — instruções e referência de arquitetura; [README.md](../../README.md) — uso e comandos; [design.md](../../design.md) — critérios visuais.
 3. `.ai/loops/registry.json` e os workflows referenciados.
-4. Código, `firestore.rules`, `vercel.json` e demais configurações existentes.
+4. Código, testes, `package.json`, `firestore.rules`, `vercel.json` e demais configurações existentes.
 
-Não existe pasta `docs/` com Briefing, PRD, Spec ou DAG neste projeto — ele já está em produção. `documentação.MD` é explicitamente legado (ver CLAUDE.md); nunca tratá-lo como fonte autoritativa. `tomo-do-aventureiro.md` é uma visão de produto para a futura Sala Online — descreve funcionalidade **ainda não implementada**; não usar como descrição do estado atual do código.
+Não existe pasta `docs/` com Briefing, PRD, Spec ou DAG neste projeto — ele já está em produção. `documentação.MD` é explicitamente legado (ver CLAUDE.md); nunca tratá-lo como fonte autoritativa. Arquivos locais não rastreados podem fornecer contexto, mas não se tornam fonte canônica sem inclusão deliberada no repositório.
 
 ## Limites
 
@@ -21,7 +21,7 @@ Não existe pasta `docs/` com Briefing, PRD, Spec ou DAG neste projeto — ele j
 
 Exigir aprovação humana explícita para:
 
-- commit, push, merge ou abertura de PR (o fluxo do projeto é `dev` → `main` via PR);
+- commit, push, merge ou abertura de PR;
 - deploy ou promoção para produção na Vercel;
 - alteração de `firestore.rules` e o deploy correspondente (`firebase deploy --only firestore:rules`);
 - mudança de arquitetura ou de dependências (`package.json`);
@@ -35,4 +35,4 @@ Exigir aprovação humana explícita para:
 
 ## Conclusão
 
-Concluir um loop somente quando os critérios do workflow e do `verifiers/definition-of-done.md` forem atendidos. Registrar limitações e verificações indisponíveis (por exemplo, ausência de testes automatizados) em vez de presumir aprovação.
+Concluir um loop somente quando os critérios do workflow e do `verifiers/definition-of-done.md` forem atendidos. Registrar limitações e verificações indisponíveis (por exemplo, dependência de validação visual ou de um serviço externo) em vez de presumir aprovação.

@@ -1,6 +1,6 @@
 ---
 name: project-loops
-description: Usa os fluxos locais e independentes de fornecedor definidos para tomo-do-aventureiro. Acionar ao trabalhar no projeto, executar um loop (feature-delivery, bug-fix, firebase-safety, doc-sync, pr-readiness, web-deploy) ou atualizar os fluxos.
+description: Usa os fluxos locais e independentes de fornecedor definidos para tomo-do-aventureiro. Acionar ao trabalhar no projeto, executar um loop (feature-delivery, bug-fix, firebase-safety, doc-sync, accessibility-check, pr-readiness, web-deploy) ou atualizar os fluxos.
 ---
 
 # Adaptador do Claude Code

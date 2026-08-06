@@ -18,9 +18,9 @@
       "enabled": true,
       "kind": "goal-based",
       "evidence": [
-        "126 commits com prefixo feat: no histórico do git",
+        "136 commits com prefixo feat: no histórico do git",
         "CLAUDE.md define fluxos, tipos e checklist de finalização de tarefa",
-        "Sem framework de testes automatizados (verificação é manual no browser)"
+        "22 arquivos de teste Vitest e scripts test/typecheck confirmados no package.json"
       ],
       "trigger": {
         "type": "manual",
@@ -39,8 +39,9 @@
         "max_files_changed": 25
       },
       "stop_conditions": [
-        "Funcionalidade testada manualmente no navegador (caminho principal, loading e erro)",
-        "npx tsc --noEmit sem erros novos",
+        "Critérios de aceite atendidos e testes relevantes adicionados ou atualizados",
+        "npm run test e npm run typecheck sem erros",
+        "Funcionalidade testada manualmente no navegador quando afetar UI ou integração com o Firestore",
         "Limite de tentativas atingido",
         "Conflito com CLAUDE.md ou com decisão arquitetural já assumida"
       ]
@@ -51,9 +52,9 @@
       "enabled": true,
       "kind": "goal-based",
       "evidence": [
-        "8 commits com prefixo fix: no histórico do git",
-        "Exemplo real: ddc70bd corrige bug na contabilização de uso de recursos",
-        "Sem suíte de testes automatizados: reprodução e verificação são manuais"
+        "20 commits com prefixo fix: no histórico do git",
+        "22 arquivos de teste cobrem autosave, stores, rotas, painéis e regressões de UI",
+        "Scripts npm run test e npm run typecheck disponíveis"
       ],
       "trigger": {
         "type": "manual",
@@ -72,8 +73,8 @@
         "max_files_changed": 15
       },
       "stop_conditions": [
-        "Bug reproduzido antes da correção e não reproduzido depois",
-        "npx tsc --noEmit sem erros novos",
+        "Bug reproduzido antes da correção e coberto por teste de regressão quando viável",
+        "npm run test e npm run typecheck sem erros",
         "Limite de tentativas atingido",
         "Causa raiz não identificada com a informação disponível"
       ]
@@ -117,13 +118,13 @@
     },
     {
       "id": "doc-sync",
-      "title": "Manter CLAUDE.md consistente com o estado real do projeto",
+      "title": "Manter a documentação operacional consistente com o projeto",
       "enabled": true,
       "kind": "goal-based",
       "evidence": [
-        "CLAUDE.md é extenso, detalhado e citado como referência autoritativa (documentação.MD é declarado legado)",
-        "CLAUDE.md documenta explicitamente pastas e páginas vazias como 'features planejadas, não implementadas'",
-        "tomo-do-aventureiro.md descreve uma visão de produto (Sala Online) ainda não implementada — precisa permanecer distinguível do estado real"
+        "CLAUDE.md e README.md documentam stack, comandos, fluxos e checklist operacional",
+        "design.md é a fonte dos tokens e critérios visuais",
+        "documentação.MD é explicitamente marcado como legado em CLAUDE.md"
       ],
       "trigger": {
         "type": "manual",
@@ -142,20 +143,53 @@
         "max_files_changed": 5
       },
       "stop_conditions": [
-        "Seções afetadas do CLAUDE.md refletem o comportamento real do código",
+        "Seções afetadas de CLAUDE.md, README.md e design.md refletem o comportamento real do código",
         "Nenhuma feature planejada foi descrita como implementada, nem o contrário",
         "Limite de tentativas atingido"
       ]
     },
     {
+      "id": "accessibility-check",
+      "title": "Verificar acessibilidade e responsividade da interface",
+      "enabled": true,
+      "kind": "goal-based",
+      "evidence": [
+        "Aplicação web interativa com navegação por teclado e formulários extensos",
+        "src/test/acessibilidade.test.ts verifica foco visível e responsividade",
+        "Testes de SheetTabs e SpellsPanel cobrem interações por teclado"
+      ],
+      "trigger": {
+        "type": "manual",
+        "examples": [
+          "Verifique a acessibilidade desta tela",
+          "Revise foco, teclado e responsividade antes de integrar"
+        ]
+      },
+      "workflow": "workflows/accessibility-check.md",
+      "verifiers": [
+        "verifiers/definition-of-done.md"
+      ],
+      "approval_required": false,
+      "budget": {
+        "max_iterations": 3,
+        "max_files_changed": 15
+      },
+      "stop_conditions": [
+        "Testes automatizados relevantes aprovados",
+        "Fluxo principal operável por teclado e foco visível",
+        "Layout verificado nos breakpoints afetados",
+        "Limite de tentativas atingido"
+      ]
+    },
+    {
       "id": "pr-readiness",
-      "title": "Revisar diff antes de abrir PR de dev para main",
+      "title": "Revisar a entrega antes de integrar na main",
       "enabled": true,
       "kind": "turn-based",
       "evidence": [
-        "Fluxo de branches dev -> main confirmado por múltiplos merge commits (#9, #10, #11, #12)",
+        "Histórico contém merges e branches de entrega integradas na main",
         "CLAUDE.md contém checklist explícito 'Checklist antes de finalizar uma tarefa'",
-        ".env, .env.local e .env.example presentes no repositório local (nunca devem ser commitados)"
+        "O analisador detecta nomes de arquivos .env potencialmente sensíveis e não lê seu conteúdo"
       ],
       "trigger": {
         "type": "manual",
@@ -177,7 +211,8 @@
         "Checklist do CLAUDE.md percorrido item a item",
         "git status revisado e nenhum arquivo sensível (.env*) staged",
         "Escopo do diff corresponde à tarefa pedida, sem alterações incidentais",
-        "Aprovação humana obtida antes de commit, push ou abertura de PR"
+        "npm run test e npm run typecheck aprovados",
+        "Aprovação humana obtida antes de commit, merge, push ou abertura de PR"
       ]
     },
     {
@@ -188,7 +223,7 @@
       "evidence": [
         "vercel.json presente, configurando fallback de SPA para index.html",
         "CLAUDE.md declara o projeto 'em produção, implantado via Vercel'",
-        "Sem CI configurado: build e verificação de rotas são manuais"
+        "Sem CI configurado: testes, build e verificação de rotas são executados localmente"
       ],
       "trigger": {
         "type": "manual",
@@ -207,7 +242,7 @@
         "max_files_changed": 5
       },
       "stop_conditions": [
-        "npm run build concluído sem erros",
+        "npm run test, npm run typecheck e npm run build concluídos sem erros",
         "Rotas desconhecidas continuam caindo no fallback SPA (index.html)",
         "Console do navegador sem erros novos na URL de preview/produção",
         "Aprovação humana obtida antes de promover para produção"

@@ -1,31 +1,32 @@
-# Manter CLAUDE.md consistente com o estado real do projeto
+# Manter a documentação operacional consistente com o projeto
 
 ## Objetivo
 
-Garantir que CLAUDE.md continue descrevendo com precisão a estrutura, os fluxos e as decisões do projeto depois de uma mudança relevante, sem misturar estado real com a visão de produto ainda não implementada (`tomo-do-aventureiro.md`).
+Garantir que CLAUDE.md, README.md e design.md continuem descrevendo com precisão a estrutura, os comandos, os fluxos e os padrões do projeto depois de uma mudança relevante.
 
 ## Gatilhos
 
 - Pedido explícito do usuário para atualizar a documentação.
 - Uma pasta/página antes vazia (listada em CLAUDE.md como "não implementada") recebeu código real.
+- Scripts, testes, stack ou procedimentos de validação mudaram.
 - Uma nova decisão arquitetural foi tomada durante outro loop.
 
 ## Entradas
 
 - Diff da mudança que motivou a atualização.
-- [CLAUDE.md](../../../CLAUDE.md) atual.
+- [CLAUDE.md](../../../CLAUDE.md), [README.md](../../../README.md) e [design.md](../../../design.md) atuais.
 
 ## Etapas
 
-1. Identificar quais seções de CLAUDE.md descrevem a área alterada (estrutura do repositório, fluxos principais, modelo de dados, padrões de código).
+1. Identificar quais fontes documentam a área alterada (arquitetura e operação em CLAUDE.md, uso em README.md, critérios visuais em design.md).
 2. Comparar o texto atual com o comportamento real do código após a mudança.
-3. Atualizar apenas as seções afetadas — não reescrever CLAUDE.md inteiro.
+3. Atualizar apenas as seções afetadas — não reescrever documentos inteiros.
 4. Se uma pasta/página saiu do estado "vazia" listado na seção "Diretórios e páginas vazias", mover a entrada para a seção apropriada e remover da lista de vazias.
-5. Não descrever como implementado nada que pertença à visão de produto em `tomo-do-aventureiro.md` (Sala Online) enquanto não houver código correspondente.
+5. Não descrever como implementada uma feature planejada enquanto não houver código correspondente.
 
 ## Verificação
 
-- Leitura cruzada: cada afirmação alterada em CLAUDE.md corresponde a um arquivo ou comportamento real no código.
+- Leitura cruzada: cada afirmação alterada corresponde a um arquivo, script ou comportamento real no código.
 - Nenhuma feature planejada (Sala Online, `session/`, `gameRoom/`) foi descrita como implementada.
 - Nenhuma feature implementada ficou descrita como planejada/vazia.
 
@@ -37,5 +38,5 @@ Garantir que CLAUDE.md continue descrevendo com precisão a estrutura, os fluxos
 
 ## Saída
 
-- Lista de seções de CLAUDE.md alteradas.
+- Lista de documentos e seções alterados.
 - Resumo do que mudou no texto e por quê.

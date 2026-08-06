@@ -4,13 +4,14 @@
 
 - O objetivo pedido pelo usuário foi atendido.
 - O escopo do diff foi revisado (`git status` / `git diff`) e não contém arquivos fora do pedido.
-- `npx tsc --noEmit` foi executado e não introduziu erros novos.
+- `npm run test` e `npm run typecheck` foram executados e aprovados.
 - CLAUDE.md foi verificado quanto a impacto — atualizado via loop `doc-sync` quando necessário.
 - Nenhum segredo (`.env`, `.env.local`, chave Firebase) está presente no diff.
 - As evidências de verificação (o que foi testado e o resultado) foram registradas na resposta ao usuário.
 
 ## Condicional
 
+- Testes relevantes foram adicionados ou atualizados quando o comportamento mudou.
 - `npm run lint` aprovado quando a mudança tocar arquivos `.js`/`.jsx` (o lint atual não cobre `.ts`/`.tsx`).
 - `npm run build` aprovado quando a mudança for validada para deploy (loop `web-deploy`).
 - Teste manual no navegador do caminho principal, do loading e do erro, quando a mudança afeta UI ou dados carregados do Firestore.
@@ -30,7 +31,7 @@ Confirmar separadamente, antes de executar:
 
 ## Bloqueios
 
-Se uma verificação não puder ser executada (ex.: não há como testar no navegador no ambiente atual, não há suíte de testes automatizados para o trecho alterado), registrar:
+Se uma verificação não puder ser executada (ex.: não há como testar no navegador ou acessar o Firebase no ambiente atual), registrar:
 
 - o motivo pelo qual não foi possível verificar;
 - o risco que permanece sem essa verificação;

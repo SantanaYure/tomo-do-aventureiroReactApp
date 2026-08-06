@@ -13,7 +13,7 @@ Os dados são salvos por conta de usuário no Firebase Firestore. A autenticaç�
 - Em produção, implantado via Vercel
 - Funcionalidades de ficha de personagem e ficha de monstro/NPC implementadas e funcionais
 - Autenticação com verificação de e-mail implementada
-- **Não há framework de testes** — validação é feita manualmente no browser
+- Testes automatizados com Vitest + Testing Library; layout real e integração autenticada com Firebase continuam com validação manual no browser
 - Várias pastas de features planejadas existem no repositório mas estão **completamente vazias**: `SalasPage`, `SessionPage`, `SessionRoomPage`, `SalaDeJogoPage`, `realtime/session/`, `components/session/`, `types/gameRoom/`, `types/realtime/`, `RoomHeader`, `RoomInstancesPanel`, `RoomMembersPanel`, `SheetGallery`
 
 ---
@@ -31,6 +31,7 @@ Os dados são salvos por conta de usuário no Firebase Firestore. A autenticaç�
 | react-easy-crop | 5 | Recorte de avatar |
 | CSS Modules | — | Estilização encapsulada por componente |
 | ESLint | 9 | Linting (flat config) |
+| Vitest + Testing Library | 3 | Testes de componentes, hooks, stores e invariantes de UI |
 | Vercel | — | Deploy e hospedagem |
 
 ---
@@ -113,12 +114,11 @@ O servidor de desenvolvimento sobe em `http://localhost:5173` com hot-reload.
 | `build` | `vite build` | Gera o build de produção na pasta `dist/` |
 | `preview` | `vite preview` | Serve o build de produção localmente |
 | `lint` | `eslint .` | Executa o linter (cobre apenas `.js` e `.jsx`) |
+| `test` | `vitest run` | Executa a suíte automatizada uma vez |
+| `test:watch` | `vitest` | Executa os testes em modo de observação |
+| `typecheck` | `tsc --noEmit` | Verifica os tipos TypeScript sem gerar arquivos |
 
-> **Atenção:** o ESLint está configurado apenas para `.js/.jsx`. Arquivos `.ts/.tsx` não são verificados pelo `npm run lint`. Para checar tipos TypeScript, rode manualmente:
->
-> ```bash
-> npx tsc --noEmit
-> ```
+> **Atenção:** o ESLint está configurado apenas para `.js/.jsx`. Arquivos `.ts/.tsx` são verificados por `npm run typecheck`. O Vitest usa jsdom, portanto layout real, media queries e fluxos autenticados no Firebase ainda precisam de validação no navegador.
 
 ---
 
@@ -444,7 +444,8 @@ O repositório contém um arquivo `CLAUDE.md` na raiz, criado especificamente pa
 
 - [ ] Rodou `npm run dev` e testou o caminho principal da alteração no browser?
 - [ ] Testou o estado de carregamento (loading) e o estado de erro?
-- [ ] Rodou `npx tsc --noEmit` para checar erros de tipo?
+- [ ] Adicionou ou atualizou testes para o comportamento alterado?
+- [ ] Rodou `npm run test` e `npm run typecheck`?
 - [ ] Se adicionou ou alterou campo do modelo de dados: atualizou as funções `normalize*` no store e adicionou valor padrão em `defaultCharacterSheet.ts` ou `createDefaultMonsterSheet()`?
 - [ ] Se alterou salvamento: o campo `name_lower` ainda é gerado corretamente?
 - [ ] Nenhuma credencial Firebase foi incluída no código ou no commit?

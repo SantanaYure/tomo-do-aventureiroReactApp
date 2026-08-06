@@ -12,20 +12,21 @@
       "Firebase",
       "React",
       "TypeScript",
-      "Vite"
+      "Vite",
+      "Vitest"
     ],
     "languages": [
       {
         "name": "TypeScript",
-        "files": 102
+        "files": 128
       },
       {
         "name": "CSS",
-        "files": 59
+        "files": 57
       },
       {
         "name": "Markdown",
-        "files": 18
+        "files": 20
       },
       {
         "name": "JavaScript",
@@ -40,9 +41,10 @@
     "stage": "active"
   },
   "evidence": {
-    "file_count_scanned": 196,
+    "file_count_scanned": 222,
     "scan_truncated": false,
     "top_level": [
+      ".agents",
       ".claude",
       "CLAUDE.md",
       "README.md",
@@ -74,13 +76,16 @@
       "firestore.rules",
       "vercel.json"
     ],
-    "has_tests": false,
+    "has_tests": true,
     "has_ci": false,
     "package_scripts": [
       "build",
       "dev",
       "lint",
-      "preview"
+      "preview",
+      "test",
+      "test:watch",
+      "typecheck"
     ],
     "sensitive_file_names_detected": [
       ".env",
@@ -92,11 +97,16 @@
     "install": [
       "npm ci"
     ],
-    "test": [],
+    "test": [
+      "npm run test",
+      "npm run test:watch"
+    ],
     "lint": [
       "npm run lint"
     ],
-    "typecheck": [],
+    "typecheck": [
+      "npm run typecheck"
+    ],
     "build": [
       "npm run build"
     ],
@@ -104,10 +114,6 @@
     "other": []
   },
   "risk_signals": [
-    {
-      "signal": "missing-tests",
-      "evidence": "Nenhum diretório ou arquivo de teste foi detectado."
-    },
     {
       "signal": "missing-ci",
       "evidence": "Nenhuma configuração comum de integração contínua foi detectada."

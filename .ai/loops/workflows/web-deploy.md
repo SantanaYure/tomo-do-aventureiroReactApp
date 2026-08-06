@@ -15,7 +15,7 @@ Confirmar que uma build de produção/preview na Vercel se comporta como esperad
 
 ## Etapas
 
-1. Rodar `npm run build` localmente e confirmar que termina sem erros.
+1. Rodar `npm run test`, `npm run typecheck` e `npm run build` localmente e confirmar que terminam sem erros.
 2. Abrir a URL de preview/produção fornecida pelo usuário.
 3. Navegar para uma rota conhecida (ex.: `/personagens`, uma ficha existente) e confirmar carregamento correto.
 4. Acessar diretamente uma rota profunda (ex.: recarregar a página em `/ficha/<id>`) para confirmar que o fallback de SPA do `vercel.json` funciona (não deve retornar 404).
@@ -24,7 +24,7 @@ Confirmar que uma build de produção/preview na Vercel se comporta como esperad
 
 ## Verificação
 
-- `npm run build` concluído sem erros.
+- `npm run test`, `npm run typecheck` e `npm run build` concluídos sem erros.
 - Rotas conhecidas carregam corretamente.
 - Rota profunda recarregada não retorna 404 (fallback SPA funcionando).
 - Console do navegador sem erros novos.

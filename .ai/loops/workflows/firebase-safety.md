@@ -22,12 +22,13 @@ Alterar o modelo de dados de fichas (tipos em `src/types/system/dnd/`), as funç
 4. Se o campo for parte de uma ficha nova, atualizar `defaultCharacterSheet.ts` ou `createDefaultMonsterSheet()`.
 5. Confirmar que `name_lower` continua sendo gerado em toda operação de criação e salvamento.
 6. Se a mudança envolve `firestore.rules`, editar o arquivo e sinalizar claramente que o deploy é manual (`firebase deploy --only firestore:rules`) — **não executar o deploy sem aprovação humana explícita**.
-7. Rodar `npx tsc --noEmit`.
-8. Testar manualmente no navegador: criar uma ficha nova e abrir uma ficha existente (dado antigo) para confirmar que o campo novo aparece com fallback correto.
+7. Adicionar ou atualizar testes de store/normalização para o dado novo e para documentos legados.
+8. Rodar `npm run test` e `npm run typecheck`.
+9. Testar manualmente no navegador: criar uma ficha nova e abrir uma ficha existente (dado antigo) para confirmar que o campo novo aparece com fallback correto.
 
 ## Verificação
 
-- `npx tsc --noEmit` sem erros novos.
+- `npm run test` e `npm run typecheck` sem erros.
 - Ficha nova salva corretamente com o campo novo.
 - Ficha antiga (sem o campo novo) continua abrindo sem erro, com fallback aplicado pela normalização.
 - `name_lower` presente após salvar.
@@ -45,5 +46,5 @@ Alterar o modelo de dados de fichas (tipos em `src/types/system/dnd/`), as funç
 
 - Resumo do campo/mudança de modelo.
 - Confirmação de que `normalize*` e o valor padrão foram atualizados.
-- Resultado de `npx tsc --noEmit`.
+- Resultado de `npm run test` e `npm run typecheck`.
 - Indicação explícita se `firestore.rules` precisa de deploy manual (e que ele não foi executado sem aprovação).
