@@ -339,10 +339,12 @@ export function MonsterActionsPanel({
 
                                         <button
                                             type="button"
-                                            className={panelStyles.removeButton}
+                                            className={`${panelStyles.removeButton} ${styles.removeAction}`}
                                             onClick={() => removeAction(index)}
+                                            aria-label={`Remover ação ${action.name.trim() || index + 1}`}
+                                            title="Remover ação"
                                         >
-                                            Remover
+                                            ✕
                                         </button>
                                     </div>
 
@@ -550,10 +552,12 @@ export function MonsterActionsPanel({
 
                                         <button
                                             type="button"
-                                            className={panelStyles.removeButton}
+                                            className={`${panelStyles.removeButton} ${styles.removeAction}`}
                                             onClick={() => removeReaction(index)}
+                                            aria-label={`Remover reação ${reaction.name.trim() || index + 1}`}
+                                            title="Remover reação"
                                         >
-                                            Remover
+                                            ✕
                                         </button>
                                     </div>
 

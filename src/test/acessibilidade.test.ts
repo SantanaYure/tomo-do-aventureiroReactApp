@@ -21,6 +21,14 @@ function listCssFiles(dir: string): string[] {
 
 const cssFiles = listCssFiles(SRC)
 const indexCss = readFileSync(join(SRC, 'index.css'), 'utf8')
+const monsterActionsCss = readFileSync(
+  join(SRC, 'components', 'monster', 'MonsterActionsPanel', 'MonsterActionsPanel.module.css'),
+  'utf8',
+)
+const monsterActionsTsx = readFileSync(
+  join(SRC, 'components', 'monster', 'MonsterActionsPanel', 'MonsterActionsPanel.tsx'),
+  'utf8',
+)
 
 describe('foco visível por teclado', () => {
   it('encontra os arquivos CSS do projeto (validação do próprio teste)', () => {
@@ -70,5 +78,29 @@ describe('responsividade', () => {
       // transbordo; não pode voltar junto com o wrap.
       expect(ateFecharChave, `${pagina}: .topBarActions`).not.toMatch(/flex-shrink:\s*0/)
     }
+  })
+
+  it('mantém a remoção de ações compacta e ao lado do nome em telas estreitas', () => {
+    const cabecalho = monsterActionsCss.slice(monsterActionsCss.indexOf('.cardHeader'))
+    const blocoCabecalho = cabecalho.slice(0, cabecalho.indexOf('}'))
+    const remocao = monsterActionsCss.slice(monsterActionsCss.indexOf('.removeAction'))
+    const blocoRemocao = remocao.slice(0, remocao.indexOf('}'))
+
+    expect(blocoCabecalho).toMatch(/display:\s*grid/)
+    expect(blocoCabecalho).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto/)
+    expect(blocoRemocao).toMatch(/width:\s*2\.25rem/)
+    expect(blocoRemocao).toMatch(/height:\s*2\.25rem/)
+    expect(monsterActionsCss).not.toMatch(
+      /\.cardHeader\s+:global\(button\)\s*\{[^}]*width:\s*100%/,
+    )
+  })
+
+  it('preserva nomes acessíveis nos controles compactos de remoção', () => {
+    expect(monsterActionsTsx).toContain(
+      'aria-label={`Remover ação ${action.name.trim() || index + 1}`}',
+    )
+    expect(monsterActionsTsx).toContain(
+      'aria-label={`Remover reação ${reaction.name.trim() || index + 1}`}',
+    )
   })
 })

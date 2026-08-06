@@ -41,13 +41,26 @@
 }
 
 .cardHeader {
-    display: flex;
-    align-items: start;
-    gap: var(--space-3);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: var(--space-2);
 }
 
 .nameField {
-    flex: 1;
+    min-width: 0;
+}
+
+.removeAction {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: end;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    font-size: var(--text-base);
+    line-height: 1;
 }
 
 .field {
@@ -209,14 +222,6 @@
 }
 
 @media (max-width: 760px) {
-    .cardHeader {
-        flex-direction: column;
-    }
-
-    .cardHeader :global(button) {
-        width: 100%;
-    }
-
     .cardToggle {
         flex-wrap: wrap;
     }
