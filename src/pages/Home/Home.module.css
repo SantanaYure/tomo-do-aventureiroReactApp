@@ -60,7 +60,13 @@
   box-shadow: var(--shadow-card);
   text-decoration: none;
   color: inherit;
-  transition: all var(--transition);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
   position: relative;
   overflow: hidden;
 }
@@ -158,7 +164,13 @@
   border-radius: var(--radius-sm);
   text-decoration: none;
   color: inherit;
-  transition: all var(--transition);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
   box-shadow: var(--shadow-card);
 }
 

@@ -21,7 +21,8 @@ import {
     RECHARGE_OPTIONS,
 } from '../shared'
 import { isRestBasedRecharge } from '../../../utils/restRules'
-import { rollDamages, formatRollLine, type DamageRollSummary } from '../../../utils/diceRoller'
+import { rollDamages, type DamageRollSummary } from '../../../utils/diceRoller'
+import { RollResultBlock } from '../../RollResultBlock/RollResultBlock'
 import { useDragReorder } from '../useDragReorder'
 import { ReorderControls, reorderCardClass } from '../ReorderControls/ReorderControls'
 import styles from './MonsterActionsPanel.module.css'
@@ -105,6 +106,24 @@ export function MonsterActionsPanel({
 
     function handleRollReaction(id: string, damages: DamagePart[]) {
         setReactionRollResults((previous) => new Map(previous).set(id, rollDamages(damages)))
+    }
+
+    function clearActionRoll(id: string) {
+        setActionRollResults((previous) => {
+            if (!previous.has(id)) return previous
+            const next = new Map(previous)
+            next.delete(id)
+            return next
+        })
+    }
+
+    function clearReactionRoll(id: string) {
+        setReactionRollResults((previous) => {
+            if (!previous.has(id)) return previous
+            const next = new Map(previous)
+            next.delete(id)
+            return next
+        })
     }
     const actions = sheet.actions
     const reactions = sheet.reactions
@@ -739,12 +758,11 @@ export function MonsterActionsPanel({
                                                             🎲 Rolar dano
                                                         </button>
                                                         {actionRollResults.has(actionId) && (
-                                                            <div className={styles.rollResult}>
-                                                                {actionRollResults.get(actionId)!.results.map((r, i) => (
-                                                                    <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
-                                                                ))}
-                                                                <span className={styles.rollTotal}>Total: {actionRollResults.get(actionId)!.total}</span>
-                                                            </div>
+                                                            <RollResultBlock
+                                                                summary={actionRollResults.get(actionId)!}
+                                                                itemName={action.name}
+                                                                onClear={() => clearActionRoll(actionId)}
+                                                            />
                                                         )}
                                                     </div>
                                                 )}
@@ -835,12 +853,11 @@ export function MonsterActionsPanel({
                                                                 🎲 Rolar dano
                                                             </button>
                                                             {reactionRollResults.has(reactionId) && (
-                                                                <div className={styles.rollResult}>
-                                                                    {reactionRollResults.get(reactionId)!.results.map((r, i) => (
-                                                                        <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
-                                                                    ))}
-                                                                    <span className={styles.rollTotal}>Total: {reactionRollResults.get(reactionId)!.total}</span>
-                                                                </div>
+                                                                <RollResultBlock
+                                                                    summary={reactionRollResults.get(reactionId)!}
+                                                                    itemName={reaction.name}
+                                                                    onClear={() => clearReactionRoll(reactionId)}
+                                                                />
                                                             )}
                                                         </div>
                                                     )}

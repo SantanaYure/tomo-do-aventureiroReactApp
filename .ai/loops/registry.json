@@ -1,0 +1,252 @@
+{
+  "schema_version": "1.0",
+  "project": {
+    "name": "tomo-do-aventureiro",
+    "profile": "project-profile.json",
+    "stage": "active"
+  },
+  "defaults": {
+    "max_iterations": 3,
+    "max_files_changed": 20,
+    "timeout_minutes": 30,
+    "require_human_approval_for_external_actions": true
+  },
+  "loops": [
+    {
+      "id": "feature-delivery",
+      "title": "Entregar funcionalidade de ficha (PJ ou monstro)",
+      "enabled": true,
+      "kind": "goal-based",
+      "evidence": [
+        "136 commits com prefixo feat: no histórico do git",
+        "CLAUDE.md define fluxos, tipos e checklist de finalização de tarefa",
+        "22 arquivos de teste Vitest e scripts test/typecheck confirmados no package.json"
+      ],
+      "trigger": {
+        "type": "manual",
+        "examples": [
+          "Implemente esta funcionalidade usando o loop do projeto",
+          "Adicione um campo X à ficha de personagem/monstro"
+        ]
+      },
+      "workflow": "workflows/feature-delivery.md",
+      "verifiers": [
+        "verifiers/definition-of-done.md"
+      ],
+      "approval_required": false,
+      "budget": {
+        "max_iterations": 3,
+        "max_files_changed": 25
+      },
+      "stop_conditions": [
+        "Critérios de aceite atendidos e testes relevantes adicionados ou atualizados",
+        "npm run test e npm run typecheck sem erros",
+        "Funcionalidade testada manualmente no navegador quando afetar UI ou integração com o Firestore",
+        "Limite de tentativas atingido",
+        "Conflito com CLAUDE.md ou com decisão arquitetural já assumida"
+      ]
+    },
+    {
+      "id": "bug-fix",
+      "title": "Corrigir bug em ficha, painel ou store",
+      "enabled": true,
+      "kind": "goal-based",
+      "evidence": [
+        "20 commits com prefixo fix: no histórico do git",
+        "22 arquivos de teste cobrem autosave, stores, rotas, painéis e regressões de UI",
+        "Scripts npm run test e npm run typecheck disponíveis"
+      ],
+      "trigger": {
+        "type": "manual",
+        "examples": [
+          "Corrija este bug usando o loop do projeto",
+          "O contador de recursos não está zerando corretamente"
+        ]
+      },
+      "workflow": "workflows/bug-fix.md",
+      "verifiers": [
+        "verifiers/definition-of-done.md"
+      ],
+      "approval_required": false,
+      "budget": {
+        "max_iterations": 3,
+        "max_files_changed": 15
+      },
+      "stop_conditions": [
+        "Bug reproduzido antes da correção e coberto por teste de regressão quando viável",
+        "npm run test e npm run typecheck sem erros",
+        "Limite de tentativas atingido",
+        "Causa raiz não identificada com a informação disponível"
+      ]
+    },
+    {
+      "id": "firebase-safety",
+      "title": "Alterar dados, normalização ou regras do Firestore com segurança",
+      "enabled": true,
+      "kind": "goal-based",
+      "evidence": [
+        "firebase.json e firestore.rules presentes na raiz",
+        "CLAUDE.md, seção 'Arquivos sensíveis', cita characterSheetStore.ts, monsterSheetStore.ts e firebase.ts",
+        "CLAUDE.md, seção 'Riscos comuns', exige que normalize* sempre tenha fallback para campos novos",
+        "Regras do Firestore exigem deploy manual separado via Firebase CLI (não há automação)"
+      ],
+      "trigger": {
+        "type": "manual",
+        "examples": [
+          "Adicione um campo obrigatório ao modelo de ficha",
+          "Preciso alterar firestore.rules",
+          "Vou mexer no characterSheetStore ou no monsterSheetStore"
+        ]
+      },
+      "workflow": "workflows/firebase-safety.md",
+      "verifiers": [
+        "verifiers/definition-of-done.md"
+      ],
+      "approval_required": true,
+      "budget": {
+        "max_iterations": 3,
+        "max_files_changed": 15
+      },
+      "stop_conditions": [
+        "Campo novo tem valor padrão em defaultCharacterSheet.ts ou createDefaultMonsterSheet()",
+        "normalizeCharacterSheet/normalizeMonsterSheet cobre o campo novo com fallback",
+        "name_lower continua sendo gerado em toda criação/salvamento",
+        "Alteração em firestore.rules sinalizada como pendente de deploy manual (firebase deploy --only firestore:rules)",
+        "Nenhuma chave ou segredo do Firebase exposto no código",
+        "Limite de tentativas atingido"
+      ]
+    },
+    {
+      "id": "doc-sync",
+      "title": "Manter a documentação operacional consistente com o projeto",
+      "enabled": true,
+      "kind": "goal-based",
+      "evidence": [
+        "CLAUDE.md e README.md documentam stack, comandos, fluxos e checklist operacional",
+        "design.md é a fonte dos tokens e critérios visuais",
+        "documentação.MD é explicitamente marcado como legado em CLAUDE.md"
+      ],
+      "trigger": {
+        "type": "manual",
+        "examples": [
+          "Atualize a documentação depois desta mudança",
+          "Essa pasta vazia virou uma feature implementada, atualize o CLAUDE.md"
+        ]
+      },
+      "workflow": "workflows/doc-sync.md",
+      "verifiers": [
+        "verifiers/definition-of-done.md"
+      ],
+      "approval_required": false,
+      "budget": {
+        "max_iterations": 2,
+        "max_files_changed": 5
+      },
+      "stop_conditions": [
+        "Seções afetadas de CLAUDE.md, README.md e design.md refletem o comportamento real do código",
+        "Nenhuma feature planejada foi descrita como implementada, nem o contrário",
+        "Limite de tentativas atingido"
+      ]
+    },
+    {
+      "id": "accessibility-check",
+      "title": "Verificar acessibilidade e responsividade da interface",
+      "enabled": true,
+      "kind": "goal-based",
+      "evidence": [
+        "Aplicação web interativa com navegação por teclado e formulários extensos",
+        "src/test/acessibilidade.test.ts verifica foco visível e responsividade",
+        "Testes de SheetTabs e SpellsPanel cobrem interações por teclado"
+      ],
+      "trigger": {
+        "type": "manual",
+        "examples": [
+          "Verifique a acessibilidade desta tela",
+          "Revise foco, teclado e responsividade antes de integrar"
+        ]
+      },
+      "workflow": "workflows/accessibility-check.md",
+      "verifiers": [
+        "verifiers/definition-of-done.md"
+      ],
+      "approval_required": false,
+      "budget": {
+        "max_iterations": 3,
+        "max_files_changed": 15
+      },
+      "stop_conditions": [
+        "Testes automatizados relevantes aprovados",
+        "Fluxo principal operável por teclado e foco visível",
+        "Layout verificado nos breakpoints afetados",
+        "Limite de tentativas atingido"
+      ]
+    },
+    {
+      "id": "pr-readiness",
+      "title": "Revisar a entrega antes de integrar na main",
+      "enabled": true,
+      "kind": "turn-based",
+      "evidence": [
+        "Histórico contém merges e branches de entrega integradas na main",
+        "CLAUDE.md contém checklist explícito 'Checklist antes de finalizar uma tarefa'",
+        "O analisador detecta nomes de arquivos .env potencialmente sensíveis e não lê seu conteúdo"
+      ],
+      "trigger": {
+        "type": "manual",
+        "examples": [
+          "Revise o diff antes de eu abrir a PR",
+          "Estou pronto para finalizar esta tarefa, confira antes de commitar"
+        ]
+      },
+      "workflow": "workflows/pr-readiness.md",
+      "verifiers": [
+        "verifiers/definition-of-done.md"
+      ],
+      "approval_required": true,
+      "budget": {
+        "max_iterations": 2,
+        "max_files_changed": 30
+      },
+      "stop_conditions": [
+        "Checklist do CLAUDE.md percorrido item a item",
+        "git status revisado e nenhum arquivo sensível (.env*) staged",
+        "Escopo do diff corresponde à tarefa pedida, sem alterações incidentais",
+        "npm run test e npm run typecheck aprovados",
+        "Aprovação humana obtida antes de commit, merge, push ou abertura de PR"
+      ]
+    },
+    {
+      "id": "web-deploy",
+      "title": "Validar comportamento após deploy na Vercel",
+      "enabled": true,
+      "kind": "goal-based",
+      "evidence": [
+        "vercel.json presente, configurando fallback de SPA para index.html",
+        "CLAUDE.md declara o projeto 'em produção, implantado via Vercel'",
+        "Sem CI configurado: testes, build e verificação de rotas são executados localmente"
+      ],
+      "trigger": {
+        "type": "manual",
+        "examples": [
+          "Confira se o deploy na Vercel ficou correto",
+          "Testei localmente, preciso validar em produção/preview"
+        ]
+      },
+      "workflow": "workflows/web-deploy.md",
+      "verifiers": [
+        "verifiers/definition-of-done.md"
+      ],
+      "approval_required": true,
+      "budget": {
+        "max_iterations": 2,
+        "max_files_changed": 5
+      },
+      "stop_conditions": [
+        "npm run test, npm run typecheck e npm run build concluídos sem erros",
+        "Rotas desconhecidas continuam caindo no fallback SPA (index.html)",
+        "Console do navegador sem erros novos na URL de preview/produção",
+        "Aprovação humana obtida antes de promover para produção"
+      ]
+    }
+  ]
+}

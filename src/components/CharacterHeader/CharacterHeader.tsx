@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import type { Character, Class } from '../../types/system/dnd'
 import type { SheetGroup } from '../../types/system/dnd/SheetGroup'
 import { AvatarCropper } from '../AvatarCropper/AvatarCropper'
@@ -74,7 +74,7 @@ function ViewLayout({
   )
 }
 
-export function CharacterHeader({
+function CharacterHeaderImpl({
   character,
   isEditMode,
   onChangeCharacter,
@@ -312,3 +312,8 @@ export function CharacterHeader({
     </header>
   )
 }
+
+// Memoizado: os painéis recebem props estreitas e handlers estáveis da
+// página, então a comparação rasa aborta o render quando a edição foi em
+// outra parte da ficha.
+export const CharacterHeader = memo(CharacterHeaderImpl)

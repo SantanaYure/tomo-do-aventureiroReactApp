@@ -15,9 +15,15 @@
 
 .topBarActions {
     display: flex;
+    /*
+     * Envolve em telas estreitas: a barra ganhou indicador de salvamento,
+     * controles de histórico e menu de ações, e sem isto os itens eram
+     * espremidos ou transbordavam a viewport no celular.
+     */
+    flex-wrap: wrap;
+    justify-content: flex-end;
     align-items: center;
     gap: var(--space-2);
-    flex-shrink: 0;
     margin-left: auto;
 }
 
@@ -33,7 +39,13 @@
     border: 1px solid var(--border-light);
     border-radius: 999px;
     background: var(--parchment-light);
-    transition: all var(--transition);
+    transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
     text-decoration: none;
 }
 
@@ -90,7 +102,13 @@
     font-weight: 700;
     color: var(--accent);
     cursor: pointer;
-    transition: all var(--transition);
+    transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
     white-space: nowrap;
 }
 
@@ -121,7 +139,13 @@
     font-size: var(--text-sm);
     color: var(--ink-muted);
     cursor: pointer;
-    transition: all var(--transition);
+    transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
     white-space: nowrap;
 }
 
@@ -165,7 +189,13 @@
     border: 1px solid var(--border-dark);
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: all var(--transition);
+    transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
     white-space: nowrap;
 }
 
@@ -370,7 +400,13 @@
         linear-gradient(180deg, rgba(255, 248, 229, 0.96), rgba(239, 225, 188, 0.92)),
         radial-gradient(circle at top, rgba(122, 30, 30, 0.14), transparent 48%);
     cursor: pointer;
-    transition: all var(--transition);
+    transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
     white-space: nowrap;
 }
 
@@ -407,3 +443,73 @@
         min-width: min(14rem, calc(100vw - var(--space-8)));
     }
 }
+/* ── Persistência: status honesto, retry, histórico e recuperação de rascunho ── */
+
+.savingIndicator {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    padding: var(--space-1) var(--space-3);
+    border-radius: 999px;
+    border: 1px solid var(--border-light);
+    background: var(--parchment-light);
+    color: var(--ink-muted);
+    transition: color var(--transition), border-color var(--transition);
+    white-space: nowrap;
+}
+
+.savingIndicator[data-status='pending'] {
+    border-style: dashed;
+}
+
+.savingIndicator[data-status='saved'] {
+    color: #3a6b3a;
+    border-color: #a0c4a0;
+    background: #f0f8f0;
+}
+
+.savingIndicator[data-status='error'] {
+    color: var(--accent);
+    border-color: var(--accent-light);
+    background: var(--accent-faint);
+}
+
+.retryButton {
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    padding: 0 var(--space-2);
+    border: 1px solid var(--accent-light);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+}
+
+.historyControls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.historyButton {
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    background: var(--parchment-light);
+    color: var(--ink-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color var(--transition), border-color var(--transition);
+}
+
+.historyButton:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+

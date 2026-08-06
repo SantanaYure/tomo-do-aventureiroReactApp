@@ -88,7 +88,13 @@
   font-family: var(--font-display);
   font-size: var(--text-sm);
   letter-spacing: 0.04em;
-  transition: all 200ms ease;
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms ease,
+    opacity 200ms ease;
   cursor: pointer;
   position: relative;
   overflow: hidden;
@@ -229,7 +235,13 @@
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
   cursor: pointer;
-  transition: all 200ms ease;
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms ease,
+    opacity 200ms ease;
   text-align: left;
 }
 
@@ -299,7 +311,13 @@
   letter-spacing: 0.04em;
   cursor: pointer;
   text-decoration: none;
-  transition: all 200ms ease;
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms ease,
+    opacity 200ms ease;
   white-space: nowrap;
 }
 

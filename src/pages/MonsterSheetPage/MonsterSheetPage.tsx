@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { MonsterActionsPanel } from '../../components/monster/MonsterActionsPanel/MonsterActionsPanel'
 import { MonsterFeaturesPanel } from '../../components/monster/MonsterFeaturesPanel/MonsterFeaturesPanel'
@@ -11,12 +11,16 @@ import { MonsterTableMode } from '../../components/monster/MonsterTableMode/Mons
 import { MonsterCombatSummary } from '../../components/monster/MonsterCombatSummary/MonsterCombatSummary'
 import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
 import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
+import { SheetNotices } from '../../components/SheetNotices/SheetNotices'
+import { SheetTabs } from '../../components/SheetTabs/SheetTabs'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
+import { useSheetAutosave } from '../../hooks/useSheetAutosave'
 import type { DeepPartial } from '../../components/monster/shared'
 import {
   saveMonsterSheet,
   deleteMonsterSheet,
   exportMonsterSheetAsJSON,
+  parseUntrustedMonsterSheet,
   type StoredMonsterSheet,
 } from '../../store/monsterSheetStore'
 import { normalizeFileName, downloadJsonFile } from '../../utils/exportSheet'
@@ -24,7 +28,7 @@ import { applyRestToMonsterSheet } from '../../utils/restRules'
 import { recordOpened } from '../../utils/recentlyOpened'
 import { useAuth } from '../../context/AuthContext'
 import { useMonsterSheet } from '../../hooks/useMonsterSheet'
-import type { SavingStatus } from '../../types/savingStatus'
+import { SAVING_STATUS_LABELS } from '../../types/savingStatus'
 import type { MonsterSheet } from '../../types/system/dnd/monsterSheet'
 import styles from './MonsterSheetPage.module.css'
 
@@ -43,7 +47,6 @@ type MonsterLocationState = {
 }
 
 const DEFAULT_TAB: Tab = 'Detalhes'
-const SAVE_DEBOUNCE_MS = 800
 
 const TAB_PANEL_IDS: Record<Tab, string> = {
   Mesa: 'monster-sheet-panel-mesa',
@@ -133,8 +136,29 @@ export function MonsterSheetPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { monster: storedMonster, notFound, error } = useMonsterSheet(uid, id ?? null)
-  const [sheet, setSheet] = useState<MonsterSheet | null>(null)
-  const [savingStatus, setSavingStatus] = useState<SavingStatus>('idle')
+  const {
+    sheet,
+    commit,
+    savingStatus,
+    saveNow,
+    discardPending,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    recoveredDraftAt,
+    dismissRecovery,
+    localBackupError,
+    remoteChangedElsewhere,
+    dismissRemoteChange,
+  } = useSheetAutosave<MonsterSheet>({
+    uid,
+    id: id ?? null,
+    remote: storedMonster,
+    scope: 'monstro',
+    save: saveMonsterSheet,
+    parseDraft: parseUntrustedMonsterSheet,
+  })
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isEditing, setIsEditing] = useState(false)
   const [isAtBottom, setIsAtBottom] = useState(false)
@@ -145,30 +169,12 @@ export function MonsterSheetPage() {
   const { groups, isLoading: isLoadingGroups } = useSheetGroups(uid)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const restFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasSheet = sheet !== null
-
-  function updateSavingStatus(nextStatus: SavingStatus) {
-    setSavingStatus((currentStatus) =>
-      currentStatus === nextStatus ? currentStatus : nextStatus
-    )
-  }
 
   // Registra abertura da ficha para a lista de recentes
   useEffect(() => {
     if (id) recordOpened(id)
-  }, [id])
-
-  // Sync Firestore snapshot → local state (only on first load)
-  useEffect(() => {
-    if (storedMonster && sheet === null) {
-      setSheet(storedMonster.data)
-    }
-  }, [storedMonster, sheet])
-
-  useEffect(() => {
-    updateSavingStatus('idle')
   }, [id])
 
   useEffect(() => {
@@ -201,10 +207,8 @@ export function MonsterSheetPage() {
     window.sessionStorage.setItem(getTabStorageKey(id), activeTab)
   }, [activeTab, id])
 
-  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
     }
   }, [])
@@ -216,20 +220,18 @@ export function MonsterSheetPage() {
     return () => { document.title = 'Tomo do Aventureiro' }
   }, [sheet?.details.name])
 
-  function handleSheetChange(patch: DeepPartial<MonsterSheet>) {
-    if (!sheet || !id || !uid) {
-      return
-    }
-
-    const updatedSheet = mergeDeepPatch(sheet, patch)
-    setSheet(updatedSheet)
-    updateSavingStatus('saving')
-
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(() => {
-      saveMonsterSheet(uid, id, updatedSheet).catch(console.error)
-    }, SAVE_DEBOUNCE_MS)
-  }
+  // A persistência (debounce + teto de espera + rascunho local + histórico)
+  // vive em `useSheetAutosave`.
+  //
+  // Estável entre renders (a forma funcional de `commit` lê a ficha de uma ref):
+  // é o que permite ao `memo` do resumo de combate abortar o render quando a
+  // edição foi em outro painel.
+  const handleSheetChange = useCallback(
+    (patch: DeepPartial<MonsterSheet>) => {
+      commit((current) => mergeDeepPatch(current, patch))
+    },
+    [commit],
+  )
 
   function showRestFeedback(message: string) {
     if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
@@ -268,10 +270,7 @@ export function MonsterSheetPage() {
   async function handleConfirmDelete() {
     if (!uid || !id || isDeleting) return
     setIsDeleting(true)
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current)
-      saveTimerRef.current = null
-    }
+    discardPending()
     try {
       await deleteMonsterSheet(uid, id)
       setShowDeleteDialog(false)
@@ -410,6 +409,47 @@ export function MonsterSheetPage() {
       <div className={styles.topBar}>
         <Link className={styles.backLink} to="/">← Voltar</Link>
         <div className={styles.topBarActions}>
+          <div className={styles.historyControls}>
+            <button
+              type="button"
+              className={styles.historyButton}
+              onClick={undo}
+              disabled={!canUndo}
+              title="Desfazer (Ctrl+Z)"
+              aria-label="Desfazer última alteração"
+            >
+              ↶ Desfazer
+            </button>
+            <button
+              type="button"
+              className={styles.historyButton}
+              onClick={redo}
+              disabled={!canRedo}
+              title="Refazer (Ctrl+Shift+Z)"
+              aria-label="Refazer alteração desfeita"
+            >
+              ↷ Refazer
+            </button>
+          </div>
+          {savingStatus !== 'idle' && (
+            <span
+              className={styles.savingIndicator}
+              data-status={savingStatus}
+              role="status"
+              aria-live="polite"
+            >
+              {SAVING_STATUS_LABELS[savingStatus]}
+              {savingStatus === 'error' && (
+                <button
+                  type="button"
+                  className={styles.retryButton}
+                  onClick={saveNow}
+                >
+                  Tentar novamente
+                </button>
+              )}
+            </span>
+          )}
           <SheetActionsMenu
             onExport={handleExport}
             onDelete={handleRequestDelete}
@@ -420,23 +460,26 @@ export function MonsterSheetPage() {
         </div>
       </div>
 
+      <SheetNotices
+        localBackupError={localBackupError}
+        recoveredDraftAt={recoveredDraftAt}
+        remoteChangedElsewhere={remoteChangedElsewhere}
+        onSaveNow={saveNow}
+        onDismissRecovery={dismissRecovery}
+        onDismissRemoteChange={dismissRemoteChange}
+      />
       <div ref={tabBarRef} className={styles.tabBarShell}>
-        <nav className={styles.tabBar} aria-label="Seções da ficha de monstro" role="tablist">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              id={TAB_BUTTON_IDS[tab]}
-              type="button"
-              role="tab"
-              aria-selected={tab === activeTab}
-              aria-controls={TAB_PANEL_IDS[tab]}
-              className={tab === activeTab ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-              onClick={() => handleTabChange(tab)}
-            >
-              {tab}
-            </button>
-          ))}
-        </nav>
+        <SheetTabs
+          tabs={TABS}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          tabButtonIds={TAB_BUTTON_IDS}
+          tabPanelIds={TAB_PANEL_IDS}
+          ariaLabel="Seções da ficha de monstro"
+          className={styles.tabBar}
+          tabClassName={styles.tab}
+          activeTabClassName={styles.tabActive}
+        />
       </div>
 
       <div className={styles.restBar}>
@@ -451,7 +494,11 @@ export function MonsterSheetPage() {
         </span>
       </div>
 
-      <MonsterCombatSummary sheet={currentSheet} onChange={handleSheetChange} />
+      <MonsterCombatSummary
+        stats={currentSheet.stats}
+        traits={currentSheet.traits}
+        onChange={handleSheetChange}
+      />
 
       <div
         id={TAB_PANEL_IDS[activeTab]}

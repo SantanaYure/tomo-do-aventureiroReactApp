@@ -85,7 +85,13 @@
   color: var(--ink-muted);
   font-size: var(--text-sm);
   cursor: pointer;
-  transition: all var(--transition);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
   line-height: 1;
 }
 
@@ -206,7 +212,13 @@
   border-radius: var(--radius-sm);
   color: var(--accent);
   cursor: pointer;
-  transition: all var(--transition);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
 }
 
 .stepBtn:hover:not(:disabled) {
@@ -285,7 +297,13 @@
   font-size: var(--text-sm);
   color: var(--ink-muted);
   cursor: pointer;
-  transition: all var(--transition);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
 }
 
 .cancelButton:hover {
@@ -305,7 +323,13 @@
   color: rgba(255, 245, 220, 0.96);
   letter-spacing: 0.05em;
   cursor: pointer;
-  transition: all var(--transition);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
 }
 
 .confirmButton:hover {

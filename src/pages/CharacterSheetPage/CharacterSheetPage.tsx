@@ -1,13 +1,14 @@
 // src/pages/CharacterSheetPage/CharacterSheetPage.tsx
 // Carrega e persiste a ficha de um personagem pelo id da rota
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import type { CharacterSheet } from '../../types/system/dnd'
 import {
   saveCharacterSheet,
   deleteCharacterSheet,
   exportCharacterSheetAsJSON,
+  parseUntrustedCharacterSheet,
   type StoredCharacterSheet,
 } from '../../store/characterSheetStore'
 import { normalizeFileName, downloadJsonFile } from '../../utils/exportSheet'
@@ -29,8 +30,11 @@ import { CharacterCombatSummary } from '../../components/CharacterCombatSummary/
 import { ShortRestModal } from '../../components/ShortRestModal/ShortRestModal'
 import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
 import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
+import { SheetNotices } from '../../components/SheetNotices/SheetNotices'
+import { SheetTabs } from '../../components/SheetTabs/SheetTabs'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
-import type { SavingStatus } from '../../types/savingStatus'
+import { useSheetAutosave } from '../../hooks/useSheetAutosave'
+import { SAVING_STATUS_LABELS } from '../../types/savingStatus'
 import styles from './CharacterSheetPage.module.css'
 
 const TABS = [
@@ -67,8 +71,6 @@ const TAB_BUTTON_IDS: Record<Tab, string> = {
   Detalhes: 'character-sheet-tab-detalhes',
 }
 
-const SAVE_DEBOUNCE_MS = 800
-
 function getTabStorageKey(id?: string) {
   return `character-sheet-active-tab:${id ?? 'default'}`
 }
@@ -96,8 +98,29 @@ export function CharacterSheetPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { sheet: storedSheet, notFound, error } = useCharacterSheet(uid, id ?? null)
-  const [sheet, setSheet] = useState<CharacterSheet | null>(null)
-  const [savingStatus, setSavingStatus] = useState<SavingStatus>('idle')
+  const {
+    sheet,
+    commit,
+    savingStatus,
+    saveNow,
+    discardPending,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    recoveredDraftAt,
+    dismissRecovery,
+    localBackupError,
+    remoteChangedElsewhere,
+    dismissRemoteChange,
+  } = useSheetAutosave<CharacterSheet>({
+    uid,
+    id: id ?? null,
+    remote: storedSheet,
+    scope: 'pj',
+    save: saveCharacterSheet,
+    parseDraft: parseUntrustedCharacterSheet,
+  })
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isAtBottom, setIsAtBottom] = useState(false)
   const [restFeedback, setRestFeedback] = useState<string | null>(null)
@@ -108,30 +131,12 @@ export function CharacterSheetPage() {
   const { groups, isLoading: isLoadingGroups } = useSheetGroups(uid)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const restFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasSheet = sheet !== null
-
-  function updateSavingStatus(nextStatus: SavingStatus) {
-    setSavingStatus((currentStatus) =>
-      currentStatus === nextStatus ? currentStatus : nextStatus
-    )
-  }
 
   // Registra abertura da ficha para a lista de recentes
   useEffect(() => {
     if (id) recordOpened(id)
-  }, [id])
-
-  // Sync Firestore snapshot → local state (only on first load)
-  useEffect(() => {
-    if (storedSheet && sheet === null) {
-      setSheet(storedSheet.data)
-    }
-  }, [storedSheet, sheet])
-
-  useEffect(() => {
-    updateSavingStatus('idle')
   }, [id])
 
   useEffect(() => {
@@ -162,42 +167,127 @@ export function CharacterSheetPage() {
     return () => { document.title = 'Tomo do Aventureiro' }
   }, [sheet?.character.name])
 
-  // Cleanup debounce timer on unmount
   useEffect(() => {
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
     }
   }, [])
 
-  function handleUpdate(updated: CharacterSheet) {
-    if (!id || !uid) return
-    setSheet(updated)
-    updateSavingStatus('saving')
+  // A persistência (debounce + teto de espera + rascunho local + histórico)
+  // vive em `useSheetAutosave`.
+  //
+  // Todos os handlers abaixo usam a forma funcional de `commit`, que lê a ficha
+  // atual de uma ref. Isso os torna estáveis entre renders — condição para que
+  // o `memo` dos painéis realmente aborte o render. Um handler recriado a cada
+  // render invalida a comparação rasa e anula a memoização.
+  const handleUpdate = commit
 
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(() => {
-      saveCharacterSheet(uid, id, updated)
-        .then(() => updateSavingStatus('saved'))
-        .catch(() => updateSavingStatus('error'))
-    }, SAVE_DEBOUNCE_MS)
-  }
+  const handleCharacterChange = useCallback(
+    (updated: CharacterSheet['character']) => {
+      commit((current) => ({ ...current, character: updated }))
+    },
+    [commit],
+  )
+
+  const handleChangeAttacks = useCallback(
+    (updated: CharacterSheet['attacks']) => {
+      commit((current) => ({ ...current, attacks: updated }))
+    },
+    [commit],
+  )
+
+  const handleChangeSpells = useCallback(
+    (updated: CharacterSheet['spells']) => {
+      commit((current) => ({ ...current, spells: updated }))
+    },
+    [commit],
+  )
+
+  const handleChangeSpellSlots = useCallback(
+    (updated: CharacterSheet['spellSlots']) => {
+      commit((current) => ({ ...current, spellSlots: updated }))
+    },
+    [commit],
+  )
+
+  const handleChangeResources = useCallback(
+    (updated: CharacterSheet['resources']) => {
+      commit((current) => ({ ...current, resources: updated }))
+    },
+    [commit],
+  )
+
+  const handleChangeInventory = useCallback(
+    (updated: CharacterSheet['inventory']) => {
+      commit((current) => ({ ...current, inventory: updated }))
+    },
+    [commit],
+  )
+
+  const handleToggleEditMode = useCallback(() => {
+    commit((current) => ({ ...current, isEditMode: !current.isEditMode }))
+  }, [commit])
+
+  const handleGroupChange = useCallback(
+    (nextGroupId: string) => {
+      commit((current) => ({ ...current, groupId: nextGroupId }))
+    },
+    [commit],
+  )
+
+  const handleOpenGroupManager = useCallback(() => setShowGroupManager(true), [])
+  const handleShortRest = useCallback(() => setShowShortRestModal(true), [])
+
+  const showRestFeedback = useCallback((message: string) => {
+    if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
+    setRestFeedback(message)
+    restFeedbackTimerRef.current = setTimeout(() => setRestFeedback(null), 2000)
+  }, [])
+
+  const handleShortRestConfirm = useCallback(
+    (hpHealed: number, diceSpent: number) => {
+      setShowShortRestModal(false)
+      let warlock = false
+      commit((current) => {
+        const rested = applyRestToCharacterSheet(current, 'short')
+        const hpMax = calcEffectiveHpMaxForRest(rested.character)
+        warlock = hasWarlockClass(rested.character.classes)
+        return {
+          ...rested,
+          character: {
+            ...rested.character,
+            hpCurrent: Math.min(hpMax, rested.character.hpCurrent + hpHealed),
+            hitDiceSpent: (rested.character.hitDiceSpent ?? 0) + diceSpent,
+          },
+        }
+      })
+      if (diceSpent > 0) {
+        showRestFeedback(
+          warlock
+            ? `Descanso curto: +${hpHealed} PV | Espaços de bruxo restaurados`
+            : `Descanso curto: +${hpHealed} PV recuperados`,
+        )
+      } else {
+        showRestFeedback(
+          warlock
+            ? 'Recursos restaurados — Bruxo recuperou os espaços de magia'
+            : 'Recursos restaurados (descanso curto)',
+        )
+      }
+    },
+    [commit, showRestFeedback],
+  )
+
+  const handleLongRest = useCallback(() => {
+    commit((current) => applyRestToCharacterSheet(current, 'long'))
+    showRestFeedback('Recursos e espaços de magia restaurados (descanso longo)')
+  }, [commit, showRestFeedback])
 
   function handleExport() {
     if (!sheet || !storedSheet || !id) return
     const stored: StoredCharacterSheet = { ...storedSheet, data: sheet }
     const json = exportCharacterSheetAsJSON(stored)
     downloadJsonFile(json, normalizeFileName(sheet.character.name.trim() || id, id, 'pj'))
-  }
-
-  function handleToggleEditMode() {
-    if (!sheet) return
-    handleUpdate({ ...sheet, isEditMode: !sheet.isEditMode })
-  }
-
-  function handleGroupChange(nextGroupId: string) {
-    if (!sheet) return
-    handleUpdate({ ...sheet, groupId: nextGroupId })
   }
 
   function handleRequestDelete() {
@@ -207,10 +297,7 @@ export function CharacterSheetPage() {
   async function handleConfirmDelete() {
     if (!uid || !id || isDeleting) return
     setIsDeleting(true)
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current)
-      saveTimerRef.current = null
-    }
+    discardPending()
     try {
       await deleteCharacterSheet(uid, id)
       setShowDeleteDialog(false)
@@ -235,12 +322,6 @@ export function CharacterSheetPage() {
       top: Math.max(0, nextTop - 12),
       behavior: 'smooth',
     })
-  }
-
-  function showRestFeedback(message: string) {
-    if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
-    setRestFeedback(message)
-    restFeedbackTimerRef.current = setTimeout(() => setRestFeedback(null), 2000)
   }
 
   if (error) {
@@ -279,49 +360,6 @@ export function CharacterSheetPage() {
 
   const currentSheet = sheet
 
-  const handleCharacterChange = (updated: CharacterSheet['character']) => {
-    handleUpdate({ ...currentSheet, character: updated })
-  }
-
-  function handleShortRest() {
-    setShowShortRestModal(true)
-  }
-
-  function handleShortRestConfirm(hpHealed: number, diceSpent: number) {
-    setShowShortRestModal(false)
-    const rested = applyRestToCharacterSheet(currentSheet, 'short')
-    const hpMax = calcEffectiveHpMaxForRest(rested.character)
-    const newHp = Math.min(hpMax, rested.character.hpCurrent + hpHealed)
-    const withUpdates = {
-      ...rested,
-      character: {
-        ...rested.character,
-        hpCurrent: newHp,
-        hitDiceSpent: (rested.character.hitDiceSpent ?? 0) + diceSpent,
-      },
-    }
-    handleUpdate(withUpdates)
-    const warlock = hasWarlockClass(withUpdates.character.classes)
-    if (diceSpent > 0) {
-      showRestFeedback(
-        warlock
-          ? `Descanso curto: +${hpHealed} PV | Espaços de bruxo restaurados`
-          : `Descanso curto: +${hpHealed} PV recuperados`,
-      )
-    } else {
-      showRestFeedback(
-        warlock
-          ? 'Recursos restaurados — Bruxo recuperou os espaços de magia'
-          : 'Recursos restaurados (descanso curto)',
-      )
-    }
-  }
-
-  function handleLongRest() {
-    handleUpdate(applyRestToCharacterSheet(currentSheet, 'long'))
-    showRestFeedback('Recursos e espaços de magia restaurados (descanso longo)')
-  }
-
   const activePanelId = TAB_PANEL_IDS[activeTab]
 
   function renderPrincipalTab() {
@@ -353,9 +391,7 @@ export function CharacterSheetPage() {
           attacks={currentSheet.attacks}
           character={currentSheet.character}
           isEditMode={currentSheet.isEditMode}
-          onChangeAttacks={(updated) =>
-            handleUpdate({ ...currentSheet, attacks: updated })
-          }
+          onChangeAttacks={handleChangeAttacks}
         />
       </>
     )
@@ -368,11 +404,9 @@ export function CharacterSheetPage() {
         character={currentSheet.character}
         isEditMode={currentSheet.isEditMode}
         onChangeCharacter={handleCharacterChange}
-        onChangeSpells={(updated) => handleUpdate({ ...currentSheet, spells: updated })}
+        onChangeSpells={handleChangeSpells}
         slotsData={currentSheet.spellSlots}
-        onChangeSlotsData={(updated) =>
-          handleUpdate({ ...currentSheet, spellSlots: updated })
-        }
+        onChangeSlotsData={handleChangeSpellSlots}
       />
     )
   }
@@ -382,9 +416,7 @@ export function CharacterSheetPage() {
       <ResourcesPanel
         resources={currentSheet.resources}
         isEditMode={currentSheet.isEditMode}
-        onChangeResources={(updated) =>
-          handleUpdate({ ...currentSheet, resources: updated })
-        }
+        onChangeResources={handleChangeResources}
       />
     )
   }
@@ -395,9 +427,7 @@ export function CharacterSheetPage() {
         inventory={currentSheet.inventory}
         character={currentSheet.character}
         isEditMode={currentSheet.isEditMode}
-        onChangeInventory={(updated) =>
-          handleUpdate({ ...currentSheet, inventory: updated })
-        }
+        onChangeInventory={handleChangeInventory}
         onChangeCharacter={handleCharacterChange}
       />
     )
@@ -452,11 +482,45 @@ export function CharacterSheetPage() {
       <div className={styles.topBar}>
         <Link className={styles.backLink} to="/">← Voltar</Link>
         <div className={styles.topBarActions}>
+          <div className={styles.historyControls}>
+            <button
+              type="button"
+              className={styles.historyButton}
+              onClick={undo}
+              disabled={!canUndo}
+              title="Desfazer (Ctrl+Z)"
+              aria-label="Desfazer última alteração"
+            >
+              ↶ Desfazer
+            </button>
+            <button
+              type="button"
+              className={styles.historyButton}
+              onClick={redo}
+              disabled={!canRedo}
+              title="Refazer (Ctrl+Shift+Z)"
+              aria-label="Refazer alteração desfeita"
+            >
+              ↷ Refazer
+            </button>
+          </div>
           {savingStatus !== 'idle' && (
-            <span className={styles.savingIndicator} data-status={savingStatus}>
-              {savingStatus === 'saving' && 'Salvando...'}
-              {savingStatus === 'saved' && 'Salvo'}
-              {savingStatus === 'error' && 'Erro ao salvar'}
+            <span
+              className={styles.savingIndicator}
+              data-status={savingStatus}
+              role="status"
+              aria-live="polite"
+            >
+              {SAVING_STATUS_LABELS[savingStatus]}
+              {savingStatus === 'error' && (
+                <button
+                  type="button"
+                  className={styles.retryButton}
+                  onClick={saveNow}
+                >
+                  Tentar novamente
+                </button>
+              )}
             </span>
           )}
           <SheetActionsMenu
@@ -469,6 +533,15 @@ export function CharacterSheetPage() {
         </div>
       </div>
 
+      <SheetNotices
+        localBackupError={localBackupError}
+        recoveredDraftAt={recoveredDraftAt}
+        remoteChangedElsewhere={remoteChangedElsewhere}
+        onSaveNow={saveNow}
+        onDismissRecovery={dismissRecovery}
+        onDismissRemoteChange={dismissRemoteChange}
+      />
+
       <CharacterHeader
         character={currentSheet.character}
         isEditMode={currentSheet.isEditMode}
@@ -479,34 +552,28 @@ export function CharacterSheetPage() {
         groups={groups}
         groupId={currentSheet.groupId ?? ''}
         onGroupChange={handleGroupChange}
-        onManage={() => setShowGroupManager(true)}
+        onManage={handleOpenGroupManager}
         isLoadingGroups={isLoadingGroups}
       />
 
       <div ref={tabBarRef} className={styles.tabBarShell}>
-        <nav
+        <SheetTabs
+          tabs={TABS}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          tabButtonIds={TAB_BUTTON_IDS}
+          tabPanelIds={TAB_PANEL_IDS}
+          ariaLabel="Seções da ficha"
           className={styles.tabBar}
-          aria-label="Seções da ficha"
-          role="tablist"
-        >
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              id={TAB_BUTTON_IDS[tab]}
-              type="button"
-              role="tab"
-              aria-selected={tab === activeTab}
-              aria-controls={TAB_PANEL_IDS[tab]}
-              className={tab === activeTab ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-              onClick={() => handleTabChange(tab)}
-            >
-              {tab}
-            </button>
-          ))}
-        </nav>
+          tabClassName={styles.tab}
+          activeTabClassName={styles.tabActive}
+        />
       </div>
 
-      <CharacterCombatSummary sheet={currentSheet} onUpdate={handleUpdate} />
+      <CharacterCombatSummary
+        character={currentSheet.character}
+        onChangeCharacter={handleCharacterChange}
+      />
 
       <div
         id={TAB_PANEL_IDS[activeTab]}

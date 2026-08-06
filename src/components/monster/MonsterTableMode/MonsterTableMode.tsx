@@ -4,7 +4,8 @@ import type { DeepPartial } from '../shared'
 import { getRechargeLabel } from '../shared'
 import { isRestBasedRecharge } from '../../../utils/restRules'
 import { spendResource, restoreResource, restoreResourceFull } from '../../../utils/manageableResource'
-import { rollDamages, formatRollLine, type DamageRollSummary } from '../../../utils/diceRoller'
+import { rollDamages, type DamageRollSummary } from '../../../utils/diceRoller'
+import { RollResultBlock } from '../../RollResultBlock/RollResultBlock'
 import { ManagedResourceControls } from '../../ManagedResourceControls/ManagedResourceControls'
 import panelStyles from '../../../styles/panel.module.css'
 import styles from './MonsterTableMode.module.css'
@@ -69,6 +70,15 @@ export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
 
   function handleRollDamage(id: string, damages: DamagePart[]) {
     setRollResults((prev) => new Map(prev).set(id, rollDamages(damages)))
+  }
+
+  function clearRollResult(id: string) {
+    setRollResults((prev) => {
+      if (!prev.has(id)) return prev
+      const next = new Map(prev)
+      next.delete(id)
+      return next
+    })
   }
 
   function updateFeature(index: number, patch: Partial<MonsterSheet['features'][number]>) {
@@ -251,12 +261,11 @@ export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
                             🎲 Rolar dano
                           </button>
                           {rollResults.has(id) && (
-                            <div className={styles.rollResult}>
-                              {rollResults.get(id)!.results.map((r, i) => (
-                                <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
-                              ))}
-                              <span className={styles.rollTotal}>Total: {rollResults.get(id)!.total}</span>
-                            </div>
+                            <RollResultBlock
+                              summary={rollResults.get(id)!}
+                              itemName={feature.name}
+                              onClear={() => clearRollResult(id)}
+                            />
                           )}
                         </div>
                       )}
@@ -359,12 +368,11 @@ export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
                               🎲 Rolar dano
                             </button>
                             {rollResults.has(id) && (
-                              <div className={styles.rollResult}>
-                                {rollResults.get(id)!.results.map((r, i) => (
-                                  <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
-                                ))}
-                                <span className={styles.rollTotal}>Total: {rollResults.get(id)!.total}</span>
-                              </div>
+                              <RollResultBlock
+                                summary={rollResults.get(id)!}
+                                itemName={action.name}
+                                onClear={() => clearRollResult(id)}
+                              />
                             )}
                           </div>
                         )}
@@ -435,12 +443,11 @@ export function MonsterTableMode({ sheet, onChange }: MonsterTableModeProps) {
                                 🎲 Rolar dano
                               </button>
                               {rollResults.has(id) && (
-                                <div className={styles.rollResult}>
-                                  {rollResults.get(id)!.results.map((r, i) => (
-                                    <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
-                                  ))}
-                                  <span className={styles.rollTotal}>Total: {rollResults.get(id)!.total}</span>
-                                </div>
+                                <RollResultBlock
+                                  summary={rollResults.get(id)!}
+                                  itemName={reaction.name}
+                                  onClear={() => clearRollResult(id)}
+                                />
                               )}
                             </div>
                           )}

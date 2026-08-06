@@ -1,0 +1,174 @@
+{
+  "analyzer_version": "1.0",
+  "project": {
+    "name": "tomo-do-aventureiro",
+    "root": ".",
+    "types": [
+      "web",
+      "software"
+    ],
+    "stack": [
+      "ESLint",
+      "Firebase",
+      "React",
+      "TypeScript",
+      "Vite",
+      "Vitest"
+    ],
+    "languages": [
+      {
+        "name": "TypeScript",
+        "files": 128
+      },
+      {
+        "name": "CSS",
+        "files": 57
+      },
+      {
+        "name": "Markdown",
+        "files": 20
+      },
+      {
+        "name": "JavaScript",
+        "files": 2
+      },
+      {
+        "name": "HTML",
+        "files": 1
+      }
+    ],
+    "monorepo": false,
+    "stage": "active"
+  },
+  "evidence": {
+    "file_count_scanned": 222,
+    "scan_truncated": false,
+    "top_level": [
+      ".agents",
+      ".claude",
+      "CLAUDE.md",
+      "README.md",
+      "design.md",
+      "documentação.MD",
+      "eslint.config.js",
+      "firebase.json",
+      "firestore.rules",
+      "index.html",
+      "package-lock.json",
+      "package.json",
+      "public",
+      "src",
+      "tomo-do-aventureiro.md",
+      "tsconfig.json",
+      "vercel.json",
+      "vite.config.js"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "instructions_and_docs": [
+      "CLAUDE.md",
+      "README.md",
+      "design.md"
+    ],
+    "infrastructure": [
+      "firebase.json",
+      "firestore.rules",
+      "vercel.json"
+    ],
+    "has_tests": true,
+    "has_ci": false,
+    "package_scripts": [
+      "build",
+      "dev",
+      "lint",
+      "preview",
+      "test",
+      "test:watch",
+      "typecheck"
+    ],
+    "sensitive_file_names_detected": [
+      ".env",
+      ".env.example",
+      ".env.local"
+    ]
+  },
+  "commands": {
+    "install": [
+      "npm ci"
+    ],
+    "test": [
+      "npm run test",
+      "npm run test:watch"
+    ],
+    "lint": [
+      "npm run lint"
+    ],
+    "typecheck": [
+      "npm run typecheck"
+    ],
+    "build": [
+      "npm run build"
+    ],
+    "format": [],
+    "other": []
+  },
+  "risk_signals": [
+    {
+      "signal": "missing-ci",
+      "evidence": "Nenhuma configuração comum de integração contínua foi detectada."
+    },
+    {
+      "signal": "managed-backend",
+      "evidence": "Dependência ou configuração de backend gerenciado detectada."
+    },
+    {
+      "signal": "access-rules",
+      "evidence": "Regras de acesso do backend detectadas."
+    },
+    {
+      "signal": "deployment-config",
+      "evidence": "Configuração de deploy detectada."
+    },
+    {
+      "signal": "sensitive-files",
+      "evidence": "Nomes de arquivos potencialmente sensíveis foram detectados e não foram lidos."
+    }
+  ],
+  "foundation": {
+    "stage": "active",
+    "required_sequence": [
+      "briefing",
+      "prd",
+      "spec",
+      "dag",
+      "implementation"
+    ],
+    "documents": {
+      "briefing": {
+        "path": "docs/briefing.md",
+        "status": "missing"
+      },
+      "prd": {
+        "path": "docs/prd.md",
+        "status": "missing"
+      },
+      "spec": {
+        "path": "docs/spec.md",
+        "status": "missing"
+      },
+      "dag": {
+        "path": "docs/execucao/dag.md",
+        "status": "missing"
+      }
+    },
+    "next_gate": "briefing",
+    "implementation_allowed": false
+  },
+  "selection_notes": [
+    "Confirmar comandos no projeto antes de executá-los.",
+    "Não ler arquivos sensíveis listados no perfil.",
+    "Selecionar loops somente quando houver evidência correspondente.",
+    "Respeitar Briefing, PRD, Spec e DAG aprovados antes da implementação."
+  ]
+}

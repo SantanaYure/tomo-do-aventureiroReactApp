@@ -1,5 +1,5 @@
 // src/components/SpellsPanel/SpellsPanel.tsx
-import { useState } from 'react'
+import { memo, useCallback, useRef, useState } from 'react'
 import type { Character, Spell, SpellSlots, SpellcastingAbility } from '../../types/system/dnd'
 import { ManagedResourceControls } from '../ManagedResourceControls/ManagedResourceControls'
 import { NumberInput } from '../NumberInput/NumberInput'
@@ -14,6 +14,11 @@ import styles from './SpellsPanel.module.css'
 import { calcModifier, calcProficiencyBonus } from '../AttributesPanel/AttributesPanel'
 
 const SPELL_LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+// Congelado no módulo: usado como fallback em vários pontos. Criar o objeto
+// no corpo do render daria uma identidade nova por render e invalidaria o
+// memo de todas as linhas de magia.
+const EMPTY_SLOT = { current: 0, max: 0 } as const
 const LEVEL_LABEL: Record<number, string> = {
   0: 'Truques',
   1: '1º nível', 2: '2º nível', 3: '3º nível',
@@ -77,7 +82,7 @@ interface SpellsPanelProps {
   onChangeSlotsData: (updated: SpellSlots) => void
 }
 
-export function SpellsPanel({
+function SpellsPanelImpl({
   spells,
   character,
   isEditMode,
@@ -114,30 +119,37 @@ export function SpellsPanel({
     })
   }
 
-  function setSpell(index: number, partial: Partial<Spell>) {
+  // Os handlers abaixo são props das linhas memoizadas, então precisam ser
+  // estáveis entre renders — um handler novo a cada render invalidaria o memo
+  // de todas as linhas. Leem `spells` de uma ref para não depender da
+  // identidade do array.
+  const spellsRef = useRef(spells)
+  spellsRef.current = spells
+
+  const setSpell = useCallback((index: number, partial: Partial<Spell>) => {
     onChangeSpells(
-      spells.map((spell, spellIndex) =>
+      spellsRef.current.map((spell, spellIndex) =>
         spellIndex === index ? { ...spell, ...partial } : spell,
       ),
     )
-  }
+  }, [onChangeSpells])
 
   function addSpell(level: number) {
     setMaterialDrafts({})
     onChangeSpells([...spells, { ...createSpell(), level }])
   }
 
-  function removeSpell(index: number) {
+  const removeSpell = useCallback((index: number) => {
     setMaterialDrafts({})
-    onChangeSpells(spells.filter((_, spellIndex) => spellIndex !== index))
-  }
+    onChangeSpells(spellsRef.current.filter((_, spellIndex) => spellIndex !== index))
+  }, [onChangeSpells])
 
-  function setMaterialDraft(index: number, value: string) {
+  const setMaterialDraft = useCallback((index: number, value: string) => {
     setMaterialDrafts((previous) => ({ ...previous, [index]: value }))
     setSpell(index, { components: parseMaterialComponents(value) })
-  }
+  }, [setSpell])
 
-  function clearMaterialDraft(index: number) {
+  const clearMaterialDraft = useCallback((index: number) => {
     setMaterialDrafts((previous) => {
       if (!(index in previous)) {
         return previous
@@ -147,23 +159,27 @@ export function SpellsPanel({
       delete next[index]
       return next
     })
-  }
+  }, [])
 
   function setSlot(level: number, field: 'current' | 'max', value: number) {
-    const prev = slotsData[level] ?? { current: 0, max: 0 }
+    const prev = slotsData[level] ?? EMPTY_SLOT
     const next = field === 'max'
       ? setResourceMax(prev, value)
       : setResourceCurrent(prev, value)
     onChangeSlotsData({ ...slotsData, [level]: next })
   }
 
-  function spendSlot(level: number) {
-    const next = spendResource(slotsData[level] ?? { current: 0, max: 0 })
-    onChangeSlotsData({ ...slotsData, [level]: next })
-  }
+  const slotsDataRef = useRef(slotsData)
+  slotsDataRef.current = slotsData
+
+  const spendSlot = useCallback((level: number) => {
+    const current = slotsDataRef.current
+    const next = spendResource(current[level] ?? EMPTY_SLOT)
+    onChangeSlotsData({ ...current, [level]: next })
+  }, [onChangeSlotsData])
 
   function restoreSlot(level: number) {
-    const next = restoreResource(slotsData[level] ?? { current: 0, max: 0 })
+    const next = restoreResource(slotsData[level] ?? EMPTY_SLOT)
     onChangeSlotsData({ ...slotsData, [level]: next })
   }
 
@@ -240,7 +256,7 @@ export function SpellsPanel({
       )}
 
       {usedLevels.map((level) => {
-        const slots = slotsData[level] ?? { current: 0, max: 0 }
+        const slots = slotsData[level] ?? EMPTY_SLOT
         const levelSpells = spellsByLevel[level]
         const expanded = expandedLevels.has(level)
 
@@ -287,17 +303,88 @@ export function SpellsPanel({
                 {levelSpells.map((spell) => {
                   const globalIndex = spells.indexOf(spell)
                   return (
-                    <div key={globalIndex} className={styles.spellRow}>
+                    <SpellRow
+                      key={globalIndex}
+                      spell={spell}
+                      globalIndex={globalIndex}
+                      level={level}
+                      isEditMode={isEditMode}
+                      slots={slots}
+                      materialDraft={materialDrafts[globalIndex]}
+                      onChangeSpell={setSpell}
+                      onRemoveSpell={removeSpell}
+                      onChangeMaterialDraft={setMaterialDraft}
+                      onClearMaterialDraft={clearMaterialDraft}
+                      onSpendSlot={spendSlot}
+                    />
+                  )
+                })}
+                {isEditMode && (
+                  <button className={panelStyles.addButton} onClick={() => addSpell(level)}>+ Magia</button>
+                )}
+                {levelSpells.length === 0 && !isEditMode && (
+                  <p className={panelStyles.emptyState}>Nenhuma magia.</p>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </section>
+  )
+}
+
+interface SpellRowProps {
+  spell: Spell
+  globalIndex: number
+  level: number
+  isEditMode: boolean
+  slots: { current: number; max: number }
+  materialDraft: string | undefined
+  onChangeSpell: (index: number, partial: Partial<Spell>) => void
+  onRemoveSpell: (index: number) => void
+  onChangeMaterialDraft: (index: number, value: string) => void
+  onClearMaterialDraft: (index: number) => void
+  onSpendSlot: (level: number) => void
+}
+
+// Cada magia é memoizada: sem isso, digitar em uma magia re-renderiza todas as
+// do nível — medido em 12 renders para uma tecla numa lista de 12.
+const SpellRow = memo(function SpellRow({
+  spell,
+  globalIndex,
+  level,
+  isEditMode,
+  slots,
+  materialDraft,
+  onChangeSpell,
+  onRemoveSpell,
+  onChangeMaterialDraft,
+  onClearMaterialDraft,
+  onSpendSlot,
+}: SpellRowProps) {
+  const setSpell = onChangeSpell
+  const removeSpell = onRemoveSpell
+  const setMaterialDraft = onChangeMaterialDraft
+  const clearMaterialDraft = onClearMaterialDraft
+  const spendSlot = onSpendSlot
+  const materialDrafts: Record<number, string | undefined> = { [globalIndex]: materialDraft }
+
+  return (
+                    <div className={styles.spellRow}>
                       {isEditMode ? (
                         <>
                           {/* Linha 1: preparada + nome + remover */}
                           <div className={styles.spellEditRow}>
-                            <span
+                            <button
+                              type="button"
                               className={styles.spellPrepared}
+                              aria-pressed={Boolean(spell.prepared)}
+                              aria-label={`Preparada: ${spell.name || 'magia sem nome'}`}
                               onClick={() => setSpell(globalIndex, { prepared: !spell.prepared })}
                             >
                               {spell.prepared ? '★' : '☆'}
-                            </span>
+                            </button>
                             <input
                               className={styles.spellNameInput}
                               type="text"
@@ -373,9 +460,15 @@ export function SpellsPanel({
                         </>
                       ) : (
                         <>
-                          <span className={styles.spellPrepared} onClick={() => setSpell(globalIndex, { prepared: !spell.prepared })}>
+                          <button
+                            type="button"
+                            className={styles.spellPrepared}
+                            aria-pressed={Boolean(spell.prepared)}
+                            aria-label={`Preparada: ${spell.name || 'magia sem nome'}`}
+                            onClick={() => setSpell(globalIndex, { prepared: !spell.prepared })}
+                          >
                             {spell.prepared ? '★' : '☆'}
-                          </span>
+                          </button>
                           <span className={styles.spellConc}>{spell.concentration ? 'C' : ''}</span>
                           <span className={styles.spellName}>{spell.name || '—'}</span>
                           {spell.school && <span className={styles.spellSchool}>{spell.school}</span>}
@@ -401,19 +494,10 @@ export function SpellsPanel({
                         </>
                       )}
                     </div>
-                  )
-                })}
-                {isEditMode && (
-                  <button className={panelStyles.addButton} onClick={() => addSpell(level)}>+ Magia</button>
-                )}
-                {levelSpells.length === 0 && !isEditMode && (
-                  <p className={panelStyles.emptyState}>Nenhuma magia.</p>
-                )}
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </section>
   )
-}
+})
+
+// Memoizado: os painéis recebem props estreitas e handlers estáveis da
+// página, então a comparação rasa aborta o render quando a edição foi em
+// outra parte da ficha.
+export const SpellsPanel = memo(SpellsPanelImpl)

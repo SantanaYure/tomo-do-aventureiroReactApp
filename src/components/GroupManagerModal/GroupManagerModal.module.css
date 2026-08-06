@@ -56,7 +56,13 @@
   background: rgba(255, 255, 255, 0.5);
   color: var(--ink-muted);
   cursor: pointer;
-  transition: all var(--transition);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
 }
 
 .closeBtn:hover {
@@ -81,7 +87,6 @@
   font-family: var(--font-body);
   font-size: var(--text-base);
   color: var(--ink);
-  outline: none;
 }
 
 .input:focus {
@@ -99,7 +104,13 @@
   color: rgba(255, 245, 220, 0.96);
   letter-spacing: 0.04em;
   cursor: pointer;
-  transition: all var(--transition);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
 }
 
 .primaryBtn:hover:not(:disabled) {
@@ -120,7 +131,13 @@
   font-size: var(--text-xs);
   letter-spacing: 0.03em;
   cursor: pointer;
-  transition: all var(--transition);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
   border: 1px solid var(--border);
   background: var(--parchment-light);
   color: var(--ink-muted);

@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { KeyboardEvent } from 'react'
 import type { AttributeName, Character, SkillName } from '../../types/system/dnd'
 import { NumberInput } from '../NumberInput/NumberInput'
@@ -108,7 +109,7 @@ interface SkillsPanelProps {
 	onChangeCharacter: (updated: Character) => void
 }
 
-export function SkillsPanel({
+function SkillsPanelImpl({
 	character,
 	isEditMode,
 	onChangeCharacter,
@@ -268,3 +269,8 @@ export function SkillsPanel({
 		</section>
 	)
 }
+
+// Memoizado: os painéis recebem props estreitas e handlers estáveis da
+// página, então a comparação rasa aborta o render quando a edição foi em
+// outra parte da ficha.
+export const SkillsPanel = memo(SkillsPanelImpl)

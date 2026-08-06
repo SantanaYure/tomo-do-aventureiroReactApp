@@ -1,11 +1,15 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import type { MonsterSheet } from '../../../types/system/dnd/monsterSheet'
 import type { DeepPartial } from '../shared'
 import panelStyles from '../../../styles/panel.module.css'
 import styles from './MonsterCombatSummary.module.css'
 
 interface MonsterCombatSummaryProps {
-  sheet: MonsterSheet
+  // Recebe apenas as fatias que usa, não a ficha inteira: o resumo fica montado
+  // em todas as abas, e depender da ficha o faria re-renderizar a cada tecla
+  // digitada em qualquer painel.
+  stats: MonsterSheet['stats']
+  traits: MonsterSheet['traits']
   onChange: (patch: DeepPartial<MonsterSheet>) => void
 }
 
@@ -13,8 +17,11 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Math.trunc(value)))
 }
 
-export function MonsterCombatSummary({ sheet, onChange }: MonsterCombatSummaryProps) {
-  const { stats, traits } = sheet
+export const MonsterCombatSummary = memo(function MonsterCombatSummary({
+  stats,
+  traits,
+  onChange,
+}: MonsterCombatSummaryProps) {
   const [actionValue, setActionValue] = useState('')
   const effectiveHpMax = Math.max(0, Math.trunc(stats.maxHp))
   const displayedCurrentHp = clamp(stats.hpCurrent, 0, effectiveHpMax)
@@ -111,4 +118,4 @@ export function MonsterCombatSummary({ sheet, onChange }: MonsterCombatSummaryPr
       )}
     </section>
   )
-}
+})

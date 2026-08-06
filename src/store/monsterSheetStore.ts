@@ -640,22 +640,70 @@ export async function createMonsterSheet(uid: string): Promise<StoredMonsterShee
     return { id: ref.id, ...payload }
 }
 
+/**
+ * Persiste a ficha de monstro/NPC.
+ *
+ * `knownCreatedAt` evita o `getDoc` extra antes de cada escrita (a página já tem
+ * o valor vindo do `onSnapshot`). O fallback de leitura permanece para chamadas
+ * que não têm esse contexto.
+ *
+ * Devolve o `updatedAt` gravado, usado pelo autosave para reancorar o rascunho
+ * local na escrita que acabou de ser confirmada.
+ */
 export async function saveMonsterSheet(
     uid: string,
     id: string,
     data: MonsterSheet,
-): Promise<void> {
+    knownCreatedAt?: string,
+    knownUpdatedAt?: string,
+): Promise<string> {
     const normalizedId = normalizeId(id)
     const docRef = getDocRef(uid, normalizedId)
-    const existing = await getDoc(docRef)
-    const createdAt =
-        existing.exists()
-            ? (existing.data().createdAt as string | undefined) ?? new Date().toISOString()
+    // O `updatedAt` pode ser fornecido por quem chama para que o valor seja
+    // conhecido ANTES de a escrita sair (o autosave usa isso como âncora do
+    // rascunho local, já que o ack pode nunca chegar).
+    const timestamp =
+        typeof knownUpdatedAt === 'string' && knownUpdatedAt.trim().length > 0
+            ? knownUpdatedAt
             : new Date().toISOString()
 
+    const createdAt =
+        typeof knownCreatedAt === 'string' && knownCreatedAt.trim().length > 0
+            ? knownCreatedAt
+            : (await readStoredCreatedAt(docRef)) ?? timestamp
+
     await setDoc(docRef, {
-        ...createMonsterSheetPayload(data, new Date().toISOString(), createdAt, normalizedId),
+        ...createMonsterSheetPayload(data, timestamp, createdAt, normalizedId),
     })
+
+    return timestamp
+}
+
+/**
+ * Valida e normaliza uma ficha de monstro/NPC vinda de fonte NÃO confiável
+ * (rascunho local em localStorage, arquivo importado). Devolve `null` quando o
+ * conteúdo não é utilizável — nunca lança e nunca devolve algo fora de forma.
+ */
+export function parseUntrustedMonsterSheet(raw: unknown): MonsterSheet | null {
+    if (!isValidMonsterSheetPayload(raw)) return null
+    try {
+        return normalizeMonsterSheet(raw)
+    } catch {
+        return null
+    }
+}
+
+async function readStoredCreatedAt(
+    docRef: ReturnType<typeof getDocRef>,
+): Promise<string | undefined> {
+    try {
+        const existing = await getDoc(docRef)
+        if (!existing.exists()) return undefined
+        const value = existing.data().createdAt
+        return typeof value === 'string' ? value : undefined
+    } catch {
+        return undefined
+    }
 }
 
 export async function deleteMonsterSheet(uid: string, id: string): Promise<void> {

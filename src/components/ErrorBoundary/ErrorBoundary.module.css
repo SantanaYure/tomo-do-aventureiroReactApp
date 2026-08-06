@@ -1,0 +1,87 @@
+.container {
+  max-width: 40rem;
+  margin: var(--space-12) auto;
+  padding: var(--space-6);
+  border: 1px solid var(--border-light);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--parchment-light);
+  text-align: center;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  color: var(--ink);
+  margin-bottom: var(--space-3);
+}
+
+.message {
+  color: var(--ink-muted);
+  margin-bottom: var(--space-5);
+  line-height: 1.6;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+}
+
+.button {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--parchment-light);
+  cursor: pointer;
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition);
+}
+
+.button:hover {
+  background: var(--accent-light);
+  border-color: var(--accent-light);
+}
+
+.buttonSecondary {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--border-light);
+}
+
+.buttonSecondary:hover {
+  background: var(--parchment);
+  border-color: var(--accent);
+}
+
+/* Detalhe técnico fica recolhido: útil para relatar, ruído para quem só quer voltar. */
+.details {
+  margin-top: var(--space-5);
+  text-align: left;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.summary {
+  cursor: pointer;
+  font-family: var(--font-display);
+}
+
+.stack {
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--parchment);
+  font-family: monospace;
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 12rem;
+  overflow: auto;
+}

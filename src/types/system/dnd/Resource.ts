@@ -15,6 +15,15 @@ export type ResourceOrigin =
   | 'homebrew'
 
 export interface Resource {
+  /**
+   * Identificador estável da habilidade dentro da ficha.
+   *
+   * Opcional porque documentos antigos do Firestore não têm o campo —
+   * `normalizeResource` preenche um id determinístico por posição para eles.
+   * Serve para chavear estado de UI (resultado de rolagem, card expandido) sem
+   * depender do índice do array, que muda ao remover ou reordenar itens.
+   */
+  id?: string
   name?: string
   description?: string
   duration?: string

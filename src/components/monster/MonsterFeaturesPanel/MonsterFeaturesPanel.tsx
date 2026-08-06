@@ -16,7 +16,8 @@ import {
     RECHARGE_OPTIONS,
 } from '../shared'
 import { isRestBasedRecharge } from '../../../utils/restRules'
-import { rollDamages, formatRollLine, type DamageRollSummary } from '../../../utils/diceRoller'
+import { rollDamages, type DamageRollSummary } from '../../../utils/diceRoller'
+import { RollResultBlock } from '../../RollResultBlock/RollResultBlock'
 import { useDragReorder } from '../useDragReorder'
 import { ReorderControls, reorderCardClass } from '../ReorderControls/ReorderControls'
 import styles from './MonsterFeaturesPanel.module.css'
@@ -50,6 +51,15 @@ export function MonsterFeaturesPanel({
 
     function handleRollDamage(featureId: string, damages: DamagePart[]) {
         setRollResults((previous) => new Map(previous).set(featureId, rollDamages(damages)))
+    }
+
+    function clearRollResult(featureId: string) {
+        setRollResults((previous) => {
+            if (!previous.has(featureId)) return previous
+            const next = new Map(previous)
+            next.delete(featureId)
+            return next
+        })
     }
 
     function toggleCollapse(id: string) {
@@ -407,12 +417,11 @@ export function MonsterFeaturesPanel({
                                                     🎲 Rolar dano
                                                 </button>
                                                 {rollResults.has(featureId) && (
-                                                    <div className={styles.rollResult}>
-                                                        {rollResults.get(featureId)!.results.map((r, i) => (
-                                                            <span key={i} className={styles.rollLine}>{formatRollLine(r)}</span>
-                                                        ))}
-                                                        <span className={styles.rollTotal}>Total: {rollResults.get(featureId)!.total}</span>
-                                                    </div>
+                                                    <RollResultBlock
+                                                        summary={rollResults.get(featureId)!}
+                                                        itemName={feature.name}
+                                                        onClear={() => clearRollResult(featureId)}
+                                                    />
                                                 )}
                                             </div>
                                         )}

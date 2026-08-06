@@ -21,9 +21,10 @@ O projeto está em produção, implantado via Vercel. Não há backend customiza
 | Crop de avatar | react-easy-crop |
 | Estilo | CSS Modules + variáveis CSS globais (theme.css) |
 | Linting | ESLint 9 (flat config) |
+| Testes | Vitest 3 + Testing Library + jsdom |
 | Deploy | Vercel |
 
-Não há framework de testes instalado (sem Jest, Vitest, Cypress, etc.).
+Há testes automatizados de componentes, hooks, stores e invariantes de UI. Como o jsdom não executa layout real, media queries nem a integração autenticada com o Firebase, essas áreas ainda exigem validação manual no navegador.
 
 ---
 
@@ -242,16 +243,16 @@ npm run preview
 
 # Linting (apenas .js e .jsx — ver observações)
 npm run lint
+
+# Testes automatizados (execução única ou modo watch)
+npm run test
+npm run test:watch
+
+# Verificação de tipos TypeScript
+npm run typecheck
 ```
 
-**Não existe** script para:
-- Verificação de tipos TypeScript (`tsc --noEmit`) — precisa rodar manualmente se necessário
-- Testes automatizados — não há framework de testes instalado
-
-Para verificar tipos manualmente:
-```bash
-npx tsc --noEmit
-```
+Não há CI nem suíte E2E configurados. Os comandos de teste, typecheck, lint e build precisam ser executados localmente antes da integração; fluxos que dependem de layout real ou Firebase devem ser conferidos no navegador.
 
 ---
 
@@ -336,7 +337,8 @@ Não remover essas pastas sem confirmar com o dono do projeto — podem represen
 - [ ] Se alterou um tipo em `src/types/`, verificou se as funções `normalize*` nos stores precisam ser atualizadas?
 - [ ] Se adicionou campo ao modelo de dados, adicionou valor padrão em `defaultCharacterSheet.ts` ou `createDefaultMonsterSheet()`?
 - [ ] Se alterou lógica de salvamento, confirmou que o campo `name_lower` ainda é gerado corretamente?
-- [ ] Rodou `npx tsc --noEmit` para verificar erros de tipo?
+- [ ] Adicionou ou atualizou testes para o comportamento alterado?
+- [ ] Rodou `npm run test` e `npm run typecheck`?
 - [ ] Nenhuma chave Firebase ou secret foi incluída no código?
 - [ ] Estilos usam variáveis CSS de `theme.css` em vez de valores hardcoded?
 
@@ -347,8 +349,8 @@ Não remover essas pastas sem confirmar com o dono do projeto — podem represen
 - O arquivo `documentação.MD` na raiz é um **documento legado**: foi mantido como registro histórico mas pode conter informações desatualizadas sobre a arquitetura anterior (ex: sistema sem Firebase). Usar `CLAUDE.md` como referência autoritativa.
 - **Nomenclatura UI — "PJ" vs "personagem"**: na interface visual (labels, botões, títulos, mensagens) o tipo de ficha de jogador é chamado de **PJ**. Internamente (tipos TypeScript, coleções Firestore, rotas, nomes de função) o termo `character`/`characterSheet` permanece inalterado. Nunca exibir "Personagem" em labels visíveis ao usuário para se referir a fichas de PJ.
 - **`SpellsPanel` — espaços de magia**: tanto `onSpend` quanto `onRestore` devem ser passados ao `ManagedResourceControls` dos níveis de magia. Sem `onRestore`, os dots vazios ficam permanentemente desabilitados (bug corrigido).
-- O ESLint está configurado apenas para `.js/.jsx`. Para verificar `.ts/.tsx`, usar `npx tsc --noEmit`.
-- Não há testes automatizados. Toda verificação é manual no browser.
+- O ESLint está configurado apenas para `.js/.jsx`. Para verificar `.ts/.tsx`, usar `npm run typecheck`; os testes rodam com `npm run test`.
+- Vitest usa jsdom. Testes de layout real, media queries e integração autenticada com Firebase continuam manuais no navegador.
 - O projeto usa `"type": "module"` no `package.json` — todos os arquivos são ESM por padrão.
 - Há um `.venv` Python na raiz — provavelmente residual de alguma ferramenta auxiliar; não faz parte do projeto frontend.
 - O deploy no Vercel usa SPA fallback: todas as rotas desconhecidas retornam `index.html`. Isso está configurado em `vercel.json`.

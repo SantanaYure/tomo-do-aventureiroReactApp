@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../services/firebase'
+import { resolveSheetTimestamps } from './resolveSheetTimestamps'
 import {
   normalizeCharacterSheet,
   type StoredCharacterSheet,
@@ -45,8 +46,7 @@ export function useCharacterSheet(
           setSheet({
             id: docSnap.id,
             data: normalizeCharacterSheet(raw.data ?? {}),
-            createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
-            updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
+            ...resolveSheetTimestamps(raw.createdAt, raw.updatedAt),
           })
           setNotFound(false)
         }

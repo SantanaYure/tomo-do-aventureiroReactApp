@@ -1,0 +1,16 @@
+/*
+ * Fallback das rotas carregadas sob demanda.
+ *
+ * Deliberadamente igual ao estado de carregamento que as páginas de ficha já
+ * exibiam enquanto buscavam os dados no Firestore: assim o carregamento do
+ * pedaço de código não introduz uma tela nova, ele se confunde com a espera
+ * que já existia. Sem spinner e sem animação, para não piscar em conexão
+ * rápida, quando o pedaço chega em poucos milissegundos.
+ */
+.fallback {
+  text-align: center;
+  padding: var(--space-12);
+  font-style: italic;
+  color: var(--ink-muted);
+  font-size: var(--text-lg);
+}

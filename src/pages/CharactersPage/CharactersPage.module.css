@@ -49,7 +49,13 @@
   color: rgba(255, 245, 220, 0.96);
   letter-spacing: 0.06em;
   cursor: pointer;
-  transition: all var(--transition);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
 }
 
 .createPrimary:hover:not(:disabled) {
@@ -76,7 +82,13 @@
   color: var(--ink);
   letter-spacing: 0.04em;
   cursor: pointer;
-  transition: all var(--transition);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
 }
 
 .createSecondary:hover:not(:disabled) {
@@ -103,7 +115,13 @@
   letter-spacing: 0.04em;
   color: var(--ink-muted);
   cursor: pointer;
-  transition: all var(--transition);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
   white-space: nowrap;
 }
 
@@ -150,7 +168,6 @@
   font-family: var(--font-body);
   font-size: var(--text-base);
   color: var(--ink);
-  outline: none;
   transition: border-color var(--transition);
 }
 
@@ -220,7 +237,6 @@
   line-height: 1.2;
   color: var(--ink);
   cursor: pointer;
-  outline: none;
   transition: border-color var(--transition), background var(--transition);
   appearance: auto;
 }
@@ -549,7 +565,13 @@
   font-weight: 700;
   color: var(--accent);
   cursor: pointer;
-  transition: all var(--transition);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
   white-space: nowrap;
 }
 
