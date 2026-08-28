@@ -14,6 +14,18 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/*
+ * Rede de segurança contra rolagem horizontal no mobile: um único filho
+ * teimoso (tabela larga, palavra sem quebra, grid que não encolhe) não deve
+ * arrastar a viewport inteira. `clip` — e não `hidden` — porque não cria um
+ * contêiner de rolagem: `position: sticky` (barra de abas) continua preso à
+ * viewport e a rolagem vertical da página fica intacta. As correções
+ * estruturais nos grids (minmax(0, 1fr)) evitam que algo seja de fato cortado.
+ */
+#root {
+  overflow-x: clip;
+}
+
 body {
   font-family: var(--font-body);
   font-size: var(--text-base);

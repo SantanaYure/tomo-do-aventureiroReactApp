@@ -312,6 +312,7 @@
  */
 .combatSummary {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   margin-bottom: var(--space-4);
 }
@@ -319,6 +320,9 @@
 /* Conteúdo */
 .tabContent {
   display: grid;
+  /* minmax(0, 1fr): permite que painéis com conteúdo largo encolham em vez de
+     empurrar a página para além da viewport no celular. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
 }
 

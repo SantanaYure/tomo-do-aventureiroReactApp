@@ -95,6 +95,36 @@ describe('responsividade', () => {
     )
   })
 
+  it('não deixa rolagem horizontal na viewport do celular', () => {
+    // Um filho teimoso (tabela larga, palavra sem quebra) não pode arrastar a
+    // página inteira. Duas camadas: rede de segurança em #root e grids de
+    // empilhamento vertical que encolhem abaixo do min-content.
+    const semComentarios = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, '')
+
+    const rootBloco = semComentarios(indexCss).match(/#root\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(rootBloco).toMatch(/overflow-x:\s*clip/)
+
+    const painelCss = semComentarios(
+      readFileSync(join(SRC, 'styles', 'panel.module.css'), 'utf8'),
+    )
+    const painelBloco = painelCss.slice(painelCss.indexOf('.panel {'))
+    expect(painelBloco.slice(0, painelBloco.indexOf('}'))).toMatch(
+      /grid-template-columns:\s*minmax\(0,\s*1fr\)/,
+    )
+
+    for (const pagina of ['CharacterSheetPage', 'MonsterSheetPage']) {
+      const css = semComentarios(
+        readFileSync(join(SRC, 'pages', pagina, `${pagina}.module.css`), 'utf8'),
+      )
+      for (const seletor of ['.tabContent', '.combatSummary']) {
+        const bloco = css.slice(css.indexOf(seletor))
+        expect(bloco.slice(0, bloco.indexOf('}')), `${pagina}: ${seletor}`).toMatch(
+          /grid-template-columns:\s*minmax\(0,\s*1fr\)/,
+        )
+      }
+    }
+  })
+
   it('preserva nomes acessíveis nos controles compactos de remoção', () => {
     expect(monsterActionsTsx).toContain(
       'aria-label={`Remover ação ${action.name.trim() || index + 1}`}',

@@ -1,6 +1,13 @@
 .panel {
   position: relative;
   display: grid;
+  /*
+   * minmax(0, 1fr) em vez da trilha `auto` implícita: a coluna pode encolher
+   * abaixo do min-content do conteúdo. Sem isto, uma tabela ou palavra longa
+   * dentro do painel força o painel — e a página — a ficar mais largo que a
+   * viewport no celular.
+   */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   padding: var(--space-5);
   text-align: left;
@@ -97,6 +104,7 @@
 
 .tableWrap {
   overflow-x: auto;
+  min-width: 0;
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-lg);
   background: var(--item-bg);
