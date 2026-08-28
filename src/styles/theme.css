@@ -56,6 +56,8 @@
   /* ── Tipografia ── */
   --font-display: 'Cinzel', 'Palatino Linotype', Georgia, serif;
   --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Serifa "de tomo" — corpo do modo pergaminho; disponível nos três temas. */
+  --font-serif: 'Crimson Text', 'Palatino Linotype', Georgia, serif;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -183,7 +185,7 @@
 
   --blur-panel: none;
 
-  --font-body: 'Crimson Text', 'Palatino Linotype', Georgia, serif;
+  --font-body: var(--font-serif);
 
   --radius-sm: 5px;
   --radius: 4px;

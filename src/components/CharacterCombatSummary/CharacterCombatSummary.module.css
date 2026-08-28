@@ -123,6 +123,29 @@
   background-color: var(--temp-hover);
 }
 
+/* Tema escuro: os sólidos sépia destoam da paleta fria do glass escuro.
+   Aqui os botões de HP seguem a lógica dos demais botões neutros do tema
+   (borda --panel-border, fundo --item-bg, texto --text-muted), sem cor.
+   A distinção Dano/Cura/Temp fica só no rótulo. A barra de HP continua
+   usando os tokens --*-solid para sinalizar a razão de vida. */
+:global(:root[data-theme='dark']) .btnDamage,
+:global(:root[data-theme='dark']) .btnHeal,
+:global(:root[data-theme='dark']) .btnTemp {
+  border-color: var(--panel-border);
+  background-color: var(--item-bg);
+  background-image: none;
+  box-shadow: none;
+  color: var(--text-muted);
+}
+
+:global(:root[data-theme='dark']) .btnDamage:hover:not(:disabled),
+:global(:root[data-theme='dark']) .btnHeal:hover:not(:disabled),
+:global(:root[data-theme='dark']) .btnTemp:hover:not(:disabled) {
+  background-color: var(--chip-bg);
+  box-shadow: none;
+  color: var(--text);
+}
+
 .sectionTitle {
   font-family: var(--font-display);
   font-size: var(--text-xs);

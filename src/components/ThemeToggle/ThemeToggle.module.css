@@ -4,7 +4,8 @@
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-btn);
-  font-family: var(--font-body);
+  /* Serifa de tomo em todos os temas — a mesma fonte do modo pergaminho. */
+  font-family: var(--font-serif);
   font-size: var(--text-sm);
   font-weight: 600;
   background: var(--item-bg);
@@ -16,4 +17,11 @@
 
 .toggle:hover:not(:disabled) {
   background: var(--chip-bg);
+}
+
+/* Glifo monocromático — herda a fonte e a cor do texto (nada de emoji). */
+.icon {
+  font-family: inherit;
+  font-size: 1.15em;
+  line-height: 1;
 }

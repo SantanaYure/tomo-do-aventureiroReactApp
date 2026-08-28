@@ -494,11 +494,13 @@ export function MonsterSheetPage() {
         </span>
       </div>
 
-      <MonsterCombatSummary
-        stats={currentSheet.stats}
-        traits={currentSheet.traits}
-        onChange={handleSheetChange}
-      />
+      <div className={styles.combatSummary}>
+        <MonsterCombatSummary
+          stats={currentSheet.stats}
+          traits={currentSheet.traits}
+          onChange={handleSheetChange}
+        />
+      </div>
 
       <div
         id={TAB_PANEL_IDS[activeTab]}

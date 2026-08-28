@@ -570,10 +570,12 @@ export function CharacterSheetPage() {
         />
       </div>
 
-      <CharacterCombatSummary
-        character={currentSheet.character}
-        onChangeCharacter={handleCharacterChange}
-      />
+      <div className={styles.combatSummary}>
+        <CharacterCombatSummary
+          character={currentSheet.character}
+          onChangeCharacter={handleCharacterChange}
+        />
+      </div>
 
       <div
         id={TAB_PANEL_IDS[activeTab]}

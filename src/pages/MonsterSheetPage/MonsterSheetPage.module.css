@@ -253,17 +253,15 @@
     color: var(--text-muted);
     background: transparent;
     border: none;
-    border-bottom: 2px solid transparent;
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: color var(--transition), border-color var(--transition), background var(--transition);
+    transition: color var(--transition), background var(--transition);
     white-space: nowrap;
 }
 
 .tab:hover:not(:disabled) {
     color: var(--text);
     background: var(--item-bg);
-    border-color: transparent;
 }
 
 .tab:focus-visible {
@@ -271,10 +269,11 @@
     outline-offset: -2px;
 }
 
+/* Aba ativa: só peso e preenchimento, sem borda/realce colorido. */
 .tabActive {
     color: var(--text);
-    border-bottom-color: var(--accent);
     background: var(--item-bg);
+    font-weight: 600;
 }
 
 .tabScrollHint {
@@ -290,6 +289,13 @@
     font-family: var(--font-display);
     font-size: 0.72rem;
     letter-spacing: 0.04em;
+}
+
+/* Resumo de combate persistente: mesmo ritmo vertical do resto da página. */
+.combatSummary {
+    display: grid;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
 }
 
 .tabContent {
@@ -319,6 +325,11 @@
     .tabContent {
         gap: var(--space-5);
     }
+
+    .combatSummary {
+        gap: var(--space-5);
+        margin-bottom: var(--space-5);
+    }
 }
 
 @media (min-width: 600px) {
@@ -344,6 +355,11 @@
         gap: var(--space-6);
     }
 
+    .combatSummary {
+        gap: var(--space-6);
+        margin-bottom: var(--space-6);
+    }
+
     .tabScrollHint {
         display: none;
     }
@@ -356,6 +372,11 @@
 
     .tabContent {
         gap: var(--space-8);
+    }
+
+    .combatSummary {
+        gap: var(--space-8);
+        margin-bottom: var(--space-8);
     }
 }
 

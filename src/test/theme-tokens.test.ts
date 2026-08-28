@@ -48,9 +48,13 @@ describe('tokens do tema', () => {
     }
   })
 
-  it('o modo pergaminho troca o corpo para Crimson Text e desliga o blur', () => {
+  it('define --font-serif (Crimson Text) disponível nos três temas', () => {
+    expect(css).toMatch(/--font-serif:\s*'Crimson Text'/)
+  })
+
+  it('o modo pergaminho troca o corpo para a serifa de tomo e desliga o blur', () => {
     const block = css.slice(css.indexOf("[data-theme='parchment']"))
-    expect(block).toMatch(/--font-body:\s*'Crimson Text'/)
+    expect(block).toMatch(/--font-body:\s*var\(--font-serif\)/)
     expect(block).toMatch(/--blur-panel:\s*none/)
   })
 
