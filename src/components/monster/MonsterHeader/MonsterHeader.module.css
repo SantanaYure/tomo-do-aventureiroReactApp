@@ -51,7 +51,7 @@
     width: 120px;
     height: 120px;
     font-size: var(--text-sm);
-    color: var(--ink-muted);
+    color: var(--text-muted);
     font-family: var(--font-display);
     background: var(--item-bg);
 }
@@ -90,7 +90,7 @@
 
 .meta {
     font-size: var(--text-lg);
-    color: var(--ink-muted);
+    color: var(--text-muted);
     font-style: italic;
 }
 
@@ -103,7 +103,7 @@
 
 .groupMeta {
     font-size: var(--text-sm);
-    color: var(--ink-faint);
+    color: var(--text-faint);
 }
 
 .sectionTitle {
@@ -112,12 +112,12 @@
     font-size: var(--text-base);
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: var(--ink-muted);
+    color: var(--text-muted);
 }
 
 .divider {
     height: 1px;
-    background: linear-gradient(90deg, transparent, var(--border-dark), transparent);
+    background: linear-gradient(90deg, transparent, var(--panel-border), transparent);
 }
 
 .bodyText,

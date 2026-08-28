@@ -120,7 +120,7 @@ input[type="number"] {
 
 label {
   font-size: var(--text-sm);
-  color: var(--ink-muted);
+  color: var(--text-muted);
   display: flex;
   flex-direction: column;
   gap: var(--space-1);

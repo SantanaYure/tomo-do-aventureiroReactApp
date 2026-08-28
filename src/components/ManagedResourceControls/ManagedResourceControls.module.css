@@ -8,7 +8,7 @@
 .counterText {
   font-family: var(--font-body);
   font-size: var(--text-xs);
-  color: var(--ink-muted);
+  color: var(--text-muted);
 }
 
 .restoreButton {

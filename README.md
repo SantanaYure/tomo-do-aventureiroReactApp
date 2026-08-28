@@ -2,7 +2,7 @@
 
 ## Visão geral
 
-**Tomo do Aventureiro** é uma aplicação web SPA para criação, edição e gerenciamento de fichas de personagem, monstros e NPCs inspirados no sistema D&D 5e (2024). A interface é inteiramente em português do Brasil e tem tema visual de pergaminho.
+**Tomo do Aventureiro** é uma aplicação web SPA para criação, edição e gerenciamento de fichas de personagem, monstros e NPCs inspirados no sistema D&D 5e (2024). A interface é inteiramente em português do Brasil e tem tema visual Glass Morphism com alternância clara/escura.
 
 Os dados são salvos por conta de usuário no Firebase Firestore. A autenticação é feita via Firebase Auth (e-mail/senha ou Google) e exige verificação de e-mail antes de conceder acesso à aplicação. Não há backend customizado: toda a lógica reside no frontend.
 
@@ -388,7 +388,7 @@ O Firestore é inicializado com `persistentLocalCache` e `persistentMultipleTabM
 | **Firebase Firestore** | Banco de dados por usuário com regras de segurança |
 | **Vercel** | Hospedagem e deploy contínuo |
 | **Cloudinary** | Hospedagem dos ícones/favicon do projeto (referenciados em `index.html` e `brandLogo.ts`) |
-| **Google Fonts** | Fontes `Cinzel` (display) e `Crimson Text` (corpo), carregadas via `@import` em `theme.css` |
+| **Google Fonts** | Fontes `Cinzel` (display) e `Inter` (corpo), carregadas via `@import` em `theme.css` |
 
 ---
 
@@ -406,8 +406,8 @@ O Firestore é inicializado com `persistentLocalCache` e `persistentMultipleTabM
 
 - CSS Modules para estilos locais por componente
 - Design tokens globais em `src/styles/theme.css` (prefixo `--`)
-- Paleta temática "pergaminho": `--parchment-*`, `--ink*`, `--accent*`
-- Fontes: `--font-display` (Cinzel) e `--font-body` (Crimson Text)
+- Paleta Glass Morphism (OKLCH): `--panel-*`, `--text*`, `--chip-*`, `--danger/heal/temp-solid`
+- Fontes: `--font-display` (Cinzel) e `--font-body` (Inter)
 - Não usar `styled-components`, Tailwind ou outras libs de estilo
 
 ### Gerenciamento de estado

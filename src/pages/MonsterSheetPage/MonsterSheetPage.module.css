@@ -31,14 +31,14 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    color: var(--ink-muted);
+    color: var(--text-muted);
     font-size: var(--text-sm);
     font-family: var(--font-display);
     letter-spacing: 0.03em;
     padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--panel-border);
     border-radius: 999px;
-    background: var(--parchment-light);
+    background: var(--panel-bg);
     transition:
     background-color var(--transition),
     border-color var(--transition),
@@ -76,7 +76,7 @@
 .dialogTitle {
     font-size: var(--text-base);
     font-weight: 700;
-    color: var(--ink);
+    color: var(--text);
     line-height: 1.5;
     margin: 0;
 }
@@ -132,12 +132,12 @@
     align-items: center;
     justify-content: center;
     padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--border);
+    border: 1px solid var(--panel-border);
     border-radius: 999px;
     background: linear-gradient(180deg, var(--item-bg), var(--chip-bg));
     font-family: var(--font-display);
     font-size: var(--text-sm);
-    color: var(--ink-muted);
+    color: var(--text-muted);
     cursor: pointer;
     transition:
     background-color var(--transition),
@@ -150,8 +150,8 @@
 }
 
 .cancelDeleteBtn:hover:not(:disabled) {
-    border-color: var(--border-dark);
-    color: var(--ink);
+    border-color: var(--panel-border);
+    color: var(--text);
 }
 
 .cancelDeleteBtn:focus-visible {
@@ -166,8 +166,8 @@
 
 .backLink:hover {
     color: var(--accent);
-    border-color: var(--border);
-    background: var(--parchment-dark);
+    border-color: var(--panel-border);
+    background: var(--chip-bg);
     text-decoration: none;
 }
 
@@ -184,9 +184,9 @@
     font-family: var(--font-display);
     font-size: var(--text-sm);
     letter-spacing: 0.03em;
-    color: var(--ink);
+    color: var(--text);
     background: var(--item-bg);
-    border: 1px solid var(--border-dark);
+    border: 1px solid var(--panel-border);
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition:
@@ -200,8 +200,8 @@
 }
 
 .restButton:hover {
-    background: var(--parchment-dark);
-    border-color: var(--border-dark);
+    background: var(--chip-bg);
+    border-color: var(--panel-border);
 }
 
 .restButton:focus-visible {
@@ -211,7 +211,7 @@
 
 .restFeedback {
     min-height: 1.4em;
-    color: var(--ink-muted);
+    color: var(--text-muted);
     font-size: var(--text-sm);
     font-style: italic;
     line-height: 1.4;
@@ -230,8 +230,8 @@
     overflow-x: auto;
     scrollbar-width: none;
     scroll-snap-type: x mandatory;
-    background: var(--parchment-dark);
-    border: 1px solid var(--border);
+    background: var(--chip-bg);
+    border: 1px solid var(--panel-border);
     border-radius: calc(var(--radius-sm) + 0.35rem);
     box-shadow: var(--shadow-card);
     gap: var(--space-1);
@@ -250,7 +250,7 @@
     font-family: var(--font-display);
     font-size: var(--text-sm);
     letter-spacing: 0.04em;
-    color: var(--ink-muted);
+    color: var(--text-muted);
     background: transparent;
     border: none;
     border-bottom: 2px solid transparent;
@@ -261,7 +261,7 @@
 }
 
 .tab:hover:not(:disabled) {
-    color: var(--ink);
+    color: var(--text);
     background: var(--item-bg);
     border-color: transparent;
 }
@@ -272,7 +272,7 @@
 }
 
 .tabActive {
-    color: var(--ink);
+    color: var(--text);
     border-bottom-color: var(--accent);
     background: var(--item-bg);
 }
@@ -283,10 +283,10 @@
     justify-content: center;
     margin-top: var(--space-2);
     padding: 0.2rem 0.7rem;
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--panel-border);
     border-radius: 999px;
     background: var(--item-bg);
-    color: var(--ink-muted);
+    color: var(--text-muted);
     font-family: var(--font-display);
     font-size: 0.72rem;
     letter-spacing: 0.04em;
@@ -302,7 +302,7 @@
     text-align: center;
     padding: var(--space-12);
     font-style: italic;
-    color: var(--ink-muted);
+    color: var(--text-muted);
     font-size: var(--text-lg);
 }
 
@@ -446,9 +446,9 @@
     letter-spacing: 0.04em;
     padding: var(--space-1) var(--space-3);
     border-radius: 999px;
-    border: 1px solid var(--border-light);
-    background: var(--parchment-light);
-    color: var(--ink-muted);
+    border: 1px solid var(--panel-border);
+    background: var(--panel-bg);
+    color: var(--text-muted);
     transition: color var(--transition), border-color var(--transition);
     white-space: nowrap;
 }
@@ -465,15 +465,15 @@
 
 .savingIndicator[data-status='error'] {
     color: var(--accent);
-    border-color: var(--accent-light);
-    background: var(--accent-faint);
+    border-color: var(--chip-violet-text);
+    background: var(--chip-violet-bg);
 }
 
 .retryButton {
     font-family: var(--font-display);
     font-size: var(--text-xs);
     padding: 0 var(--space-2);
-    border: 1px solid var(--accent-light);
+    border: 1px solid var(--chip-violet-text);
     border-radius: 999px;
     background: transparent;
     color: var(--accent);
@@ -491,10 +491,10 @@
     font-size: var(--text-xs);
     letter-spacing: 0.04em;
     padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--panel-border);
     border-radius: 999px;
-    background: var(--parchment-light);
-    color: var(--ink-muted);
+    background: var(--panel-bg);
+    color: var(--text-muted);
     cursor: pointer;
     white-space: nowrap;
     transition: color var(--transition), border-color var(--transition);

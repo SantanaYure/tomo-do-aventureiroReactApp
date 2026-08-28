@@ -40,7 +40,7 @@
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--ink-muted);
+  color: var(--text-muted);
   margin-bottom: var(--space-2);
 }
 
@@ -48,7 +48,7 @@
   font-family: var(--font-display);
   font-size: var(--text-2xl);
   font-weight: 700;
-  color: var(--ink);
+  color: var(--text);
   line-height: 1;
   margin-bottom: var(--space-1);
 }
@@ -67,8 +67,8 @@
   font-size: var(--text-base);
   color: var(--accent);
   font-weight: 600;
-  background: var(--parchment-light);
-  border: 1px solid var(--border-light);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
   border-radius: 50%;
   width: 2.25rem;
   height: 2.25rem;
@@ -90,7 +90,7 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-1) 0;
-  border-bottom: 1px solid var(--parchment-dark);
+  border-bottom: 1px solid var(--chip-bg);
 }
 
 .savingRow:last-child {
@@ -125,7 +125,7 @@
   font-size: var(--text-sm);
   font-family: var(--font-display);
   letter-spacing: 0.02em;
-  color: var(--ink);
+  color: var(--text);
 }
 
 .savingBonus {
@@ -139,6 +139,6 @@
 
 .profBonus {
   font-size: var(--text-sm);
-  color: var(--ink-muted);
+  color: var(--text-muted);
   font-style: italic;
 }

@@ -19,7 +19,7 @@ O projeto está em produção, implantado via Vercel. Não há backend customiza
 | Banco de dados | Firebase Firestore (persistência em nuvem) |
 | Autenticação | Firebase Auth (e-mail/senha + Google) |
 | Crop de avatar | react-easy-crop |
-| Estilo | CSS Modules + variáveis CSS globais (theme.css) |
+| Estilo | CSS Modules + variáveis CSS globais (theme.css) — tema Glass Morphism com toggle claro/escuro |
 | Linting | ESLint 9 (flat config) |
 | Testes | Vitest 3 + Testing Library + jsdom |
 | Deploy | Vercel |
@@ -153,6 +153,11 @@ src/
 - `CharacterSheetPage` define `document.title` com o nome do personagem assim que a ficha carrega; restaura `'Tomo do Aventureiro'` ao desmontar.
 - `MonsterSheetPage` faz o mesmo com o nome do monstro/NPC.
 
+### Tema claro/escuro
+- `src/context/ThemeContext.tsx` expõe `ThemeProvider` + `useTheme()`; grava `data-theme` (`light`/`dark`) no `<html>` e persiste em `localStorage['tomo:theme']`. Default segue `prefers-color-scheme`.
+- `ThemeProvider` é montado em `main.tsx` por fora do `AuthProvider`. Um script inline em `index.html` aplica `data-theme` no primeiro paint (anti-flash).
+- `theme.css` define a paleta clara em `:root` e sobrescreve a escura em `:root[data-theme="dark"]`. O botão de alternância é o componente `ThemeToggle`, presente na `Sidebar` e nas telas de autenticação.
+
 ---
 
 ## Modelo de dados e persistência
@@ -176,6 +181,7 @@ users/{uid}/monsterSheets/{monsterId}
 Regra de segurança: cada usuário só pode ler e escrever seus próprios documentos (`request.auth.uid == userId`).
 
 ### LocalStorage
+- `tomo:theme` → `'light' | 'dark'` (preferência de tema)
 - `tomo:recentlyOpened` → map de `{id: ISOTimestamp}` com últimas aberturas
 - `tomo-char-order-{uid}` → ordem customizada de personagens
 - `tomo-monster-order-{uid}` → ordem customizada de monstros
@@ -205,7 +211,7 @@ O avatar do personagem/monstro é salvo como **data URL base64** (JPEG/PNG/WebP)
 - Busca usa `getDocs` com filtro de prefixo no campo `name_lower`
 
 ### Google Fonts
-- Carregadas via `@import` em `theme.css`: `Cinzel` (display) e `Crimson Text` (corpo)
+- Carregadas via `@import` em `theme.css`: `Cinzel` (display) e `Inter` (corpo)
 
 ---
 
@@ -347,6 +353,7 @@ Não remover essas pastas sem confirmar com o dono do projeto — podem represen
 ## Observações para futuras sessões do Claude Code
 
 - O arquivo `documentação.MD` na raiz é um **documento legado**: foi mantido como registro histórico mas pode conter informações desatualizadas sobre a arquitetura anterior (ex: sistema sem Firebase). Usar `CLAUDE.md` como referência autoritativa.
+- **Design system**: o tema visual foi migrado do "pergaminho" para **Glass Morphism + Flat** (painéis translúcidos com `backdrop-filter`, paleta OKLCH monocromática violeta/sépia, claro e escuro). `design.md` documenta o sistema atual; os tokens antigos (`--ink*`, `--parchment*`, `--border-light/-dark`, `--rust/--bronze/--pewter`) foram removidos e substituídos por `--text*`, `--panel-*`, `--item-bg`, `--chip-*`, `--danger/heal/temp-solid`.
 - **Nomenclatura UI — "PJ" vs "personagem"**: na interface visual (labels, botões, títulos, mensagens) o tipo de ficha de jogador é chamado de **PJ**. Internamente (tipos TypeScript, coleções Firestore, rotas, nomes de função) o termo `character`/`characterSheet` permanece inalterado. Nunca exibir "Personagem" em labels visíveis ao usuário para se referir a fichas de PJ.
 - **`SpellsPanel` — espaços de magia**: tanto `onSpend` quanto `onRestore` devem ser passados ao `ManagedResourceControls` dos níveis de magia. Sem `onRestore`, os dots vazios ficam permanentemente desabilitados (bug corrigido).
 - O ESLint está configurado apenas para `.js/.jsx`. Para verificar `.ts/.tsx`, usar `npm run typecheck`; os testes rodam com `npm run test`.

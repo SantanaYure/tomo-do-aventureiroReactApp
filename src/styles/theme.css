@@ -77,34 +77,12 @@
 
   --page-max: 1100px;
 
-  /* ── Apelidos de compatibilidade (tokens do tema antigo) ── */
-  --ink: var(--text);
-  --ink-muted: var(--text-muted);
-  --ink-faint: var(--text-faint);
-  --ink-soft: var(--text-faint);
-
+  /*
+   * Cor de destaque semântica: links, realce de foco por teclado
+   * (regra global :focus-visible em index.css), accent-color de checkbox.
+   * Acompanha o violeta do tema.
+   */
   --accent: var(--chip-violet-text);
-  --accent-light: var(--chip-violet-text);
-  --accent-faint: var(--chip-violet-bg);
-  --accent-soft: var(--chip-violet-bg);
-
-  --parchment-bg: var(--item-bg);
-  --parchment-light: var(--panel-bg);
-  --parchment-dark: var(--chip-bg);
-  --parchment-shadow: var(--chip-bg);
-  --parchment: var(--panel-bg);
-
-  --border: var(--panel-border);
-  --border-light: var(--panel-border);
-  --border-dark: var(--panel-border);
-  --input-border: var(--panel-border);
-
-  --rust: var(--danger-solid);
-  --rust-faint: color-mix(in oklab, var(--danger-solid) 14%, transparent);
-  --bronze: var(--heal-solid);
-  --bronze-faint: color-mix(in oklab, var(--heal-solid) 14%, transparent);
-  --pewter: var(--temp-solid);
-  --pewter-faint: color-mix(in oklab, var(--temp-solid) 14%, transparent);
 }
 
 /* ── Paleta glass — TEMA ESCURO (toggle explícito) ── */

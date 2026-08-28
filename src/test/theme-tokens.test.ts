@@ -35,10 +35,14 @@ describe('tokens do tema glass', () => {
     }
   })
 
-  it('mantém os apelidos de compatibilidade apontando para os tokens novos', () => {
-    expect(css).toMatch(/--ink:\s*var\(--text\)/)
+  it('mantém --accent (usado pelo realce de foco global em index.css)', () => {
     expect(css).toMatch(/--accent:\s*var\(--chip-violet-text\)/)
-    expect(css).toMatch(/--rust:\s*var\(--danger-solid\)/)
+  })
+
+  it('não deixou apelidos do tema pergaminho para trás', () => {
+    for (const legacy of ['--ink:', '--parchment-', '--rust:', '--bronze:', '--pewter:', '--border-light:', '--border-dark:']) {
+      expect(css, legacy).not.toContain(legacy)
+    }
   })
 
   it('preserva o bloco de prefers-reduced-motion', () => {
