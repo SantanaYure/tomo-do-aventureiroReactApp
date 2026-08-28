@@ -70,8 +70,16 @@ Os tokens do tema anterior ("pergaminho") continuam definidos como apelidos, apo
 |---|---|---|
 | `--font-display` | `'Cinzel', 'Palatino Linotype', Georgia, serif` | Títulos, rótulos de seção, valores numéricos |
 | `--font-body` | `'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif` | Corpo, descrições, botões, chips |
+| `--font-serif` | `'Crimson Text', 'Palatino Linotype', Georgia, serif` | Serifa "de tomo": corpo do modo pergaminho (onde `--font-body` = `var(--font-serif)`) e o `ThemeToggle` nos três temas |
 
-Carregadas via `@import` em `theme.css`: **Cinzel** 600/700/800, **Inter** 400/500/600/700.
+Carregadas via `@import` em `theme.css`: **Cinzel** 600/700/800, **Inter** 400/500/600/700, **Crimson Text** 400/600 (+itálico).
+
+### Ícones inline
+
+Sempre monocromáticos e herdando `currentColor` — nunca emoji coloridos (puxam uma fonte à parte e destoam). Duas fontes:
+
+- **Glifos Unicode** para marcadores curtos que já convivem bem com a fonte da UI. Ex.: Sidebar `⌂` `⚔` `⇥`; `ThemeToggle` `☼` (claro) `☾` (escuro) `❧` (pergaminho), este último em `var(--font-serif)` nos três temas.
+- **`lucide-react`** para ícones de conteúdo (tipos de ficha, estados vazios). SVG de traço, `strokeWidth` 1.5–1.75, `size` casado ao contexto. Ex.: `Home` usa `Swords` (PJ), `Skull` (monstro), `Users` (NPC), `ScrollText` (vazio). O ícone fica dentro de um selo de vidro (`--panel-bg` + `--blur-panel` + `--panel-border`, `--radius-md`) com a cor em `--text-muted`.
 
 ### Escala
 
@@ -186,6 +194,8 @@ Sólidos sépia com acabamento espelhado. `--radius-btn`, borda de realce, refle
 `--on-temp` (sépia escuro) no botão Temp para contraste AA sobre o tom claro.
 O mesmo acabamento vale para os botões destrutivos (`.confirmDeleteBtn`, `.confirmDangerBtn`, `.dangerBtn`).
 
+**Tema escuro:** os sólidos sépia destoam da paleta fria do glass escuro. Sob `:root[data-theme='dark']` os botões de HP (`.btnDamage/.btnHeal/.btnTemp` das duas `CombatSummary`) perdem o preenchimento e seguem a lógica dos demais botões neutros do tema — `border-color: var(--panel-border)`, `background-color: var(--item-bg)`, `color: var(--text-muted)`, sem `--btn-gloss` nem `--btn-sheen`; hover para `var(--chip-bg)` / `var(--text)`. A distinção Dano/Cura/Temp passa a ser só o rótulo. Claro e pergaminho mantêm os sólidos. A barra de HP continua usando `--*-solid` em todos os temas.
+
 ### Barra de HP
 
 Trilho `var(--track-bg)`; preenchimento troca de tom conforme a razão atual/máx: `> 50%` → `--heal-solid`; `> 25%` → `--temp-solid`; `<= 25%` → `--danger-solid`. A lógica de razão é do componente; o CSS só fornece as cores.
@@ -193,6 +203,14 @@ Trilho `var(--track-bg)`; preenchimento troca de tom conforme a razão atual/má
 ### Pontos de uso (recursos, ações lendárias, espaços de magia)
 
 Dot preenchido: `var(--chip-violet-border)`. Dot vazio: `var(--chip-bg)`. Sempre com botão "Recarregar" fora do corpo colapsável.
+
+### Abas de ficha (`SheetTabs`)
+
+Aba inativa: `color: var(--text-muted)`, fundo transparente. Hover e aba ativa: `background: var(--item-bg)` + `color: var(--text)`; a ativa ainda em `font-weight: 600`. **Sem** borda inferior colorida nem realce — o estado é só peso + preenchimento. Foco de teclado: `outline: 2px solid var(--accent); outline-offset: -2px` (só `:focus-visible`).
+
+### Ritmo vertical da página de ficha
+
+Os blocos de topo (`CharacterHeader`, `.tabBarShell`, `.combatSummary`, `.tabContent`) usam o mesmo gap responsivo: `--space-4` → `--space-5` (≥480) → `--space-6` (≥600) → `--space-8` (≥780). O `.combatSummary` embrulha o resumo de combate persistente para dar esse mesmo respiro entre os painéis internos e o conteúdo da aba.
 
 ### Grades
 

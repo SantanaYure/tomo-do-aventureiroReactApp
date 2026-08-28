@@ -1,4 +1,6 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { Skull, Swords, Users, ScrollText } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useCharacterSheets } from '../../hooks/useCharacterSheets'
 import { useMonsterSheets } from '../../hooks/useMonsterSheets'
@@ -16,7 +18,7 @@ function CounterCard({
 }: {
   label: string
   value: number
-  icon: string
+  icon: ReactNode
   loading: boolean
   href: string
 }) {
@@ -35,10 +37,10 @@ function CounterCard({
   )
 }
 
-const TYPE_ICON: Record<string, string> = {
-  character: '⚔',
-  monster: '👹',
-  npc: '👤',
+const TYPE_ICON: Record<string, ReactNode> = {
+  character: <Swords size={20} strokeWidth={1.75} />,
+  monster: <Skull size={20} strokeWidth={1.75} />,
+  npc: <Users size={20} strokeWidth={1.75} />,
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -119,7 +121,9 @@ function RecentSkeleton() {
 function EmptyRecent() {
   return (
     <div className={styles.emptyRecent}>
-      <span className={styles.emptyIcon} aria-hidden="true">📜</span>
+      <span className={styles.emptyIcon} aria-hidden="true">
+        <ScrollText size={40} strokeWidth={1.5} />
+      </span>
       <p className={styles.emptyText}>Nenhuma ficha criada ainda.</p>
       <Link to="/fichas" className={styles.emptyLink}>
         Criar primeira ficha
@@ -191,21 +195,21 @@ export function Home() {
         <CounterCard
           label="PJs"
           value={totalCharacters}
-          icon="⚔"
+          icon={<Swords size={24} strokeWidth={1.75} />}
           loading={isLoading}
           href="/fichas"
         />
         <CounterCard
           label="Monstros"
           value={totalMonsters}
-          icon="👹"
+          icon={<Skull size={24} strokeWidth={1.75} />}
           loading={isLoading}
           href="/fichas"
         />
         <CounterCard
           label="NPCs"
           value={totalNpcs}
-          icon="👤"
+          icon={<Users size={24} strokeWidth={1.75} />}
           loading={isLoading}
           href="/fichas"
         />
