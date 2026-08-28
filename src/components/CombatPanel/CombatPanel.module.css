@@ -295,6 +295,7 @@
 
 .btnTemp {
   background: var(--temp-solid);
+  color: var(--on-temp);
 }
 
 .btnDano:hover,

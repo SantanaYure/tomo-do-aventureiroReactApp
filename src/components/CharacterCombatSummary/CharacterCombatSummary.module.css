@@ -106,6 +106,7 @@
 .btnTemp {
   composes: hpBtn;
   background: var(--temp-solid);
+  color: var(--on-temp);
 }
 
 .sectionTitle {

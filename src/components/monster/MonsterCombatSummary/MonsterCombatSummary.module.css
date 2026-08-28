@@ -92,7 +92,7 @@
 
 .btnDamage { composes: hpBtn; background: var(--danger-solid); }
 .btnHeal   { composes: hpBtn; background: var(--heal-solid); }
-.btnTemp   { composes: hpBtn; background: var(--temp-solid); }
+.btnTemp   { composes: hpBtn; background: var(--temp-solid); color: var(--on-temp); }
 
 .chipGroup {
   display: flex;
