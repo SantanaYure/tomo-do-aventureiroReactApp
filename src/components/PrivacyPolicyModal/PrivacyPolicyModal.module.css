@@ -218,7 +218,7 @@
 }
 
 .acceptButton:hover {
-  background: var(--chip-bg);
+  background: var(--chip-violet-bg-hover);
 }
 
 /* ── Responsivo ── */

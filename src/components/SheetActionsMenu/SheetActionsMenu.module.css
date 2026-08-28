@@ -11,7 +11,7 @@
   height: 2rem;
   padding: 0;
   border: 1px solid var(--panel-border);
-  border-radius: 999px;
+  border-radius: var(--radius-btn);
   background: var(--item-bg);
   color: var(--text-muted);
   font-size: 1.1rem;

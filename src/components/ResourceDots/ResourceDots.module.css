@@ -17,7 +17,7 @@
 .dot {
   display: inline-block;
   padding: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-btn);
   border: 1.5px solid var(--panel-border);
   background: transparent;
   cursor: pointer;

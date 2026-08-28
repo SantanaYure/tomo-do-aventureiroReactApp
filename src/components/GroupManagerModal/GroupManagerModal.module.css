@@ -54,7 +54,7 @@
   width: 2rem;
   height: 2rem;
   border: 1px solid var(--panel-border);
-  border-radius: 50%;
+  border-radius: var(--radius-btn);
   background: var(--item-bg);
   color: var(--text-muted);
   cursor: pointer;
@@ -106,7 +106,7 @@
 }
 
 .primaryBtn:hover:not(:disabled) {
-  background: var(--chip-bg);
+  background: var(--chip-violet-bg-hover);
 }
 
 .primaryBtn:disabled {
@@ -148,13 +148,16 @@
 }
 
 .dangerBtn {
-  border-color: var(--danger-solid);
-  background: var(--danger-solid);
+  border-color: var(--btn-edge);
+  background-color: var(--danger-solid);
+  background-image: var(--btn-gloss);
+  box-shadow: var(--btn-sheen);
   color: var(--on-solid);
 }
 
 .dangerBtn:hover:not(:disabled) {
-  opacity: 0.9;
+  background-color: var(--danger-hover);
+  box-shadow: var(--btn-sheen-hover);
 }
 
 .secondaryBtn:disabled,

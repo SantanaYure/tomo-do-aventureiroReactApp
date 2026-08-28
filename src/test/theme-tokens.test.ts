@@ -4,16 +4,17 @@ import { describe, expect, it } from 'vitest'
 
 const css = readFileSync(join(process.cwd(), 'src', 'styles', 'theme.css'), 'utf8')
 
-describe('tokens do tema glass', () => {
-  it('importa Inter e Cinzel', () => {
+describe('tokens do tema', () => {
+  it('importa Cinzel, Inter e Crimson Text (esta última para o modo pergaminho)', () => {
     expect(css).toMatch(/family=Cinzel/)
     expect(css).toMatch(/family=Inter|&family=Inter/)
-    expect(css).not.toMatch(/Crimson\+Text/)
+    expect(css).toMatch(/Crimson\+Text/)
   })
 
-  it('define a paleta clara em :root e a escura em [data-theme="dark"]', () => {
+  it('define os três temas: claro (:root), escuro e pergaminho', () => {
     expect(css).toMatch(/:root\s*\{/)
     expect(css).toMatch(/:root\[data-theme=["']dark["']\]\s*\{/)
+    expect(css).toMatch(/:root\[data-theme=["']parchment["']\]\s*\{/)
   })
 
   it('define os tokens glass semânticos', () => {
@@ -39,10 +40,18 @@ describe('tokens do tema glass', () => {
     expect(css).toMatch(/--accent:\s*var\(--chip-violet-text\)/)
   })
 
-  it('não deixou apelidos do tema pergaminho para trás', () => {
+  it('o modo pergaminho reusa os tokens semânticos, não os nomes legados', () => {
+    // A paleta sépia volta pelos VALORES sob [data-theme="parchment"], não
+    // ressuscitando --ink*/--parchment*/--rust etc.
     for (const legacy of ['--ink:', '--parchment-', '--rust:', '--bronze:', '--pewter:', '--border-light:', '--border-dark:']) {
       expect(css, legacy).not.toContain(legacy)
     }
+  })
+
+  it('o modo pergaminho troca o corpo para Crimson Text e desliga o blur', () => {
+    const block = css.slice(css.indexOf("[data-theme='parchment']"))
+    expect(block).toMatch(/--font-body:\s*'Crimson Text'/)
+    expect(block).toMatch(/--blur-panel:\s*none/)
   })
 
   it('preserva o bloco de prefers-reduced-motion', () => {

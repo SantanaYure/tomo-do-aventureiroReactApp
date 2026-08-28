@@ -280,28 +280,41 @@
 .btnCura,
 .btnTemp {
   flex: 1;
-  border: none;
+  border: 1px solid var(--btn-edge);
+  border-radius: var(--radius-btn);
   color: var(--on-solid);
   font-weight: 600;
+  background-image: var(--btn-gloss);
+  box-shadow: var(--btn-sheen);
+  transition: background-color var(--transition), box-shadow var(--transition);
 }
 
 .btnDano {
-  background: var(--danger-solid);
+  background-color: var(--danger-solid);
 }
 
 .btnCura {
-  background: var(--heal-solid);
+  background-color: var(--heal-solid);
 }
 
 .btnTemp {
-  background: var(--temp-solid);
+  background-color: var(--temp-solid);
   color: var(--on-temp);
 }
 
-.btnDano:hover,
-.btnCura:hover,
-.btnTemp:hover {
-  opacity: 0.9;
+.btnDano:hover:not(:disabled) {
+  background-color: var(--danger-hover);
+  box-shadow: var(--btn-sheen-hover);
+}
+
+.btnCura:hover:not(:disabled) {
+  background-color: var(--heal-hover);
+  box-shadow: var(--btn-sheen-hover);
+}
+
+.btnTemp:hover:not(:disabled) {
+  background-color: var(--temp-hover);
+  box-shadow: var(--btn-sheen-hover);
 }
 
 .stepper {
@@ -484,7 +497,7 @@
 .inspirationBtn {
   width: 2rem;
   height: 2rem;
-  border-radius: 50% !important;
+  border-radius: var(--radius-btn) !important;
   font-size: var(--text-lg) !important;
   padding: 0 !important;
   display: flex;

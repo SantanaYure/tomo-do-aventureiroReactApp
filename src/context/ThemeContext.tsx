@@ -8,12 +8,20 @@ import {
   type ReactNode,
 } from 'react'
 
-export type ThemeMode = 'light' | 'dark'
+export type ThemeMode = 'light' | 'dark' | 'parchment'
+
+/** Ordem do ciclo do botão de alternância. */
+export const THEME_ORDER: ThemeMode[] = ['light', 'dark', 'parchment']
 
 const STORAGE_KEY = 'tomo:theme'
 
+function isThemeMode(value: unknown): value is ThemeMode {
+  return value === 'light' || value === 'dark' || value === 'parchment'
+}
+
 interface ThemeContextValue {
   mode: ThemeMode
+  /** Avança para o próximo tema no ciclo (claro → escuro → pergaminho → claro). */
   toggle: () => void
   setMode: (mode: ThemeMode) => void
 }
@@ -23,7 +31,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null)
 function readInitialMode(): ThemeMode {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored === 'light' || stored === 'dark') return stored
+    if (isThemeMode(stored)) return stored
   } catch {
     /* localStorage indisponível — cai no prefers-color-scheme */
   }
@@ -49,7 +57,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const setMode = useCallback((next: ThemeMode) => setModeState(next), [])
   const toggle = useCallback(
-    () => setModeState((m) => (m === 'dark' ? 'light' : 'dark')),
+    () =>
+      setModeState((current) => {
+        const i = THEME_ORDER.indexOf(current)
+        return THEME_ORDER[(i + 1) % THEME_ORDER.length]
+      }),
     [],
   )
 

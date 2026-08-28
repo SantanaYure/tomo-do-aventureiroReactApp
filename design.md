@@ -9,13 +9,16 @@ A interface adota **Glass Morphism + Flat**: painéis semitransparentes com desf
 - HP/dano/cura/temp: família **sépia/dourada** (hue ~75) variando só a luminosidade — dano é o tom mais escuro, cura o médio, temp o mais claro. Nada de vermelho/verde de "barra de HP".
 - Diferenciação semântica por **rótulo e tipografia** quando possível, não por cor de alerta.
 - Elegância por contenção: menos cor, menos sombra, mais forma e espaço.
-- Tema claro/escuro alternável, mesma estrutura de tokens invertendo a luminosidade.
+- **Botões**: sempre quadrados de cantos levemente arredondados (`--radius-btn: 6px`) — nunca pílula/`999px`. Botões sólidos (HP, ações destrutivas) têm acabamento "espelhado": reflexo no topo + sombra sutil na base (`--btn-gloss`), realce de borda (`--btn-edge`) e brilho interno (`--btn-sheen`). Hover é suave: leve ganho de luminosidade da cor (`--*-hover`) e/ou intensificação do brilho, nunca salto de opacidade nem troca para cor neutra.
+- **Três temas** alternáveis pelo mesmo `ThemeToggle` (ciclo): claro (glass), escuro (glass) e **pergaminho** (a paleta sépia/tinta original, sem glass, corpo em Crimson Text).
 
 ---
 
 ## Tokens — `src/styles/theme.css`
 
-`theme.css` é a única fonte de verdade. `:root` define o **tema claro**; `:root[data-theme="dark"]` sobrescreve para o **escuro**. Um bloco `@media (prefers-color-scheme: dark)` sobre `:root:not([data-theme])` espelha o escuro para o estado "system" antes do JS montar. O `ThemeContext` (`src/context/ThemeContext.tsx`) grava `data-theme` no `<html>` e persiste em `localStorage['tomo:theme']`; o default segue `prefers-color-scheme`. Um script inline em `index.html` aplica `data-theme` no primeiro paint (anti-flash).
+`theme.css` é a única fonte de verdade. `:root` define o **tema claro**; `:root[data-theme="dark"]` e `:root[data-theme="parchment"]` sobrescrevem para o **escuro** e o **pergaminho**. Um bloco `@media (prefers-color-scheme: dark)` sobre `:root:not([data-theme])` espelha o escuro para o estado "system" antes do JS montar. O `ThemeContext` (`src/context/ThemeContext.tsx`) grava `data-theme` no `<html>` e persiste em `localStorage['tomo:theme']` (`'light' | 'dark' | 'parchment'`); `toggle()` cicla claro → escuro → pergaminho → claro; o default (sem valor salvo) segue `prefers-color-scheme` (nunca cai em pergaminho automaticamente). Um script inline em `index.html` aplica `data-theme` no primeiro paint (anti-flash).
+
+O **modo pergaminho** reusa os mesmos tokens semânticos, redefinindo-os com a paleta legada (`#1e1208` tinta, `#7a1e1e` sépia de destaque, cremes `#f5ead0`…), trocando `--font-body` para `'Crimson Text'`, zerando `--blur-panel` e os blobs, e reduzindo os raios de painel. Não restaura as molduras decorativas/duplas do tema original — é a paleta pergaminho sobre a estrutura flat atual.
 
 ### Cores (OKLCH)
 
@@ -86,10 +89,13 @@ Carregadas via `@import` em `theme.css`: **Cinzel** 600/700/800, **Inter** 400/5
 
 | Token | Valor | Uso |
 |---|---|---|
+| `--radius-btn` | `6px` | **Todos os botões** (quadrados, cantos levemente arredondados) |
 | `--radius-sm` / `--radius` | `8px` | Chips, badges |
-| `--radius-md` | `12px` | Inputs, botões |
+| `--radius-md` | `12px` | Campos de formulário (input, select, textarea) |
 | `--radius-lg` | `16px` | Cards internos, listItem, tableWrap |
 | `--radius-xl` | `18px` | Painéis principais |
+
+No modo pergaminho os raios de painel encolhem (`--radius-lg: 10px`, `--radius-xl: 12px`, `--radius-sm: 5px`); `--radius-btn` permanece 6px.
 
 ---
 
@@ -156,13 +162,29 @@ color: var(--chip-violet-text);
 
 ### Botões de HP (Dano / Cura / Temp)
 
-Fundo sólido sépia, texto `--on-solid`, sem borda:
+Sólidos sépia com acabamento espelhado. `--radius-btn`, borda de realce, reflexo e brilho:
 
 ```css
-.btnDamage { background: var(--danger-solid); color: var(--on-solid); border: none; }
-.btnHeal   { background: var(--heal-solid);   color: var(--on-solid); border: none; }
-.btnTemp   { background: var(--temp-solid);   color: var(--on-solid); border: none; }
+.hpBtn {
+  border: 1px solid var(--btn-edge);
+  border-radius: var(--radius-btn);
+  color: var(--on-solid);
+  background-image: var(--btn-gloss);      /* reflexo topo + sombra base */
+  box-shadow: var(--btn-sheen);            /* brilho interno superior */
+  transition: background-color var(--transition), box-shadow var(--transition);
+}
+.hpBtn:hover:not(:disabled) { box-shadow: var(--btn-sheen-hover); }
+
+.btnDamage { background-color: var(--danger-solid); }
+.btnDamage:hover:not(:disabled) { background-color: var(--danger-hover); }
+.btnHeal   { background-color: var(--heal-solid); }
+.btnHeal:hover:not(:disabled)   { background-color: var(--heal-hover); }
+.btnTemp   { background-color: var(--temp-solid); color: var(--on-temp); }
+.btnTemp:hover:not(:disabled)   { background-color: var(--temp-hover); }
 ```
+
+`--on-temp` (sépia escuro) no botão Temp para contraste AA sobre o tom claro.
+O mesmo acabamento vale para os botões destrutivos (`.confirmDeleteBtn`, `.confirmDangerBtn`, `.dangerBtn`).
 
 ### Barra de HP
 

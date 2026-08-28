@@ -153,10 +153,10 @@ src/
 - `CharacterSheetPage` define `document.title` com o nome do personagem assim que a ficha carrega; restaura `'Tomo do Aventureiro'` ao desmontar.
 - `MonsterSheetPage` faz o mesmo com o nome do monstro/NPC.
 
-### Tema claro/escuro
-- `src/context/ThemeContext.tsx` expõe `ThemeProvider` + `useTheme()`; grava `data-theme` (`light`/`dark`) no `<html>` e persiste em `localStorage['tomo:theme']`. Default segue `prefers-color-scheme`.
+### Temas (claro / escuro / pergaminho)
+- `src/context/ThemeContext.tsx` expõe `ThemeProvider` + `useTheme()`; grava `data-theme` (`light` | `dark` | `parchment`) no `<html>` e persiste em `localStorage['tomo:theme']`. `toggle()` cicla claro → escuro → pergaminho → claro. Default (sem valor salvo) segue `prefers-color-scheme` — nunca cai em pergaminho automaticamente.
 - `ThemeProvider` é montado em `main.tsx` por fora do `AuthProvider`. Um script inline em `index.html` aplica `data-theme` no primeiro paint (anti-flash).
-- `theme.css` define a paleta clara em `:root` e sobrescreve a escura em `:root[data-theme="dark"]`. O botão de alternância é o componente `ThemeToggle`, presente na `Sidebar` e nas telas de autenticação.
+- `theme.css` define a paleta clara (glass) em `:root` e sobrescreve a escura (glass) e a pergaminho (paleta sépia legada, sem blur, corpo em Crimson Text) em `:root[data-theme="dark"|"parchment"]`. O botão de alternância é o componente `ThemeToggle`, presente na `Sidebar` e nas telas de autenticação.
 
 ---
 
@@ -181,7 +181,7 @@ users/{uid}/monsterSheets/{monsterId}
 Regra de segurança: cada usuário só pode ler e escrever seus próprios documentos (`request.auth.uid == userId`).
 
 ### LocalStorage
-- `tomo:theme` → `'light' | 'dark'` (preferência de tema)
+- `tomo:theme` → `'light' | 'dark' | 'parchment'` (preferência de tema)
 - `tomo:recentlyOpened` → map de `{id: ISOTimestamp}` com últimas aberturas
 - `tomo-char-order-{uid}` → ordem customizada de personagens
 - `tomo-monster-order-{uid}` → ordem customizada de monstros
@@ -353,7 +353,7 @@ Não remover essas pastas sem confirmar com o dono do projeto — podem represen
 ## Observações para futuras sessões do Claude Code
 
 - O arquivo `documentação.MD` na raiz é um **documento legado**: foi mantido como registro histórico mas pode conter informações desatualizadas sobre a arquitetura anterior (ex: sistema sem Firebase). Usar `CLAUDE.md` como referência autoritativa.
-- **Design system**: o tema visual foi migrado do "pergaminho" para **Glass Morphism + Flat** (painéis translúcidos com `backdrop-filter`, paleta OKLCH monocromática violeta/sépia, claro e escuro). `design.md` documenta o sistema atual; os tokens antigos (`--ink*`, `--parchment*`, `--border-light/-dark`, `--rust/--bronze/--pewter`) foram removidos e substituídos por `--text*`, `--panel-*`, `--item-bg`, `--chip-*`, `--danger/heal/temp-solid`.
+- **Design system**: o tema visual foi migrado do "pergaminho" para **Glass Morphism + Flat** (painéis translúcidos com `backdrop-filter`, paleta OKLCH monocromática violeta/sépia). Há 3 temas: claro (glass), escuro (glass) e pergaminho (a paleta sépia original reaplicada sobre a estrutura flat). `design.md` documenta o sistema atual; os nomes de token antigos (`--ink*`, `--parchment*`, `--border-light/-dark`, `--rust/--bronze/--pewter`) foram removidos e substituídos por `--text*`, `--panel-*`, `--item-bg`, `--chip-*`, `--danger/heal/temp-solid` (o modo pergaminho reusa esses mesmos nomes, só troca os valores). Botões: sempre `--radius-btn` (6px), nunca pílula.
 - **Nomenclatura UI — "PJ" vs "personagem"**: na interface visual (labels, botões, títulos, mensagens) o tipo de ficha de jogador é chamado de **PJ**. Internamente (tipos TypeScript, coleções Firestore, rotas, nomes de função) o termo `character`/`characterSheet` permanece inalterado. Nunca exibir "Personagem" em labels visíveis ao usuário para se referir a fichas de PJ.
 - **`SpellsPanel` — espaços de magia**: tanto `onSpend` quanto `onRestore` devem ser passados ao `ManagedResourceControls` dos níveis de magia. Sem `onRestore`, os dots vazios ficam permanentemente desabilitados (bug corrigido).
 - O ESLint está configurado apenas para `.js/.jsx`. Para verificar `.ts/.tsx`, usar `npm run typecheck`; os testes rodam com `npm run test`.

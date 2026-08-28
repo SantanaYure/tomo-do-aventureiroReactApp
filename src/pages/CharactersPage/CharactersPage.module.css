@@ -54,7 +54,7 @@
 }
 
 .createPrimary:hover:not(:disabled) {
-  background: var(--chip-bg);
+  background: var(--chip-violet-bg-hover);
 }
 
 .createPrimary:disabled {
@@ -171,7 +171,7 @@
   width: 1.5rem;
   height: 1.5rem;
   border: none;
-  border-radius: 50%;
+  border-radius: var(--radius-btn);
   background: var(--chip-bg);
   font-size: var(--text-xs);
   color: var(--text-muted);
@@ -465,7 +465,7 @@
 .skeletonBtn {
   height: 2rem;
   width: 2rem;
-  border-radius: 999px;
+  border-radius: var(--radius-btn);
 }
 
 @keyframes shimmer {
@@ -543,21 +543,23 @@
   justify-content: center;
   min-width: 9rem;
   padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--danger-solid);
-  border-radius: var(--radius-md);
-  background: var(--danger-solid);
+  border: 1px solid var(--btn-edge);
+  border-radius: var(--radius-btn);
+  background-color: var(--danger-solid);
+  background-image: var(--btn-gloss);
+  box-shadow: var(--btn-sheen);
   font-family: var(--font-display);
   font-size: var(--text-sm);
   font-weight: 700;
   color: var(--on-solid);
   cursor: pointer;
-  transition: background-color var(--transition), border-color var(--transition),
-    opacity var(--transition);
+  transition: background-color var(--transition), box-shadow var(--transition);
   white-space: nowrap;
 }
 
 .confirmDangerBtn:hover {
-  opacity: 0.9;
+  background-color: var(--danger-hover);
+  box-shadow: var(--btn-sheen-hover);
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */

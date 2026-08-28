@@ -317,7 +317,7 @@
 }
 
 .primaryButton:hover:not(:disabled) {
-  background: var(--chip-bg);
+  background: var(--chip-violet-bg-hover);
 }
 
 .primaryButton:disabled {

@@ -179,13 +179,13 @@
   flex: 1;
   height: 4px;
   background: var(--track-bg);
-  border-radius: 999px;
+  border-radius: var(--radius-btn);
   overflow: hidden;
 }
 
 .strengthFill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-btn);
   transition: width 300ms ease;
 }
 
@@ -296,7 +296,7 @@
 }
 
 .primaryButton:hover:not(:disabled) {
-  background: var(--chip-bg);
+  background: var(--chip-violet-bg-hover);
 }
 
 .primaryButton:disabled {

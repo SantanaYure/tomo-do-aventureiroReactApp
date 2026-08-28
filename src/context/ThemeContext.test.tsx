@@ -37,18 +37,31 @@ describe('ThemeContext', () => {
     expect(result.current.mode).toBe('dark')
   })
 
-  it('toggle alterna e persiste', () => {
+  it('toggle cicla claro → escuro → pergaminho → claro e persiste', () => {
     const { result } = renderHook(() => useTheme(), { wrapper })
     act(() => result.current.toggle())
     expect(result.current.mode).toBe('dark')
     expect(localStorage.getItem('tomo:theme')).toBe('dark')
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+
+    act(() => result.current.toggle())
+    expect(result.current.mode).toBe('parchment')
+    expect(document.documentElement.getAttribute('data-theme')).toBe('parchment')
+
+    act(() => result.current.toggle())
+    expect(result.current.mode).toBe('light')
+  })
+
+  it('respeita "parchment" salvo em localStorage', () => {
+    localStorage.setItem('tomo:theme', 'parchment')
+    const { result } = renderHook(() => useTheme(), { wrapper })
+    expect(result.current.mode).toBe('parchment')
   })
 
   it('setMode define um tema específico', () => {
     const { result } = renderHook(() => useTheme(), { wrapper })
-    act(() => result.current.setMode('dark'))
-    expect(result.current.mode).toBe('dark')
+    act(() => result.current.setMode('parchment'))
+    expect(result.current.mode).toBe('parchment')
     act(() => result.current.setMode('light'))
     expect(result.current.mode).toBe('light')
   })

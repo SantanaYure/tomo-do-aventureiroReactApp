@@ -262,7 +262,7 @@
 
 .skeletonLine {
   height: 0.75rem;
-  border-radius: 999px;
+  border-radius: var(--radius-btn);
   background: linear-gradient(
     90deg,
     var(--chip-bg) 25%,

@@ -65,7 +65,7 @@
     min-height: 2.2rem;
     padding: 0.35rem 0.85rem;
     border: 1px solid var(--panel-border);
-    border-radius: 999px;
+    border-radius: var(--radius-btn);
     background: var(--item-bg);
     color: var(--text);
     cursor: pointer;
