@@ -12,7 +12,7 @@
   justify-content: center;
   gap: 1px;
   padding: var(--space-2) var(--space-1);
-  background: rgba(255, 252, 240, 0.7);
+  background: var(--item-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius);
   text-align: center;
@@ -81,18 +81,18 @@
   font-family: var(--font-display);
   font-size: var(--text-sm);
   letter-spacing: 0.03em;
-  border: 1px solid var(--border-dark);
-  border-radius: var(--radius-sm);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--on-solid);
   cursor: pointer;
-  transition: background var(--transition);
+  transition: opacity var(--transition);
 }
 
-.btnDamage { composes: hpBtn; background: var(--rust-faint); color: var(--rust); border-color: rgba(122, 48, 24, 0.28); }
-.btnDamage:hover { background: rgba(122, 48, 24, 0.16); }
-.btnHeal   { composes: hpBtn; background: var(--bronze-faint); color: var(--bronze); border-color: rgba(110, 80, 16, 0.28); }
-.btnHeal:hover { background: rgba(110, 80, 16, 0.16); }
-.btnTemp   { composes: hpBtn; background: var(--pewter-faint); color: var(--pewter); border-color: rgba(98, 90, 74, 0.25); }
-.btnTemp:hover { background: rgba(98, 90, 74, 0.15); }
+.hpBtn:hover { opacity: 0.9; }
+
+.btnDamage { composes: hpBtn; background: var(--danger-solid); }
+.btnHeal   { composes: hpBtn; background: var(--heal-solid); }
+.btnTemp   { composes: hpBtn; background: var(--temp-solid); }
 
 .chipGroup {
   display: flex;

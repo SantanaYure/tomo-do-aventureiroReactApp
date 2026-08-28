@@ -11,7 +11,7 @@
     padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
-    background: rgba(255, 252, 245, 0.72);
+    background: var(--item-bg);
 }
 
 .spellStatLabel {
@@ -40,7 +40,7 @@
     padding: var(--space-3);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
-    background: rgba(255, 250, 241, 0.7);
+    background: var(--item-bg);
 }
 
 .levelHeader {
@@ -136,7 +136,7 @@
     padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
-    background: rgba(255, 252, 245, 0.72);
+    background: var(--item-bg);
 }
 
 .spellTopRow {
@@ -191,11 +191,11 @@
 }
 
 .removeButton:hover {
-    color: rgba(122, 30, 30, 0.92);
+    color: var(--chip-violet-bg);
 }
 
 .removeButton:focus-visible {
-    outline: 2px solid rgba(122, 30, 30, 0.28);
+    outline: 2px solid var(--chip-violet-bg);
     outline-offset: 2px;
 }
 
@@ -217,7 +217,7 @@
     padding: 0.72rem 0.85rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    background: rgba(255, 251, 241, 0.72);
+    background: var(--item-bg);
     color: var(--ink-muted);
     font-size: var(--text-sm);
     white-space: nowrap;

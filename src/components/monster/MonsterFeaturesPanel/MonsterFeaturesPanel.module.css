@@ -13,7 +13,7 @@
     padding: var(--space-3);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
-    background: rgba(255, 250, 241, 0.72);
+    background: var(--item-bg);
     box-shadow: var(--shadow-card);
 }
 
@@ -45,11 +45,11 @@
 }
 
 .removeButton:hover {
-    color: rgba(122, 30, 30, 0.92);
+    color: var(--chip-violet-bg);
 }
 
 .removeButton:focus-visible {
-    outline: 2px solid rgba(122, 30, 30, 0.28);
+    outline: 2px solid var(--chip-violet-bg);
     outline-offset: 2px;
 }
 
@@ -94,7 +94,7 @@
     padding: 0.18rem 0.6rem;
     border: 1px solid var(--border-light);
     border-radius: 999px;
-    background: rgba(255, 249, 235, 0.82);
+    background: var(--item-bg);
     color: var(--ink-muted);
     font-size: var(--text-xs);
     font-weight: 700;
@@ -166,7 +166,7 @@
     white-space: pre-wrap;
     line-height: 1.65;
     padding-top: var(--space-3);
-    border-top: 1px solid rgba(120, 87, 52, 0.16);
+    border-top: 1px solid var(--panel-border);
 }
 
 .emptyText {
@@ -195,7 +195,7 @@
     padding: var(--space-1) var(--space-3);
     font-family: var(--font-display);
     font-size: var(--text-sm);
-    background: rgba(255, 249, 235, 0.9);
+    background: var(--item-bg);
     border: 1px solid var(--border-dark);
     border-radius: var(--radius-sm);
     cursor: pointer;
@@ -203,7 +203,7 @@
 }
 
 .rollBtn:hover {
-    background: rgba(241, 227, 189, 0.9);
+    background: var(--chip-bg);
 }
 
 @media (max-width: 640px) {

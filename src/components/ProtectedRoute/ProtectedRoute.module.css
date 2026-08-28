@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--parchment-bg);
+  background: var(--bg);
 }
 
 .card {
@@ -12,10 +12,12 @@
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-8) var(--space-10);
-  background: linear-gradient(180deg, rgba(255, 249, 235, 0.97), rgba(241, 227, 189, 0.93));
-  border: 2px double var(--border-dark);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-soft);
+  background: var(--panel-bg);
+  backdrop-filter: var(--blur-panel);
+  -webkit-backdrop-filter: var(--blur-panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
 }
 
 .spinner {
@@ -25,7 +27,6 @@
 }
 
 @keyframes pulse {
-
   0%,
   100% {
     opacity: 1;
@@ -41,6 +42,6 @@
 .status {
   font-family: var(--font-display);
   font-size: var(--text-base);
-  color: var(--ink-muted);
+  color: var(--text-muted);
   letter-spacing: 0.04em;
 }
