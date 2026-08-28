@@ -1,42 +1,43 @@
-/* Design tokens — tema pergaminho */
+/* Design tokens — Glass Morphism + Flat */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  /* ── Paleta ── */
-  --parchment-bg: #f0e6c8;
-  --parchment-light: #faf5e8;
-  --parchment-dark: #e8d9ad;
-  --parchment-shadow: #d4c49a;
+  /* ── Paleta glass — TEMA CLARO ── */
+  --bg: linear-gradient(160deg, oklch(97% 0.004 280), oklch(94% 0.006 280));
+  --blob-1: oklch(80% 0.04 300 / 0.22);
+  --blob-2: oklch(82% 0.03 240 / 0.16);
+  --blob-3: oklch(84% 0.02 280 / 0.14);
 
-  --ink: #1e1208;
-  --ink-muted: #5a3e28;
-  --ink-faint: #8a6e50;
+  --text: oklch(24% 0.01 280);
+  --text-muted: oklch(44% 0.01 280);
+  --text-faint: oklch(50% 0.01 280);
 
-  --accent: #7a1e1e;
-  --accent-light: #a83232;
-  --accent-faint: #f0d8d8;
+  --panel-bg: oklch(100% 0 0 / 0.55);
+  --panel-border: oklch(20% 0.01 280 / 0.1);
+  --item-bg: oklch(100% 0 0 / 0.48);
+  --avatar-bg: oklch(100% 0 0 / 0.6);
 
-  --border: #b8965a;
-  --border-light: #d4b87a;
-  --border-dark: #8a6428;
+  --chip-bg: oklch(100% 0 0 / 0.5);
+  --chip-border: oklch(20% 0.01 280 / 0.09);
+  --chip-violet-bg: oklch(90% 0.03 300 / 0.6);
+  --chip-violet-border: oklch(55% 0.05 300 / 0.35);
+  --chip-violet-text: oklch(38% 0.05 300);
 
-  --input-bg: #fffdf4;
-  --input-border: #c4a06a;
+  --input-bg: oklch(100% 0 0 / 0.7);
+  --track-bg: oklch(90% 0.005 280 / 0.6);
 
-  /* ── Acento tonal envelhecido — diferenciação funcional ── */
-  /* Usado para ações com semântica de perda (dano), ganho (cura) e defesa (temporário) */
-  /* Todos derivam da paleta de metais e pigmentos antigos, sem cores saturadas modernas */
-  --rust:          #7a3018;           /* ferrugem / cobre escuro — ações de perda */
-  --rust-faint:    rgba(122, 48, 24, 0.09);
-  --bronze:        #6e5010;           /* bronze / dourado gasto — ações de recuperação */
-  --bronze-faint:  rgba(110, 80, 16, 0.09);
-  --pewter:        #625a4a;           /* chumbo sépia / ardósia quente — ações neutras/defensivas */
-  --pewter-faint:  rgba(98, 90, 74, 0.08);
+  --danger-solid: oklch(38% 0.07 75);
+  --heal-solid: oklch(56% 0.07 75);
+  --temp-solid: oklch(70% 0.06 75);
+  --on-solid: oklch(97% 0.015 75);
+
+  --blur-panel: blur(20px);
+  --blur-blob: 90px;
 
   /* ── Tipografia ── */
   --font-display: 'Cinzel', 'Palatino Linotype', Georgia, serif;
-  --font-body: 'Crimson Text', 'Palatino Linotype', Georgia, serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -58,25 +59,102 @@
   --space-12: 3rem;
 
   /* ── Bordas ── */
-  --radius-sm: 5px;
-  --radius: 4px;
-  --radius-lg: 8px;
+  --radius-sm: 8px;
+  --radius: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 18px;
 
   /* ── Sombras ── */
-  --shadow-sm: 0 1px 3px rgba(30, 18, 8, 0.12);
-  --shadow: 0 2px 8px rgba(30, 18, 8, 0.18);
-  --shadow-lg: 0 4px 16px rgba(30, 18, 8, 0.22);
+  --shadow-sm: none;
+  --shadow: 0 1px 2px oklch(0% 0 0 / 0.04);
+  --shadow-lg: 0 4px 24px oklch(0% 0 0 / 0.12);
+  --shadow-soft: var(--shadow-lg);
+  --shadow-card: var(--shadow);
 
   /* ── Transições ── */
   --transition: 150ms ease;
 
-  /* ── Compatibilidade com módulos existentes ── */
-  --ink-soft: var(--ink-faint);
-  --accent-soft: var(--accent-faint);
-  --radius-md: 12px;
-  --shadow-soft: var(--shadow-lg);
-  --shadow-card: var(--shadow);
-  --page-max: 1180px;
+  --page-max: 1100px;
+
+  /* ── Apelidos de compatibilidade (tokens do tema antigo) ── */
+  --ink: var(--text);
+  --ink-muted: var(--text-muted);
+  --ink-faint: var(--text-faint);
+  --ink-soft: var(--text-faint);
+
+  --accent: var(--chip-violet-text);
+  --accent-light: var(--chip-violet-text);
+  --accent-faint: var(--chip-violet-bg);
+  --accent-soft: var(--chip-violet-bg);
+
+  --parchment-bg: transparent;
+  --parchment-light: var(--panel-bg);
+  --parchment-dark: var(--chip-bg);
+  --parchment-shadow: var(--chip-bg);
+  --parchment: var(--panel-bg);
+
+  --border: var(--panel-border);
+  --border-light: var(--panel-border);
+  --border-dark: var(--panel-border);
+  --input-border: var(--panel-border);
+
+  --rust: var(--danger-solid);
+  --rust-faint: color-mix(in oklab, var(--danger-solid) 14%, transparent);
+  --bronze: var(--heal-solid);
+  --bronze-faint: color-mix(in oklab, var(--heal-solid) 14%, transparent);
+  --pewter: var(--temp-solid);
+  --pewter-faint: color-mix(in oklab, var(--temp-solid) 14%, transparent);
+}
+
+/* ── Paleta glass — TEMA ESCURO (toggle explícito) ── */
+:root[data-theme='dark'] {
+  --bg: linear-gradient(160deg, oklch(15% 0.015 280), oklch(11% 0.01 280));
+  --blob-1: oklch(40% 0.05 300 / 0.22);
+  --blob-2: oklch(40% 0.04 240 / 0.16);
+  --blob-3: oklch(42% 0.03 280 / 0.14);
+
+  --text: oklch(96% 0.005 280);
+  --text-muted: oklch(76% 0.01 280);
+  --text-faint: oklch(60% 0.01 280);
+
+  --panel-bg: oklch(28% 0.01 280 / 0.32);
+  --panel-border: oklch(90% 0.01 280 / 0.1);
+  --item-bg: oklch(33% 0.01 280 / 0.26);
+  --avatar-bg: oklch(33% 0.01 280 / 0.4);
+
+  --chip-bg: oklch(38% 0.01 280 / 0.28);
+  --chip-border: oklch(90% 0.01 280 / 0.09);
+  --chip-violet-bg: oklch(38% 0.05 300 / 0.3);
+  --chip-violet-border: oklch(70% 0.06 300 / 0.4);
+  --chip-violet-text: oklch(84% 0.03 300);
+
+  --input-bg: oklch(36% 0.01 280 / 0.4);
+  --track-bg: oklch(22% 0.01 280 / 0.5);
+}
+
+/* ── Estado "system" antes do JS montar: espelha o escuro ── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg: linear-gradient(160deg, oklch(15% 0.015 280), oklch(11% 0.01 280));
+    --blob-1: oklch(40% 0.05 300 / 0.22);
+    --blob-2: oklch(40% 0.04 240 / 0.16);
+    --blob-3: oklch(42% 0.03 280 / 0.14);
+    --text: oklch(96% 0.005 280);
+    --text-muted: oklch(76% 0.01 280);
+    --text-faint: oklch(60% 0.01 280);
+    --panel-bg: oklch(28% 0.01 280 / 0.32);
+    --panel-border: oklch(90% 0.01 280 / 0.1);
+    --item-bg: oklch(33% 0.01 280 / 0.26);
+    --avatar-bg: oklch(33% 0.01 280 / 0.4);
+    --chip-bg: oklch(38% 0.01 280 / 0.28);
+    --chip-border: oklch(90% 0.01 280 / 0.09);
+    --chip-violet-bg: oklch(38% 0.05 300 / 0.3);
+    --chip-violet-border: oklch(70% 0.06 300 / 0.4);
+    --chip-violet-text: oklch(84% 0.03 300);
+    --input-bg: oklch(36% 0.01 280 / 0.4);
+    --track-bg: oklch(22% 0.01 280 / 0.5);
+  }
 }
 
 /*
@@ -109,8 +187,8 @@
 }
 
 ::selection {
-  background: var(--accent-faint);
-  color: var(--ink);
+  background: var(--chip-violet-bg);
+  color: var(--text);
 }
 
 #root {
@@ -137,20 +215,20 @@ main {
 }
 
 fieldset {
-  border: 2px double var(--border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
   padding: var(--space-3);
-  background: rgba(255, 253, 244, 0.52);
+  background: var(--item-bg);
 }
 
 legend {
   padding: 0 var(--space-2);
   font-family: var(--font-display);
-  color: var(--ink-muted);
+  color: var(--text-muted);
 }
 
 small {
-  color: var(--ink-muted);
+  color: var(--text-muted);
 }
 
 textarea {
