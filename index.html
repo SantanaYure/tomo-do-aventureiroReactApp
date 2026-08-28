@@ -11,6 +11,15 @@
     href="https://res.cloudinary.com/dbfalryaz/image/upload/c_crop,g_auto,w_1100,h_1100/c_scale,w_180,h_180/v1774883515/logo-tomodoaventureiro_iy0xh8.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tomo do Aventureiro</title>
+  <script>
+    try {
+      var t = localStorage.getItem('tomo:theme');
+      if (t !== 'light' && t !== 'dark') {
+        t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) { /* localStorage/matchMedia indisponivel */ }
+  </script>
 </head>
 
 <body>
