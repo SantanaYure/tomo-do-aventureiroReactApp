@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { BRAND_LOGO_URL } from '../../assets/brandLogo'
+import { ThemeToggle } from '../../components/ThemeToggle/ThemeToggle'
 import styles from './LoginPage.module.css'
 
 const FEATURES = [
@@ -122,6 +123,8 @@ export function LoginPage() {
 
   return (
     <div className={styles.page}>
+      <ThemeToggle className={styles.themeFloat} />
+
       {/* Coluna esquerda: branding */}
       <aside className={styles.branding} aria-hidden="true">
         <div className={styles.brandingInner}>

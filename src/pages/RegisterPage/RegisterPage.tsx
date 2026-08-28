@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { PrivacyPolicyModal } from '../../components/PrivacyPolicyModal/PrivacyPolicyModal'
+import { ThemeToggle } from '../../components/ThemeToggle/ThemeToggle'
 import styles from './RegisterPage.module.css'
 
 interface PasswordChecks {
@@ -119,6 +120,7 @@ export function RegisterPage() {
 
   return (
     <div className={styles.page}>
+      <ThemeToggle className={styles.themeFloat} />
       <div className={styles.card}>
         <header className={styles.cardHeader}>
           <span className={styles.cardIcon} aria-hidden="true">👤</span>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../../services/firebase'
 import { useAuth } from '../../context/AuthContext'
+import { ThemeToggle } from '../../components/ThemeToggle/ThemeToggle'
 import styles from './EmailVerificationPage.module.css'
 
 const RESEND_COOLDOWN = 30
@@ -83,6 +84,7 @@ export function EmailVerificationPage() {
 
   return (
     <div className={styles.page}>
+      <ThemeToggle className={styles.themeFloat} />
       <div className={styles.card}>
         <div className={styles.iconWrapper} aria-hidden="true">
           <span className={styles.icon}>✉</span>

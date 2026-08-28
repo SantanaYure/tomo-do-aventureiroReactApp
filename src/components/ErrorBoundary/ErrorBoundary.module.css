@@ -2,22 +2,23 @@
   max-width: 40rem;
   margin: var(--space-12) auto;
   padding: var(--space-6);
-  border: 1px solid var(--border-light);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius-sm);
-  background: var(--parchment-light);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-xl);
+  background: var(--panel-bg);
+  backdrop-filter: var(--blur-panel);
+  -webkit-backdrop-filter: var(--blur-panel);
   text-align: center;
 }
 
 .title {
   font-family: var(--font-display);
   font-size: var(--text-xl);
-  color: var(--ink);
+  color: var(--text);
   margin-bottom: var(--space-3);
 }
 
 .message {
-  color: var(--ink-muted);
+  color: var(--text-muted);
   margin-bottom: var(--space-5);
   line-height: 1.6;
 }
@@ -33,31 +34,28 @@
   font-family: var(--font-display);
   font-size: var(--text-sm);
   padding: var(--space-2) var(--space-5);
-  border: 1px solid var(--accent);
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--parchment-light);
+  border: 1px solid var(--chip-violet-border);
+  border-radius: var(--radius-md);
+  background: var(--chip-violet-bg);
+  color: var(--chip-violet-text);
   cursor: pointer;
-  transition:
-    background-color var(--transition),
-    border-color var(--transition),
+  transition: background-color var(--transition), border-color var(--transition),
     color var(--transition);
 }
 
 .button:hover {
-  background: var(--accent-light);
-  border-color: var(--accent-light);
+  background: var(--chip-bg);
 }
 
 .buttonSecondary {
-  background: transparent;
-  color: var(--ink);
-  border-color: var(--border-light);
+  background: var(--item-bg);
+  color: var(--text);
+  border-color: var(--panel-border);
 }
 
 .buttonSecondary:hover {
-  background: var(--parchment);
-  border-color: var(--accent);
+  background: var(--chip-bg);
+  border-color: var(--panel-border);
 }
 
 /* Detalhe técnico fica recolhido: útil para relatar, ruído para quem só quer voltar. */
@@ -65,7 +63,7 @@
   margin-top: var(--space-5);
   text-align: left;
   font-size: var(--text-sm);
-  color: var(--ink-muted);
+  color: var(--text-muted);
 }
 
 .summary {
@@ -76,8 +74,8 @@
 .stack {
   margin-top: var(--space-2);
   padding: var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--parchment);
+  border-radius: var(--radius-md);
+  background: var(--item-bg);
   font-family: monospace;
   font-size: var(--text-xs);
   white-space: pre-wrap;

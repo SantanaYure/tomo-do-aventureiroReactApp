@@ -4,7 +4,7 @@
 .subheading {
   font-family: var(--font-display);
   font-size: var(--text-sm);
-  color: var(--ink);
+  color: var(--text);
   letter-spacing: 0.03em;
   margin: var(--space-3) 0 var(--space-2);
 }
@@ -28,14 +28,14 @@
 }
 
 .link:hover {
-  color: var(--accent-light);
+  color: var(--accent);
 }
 
 /* ── Tabela de bases legais ── */
 .table {
   display: grid;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
   overflow: hidden;
   font-size: var(--text-sm);
 }
@@ -45,7 +45,7 @@
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--panel-border);
 }
 
 .tableRow:last-child {
@@ -53,11 +53,11 @@
 }
 
 .tableHeader {
-  background: rgba(196, 144, 58, 0.15);
+  background: var(--chip-bg);
   font-family: var(--font-display);
   font-weight: 600;
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--ink-muted);
+  color: var(--text-muted);
 }
