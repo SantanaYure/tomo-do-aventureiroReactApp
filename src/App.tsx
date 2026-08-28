@@ -43,6 +43,11 @@ const NotFound = lazy(() =>
 function AppLayout() {
   return (
     <div className={styles.appShell}>
+      <div className={styles.blobs} aria-hidden="true">
+        <span className={styles.blob1} />
+        <span className={styles.blob2} />
+        <span className={styles.blob3} />
+      </div>
       <Sidebar />
       <main className={styles.mainContent}>
         <Outlet />
