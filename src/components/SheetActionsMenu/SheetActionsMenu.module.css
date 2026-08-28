@@ -10,26 +10,21 @@
   width: 2rem;
   height: 2rem;
   padding: 0;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--panel-border);
   border-radius: 999px;
-  background: var(--parchment-light);
-  color: var(--ink-muted);
+  background: var(--item-bg);
+  color: var(--text-muted);
   font-size: 1.1rem;
   line-height: 1;
   cursor: pointer;
-  transition:
-    background-color var(--transition),
-    border-color var(--transition),
-    color var(--transition),
-    box-shadow var(--transition),
-    transform var(--transition),
-    opacity var(--transition);
+  transition: background-color var(--transition), border-color var(--transition),
+    color var(--transition), opacity var(--transition);
 }
 
 .trigger:hover:not(:disabled) {
-  color: var(--ink);
-  border-color: var(--border);
-  background: var(--parchment-dark);
+  color: var(--text);
+  border-color: var(--panel-border);
+  background: var(--chip-bg);
 }
 
 .trigger:focus-visible {
@@ -48,10 +43,12 @@
   right: 0;
   min-width: 10rem;
   padding: var(--space-1);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--parchment-light);
-  box-shadow: var(--shadow-card);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  background: var(--panel-bg);
+  backdrop-filter: var(--blur-panel);
+  -webkit-backdrop-filter: var(--blur-panel);
+  box-shadow: var(--shadow-lg);
   z-index: 50;
   display: grid;
   gap: 1px;
@@ -63,12 +60,13 @@
   width: 100%;
   padding: var(--space-2) var(--space-3);
   border: none;
-  border-radius: calc(var(--radius-sm) - 2px);
+  border-radius: var(--radius-sm);
   background: transparent;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: var(--text-sm);
-  letter-spacing: 0.03em;
-  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
   cursor: pointer;
   transition: background var(--transition);
   text-align: left;
@@ -76,7 +74,7 @@
 }
 
 .item:hover:not(:disabled) {
-  background: var(--parchment-dark);
+  background: var(--item-bg);
 }
 
 .item:focus-visible {
@@ -90,9 +88,9 @@
 }
 
 .itemDanger {
-  color: var(--accent);
+  color: var(--danger-solid);
 }
 
 .itemDanger:hover:not(:disabled) {
-  background: rgba(255, 242, 238, 0.85);
+  background: var(--item-bg);
 }

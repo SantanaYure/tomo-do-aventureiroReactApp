@@ -10,10 +10,11 @@
   font-size: clamp(2.4rem, 5vw, 4rem);
   line-height: 1;
   margin-top: 3.75rem;
+  color: var(--text);
 }
 
 .subtitle {
-  color: var(--ink-muted);
+  color: var(--text-muted);
   font-size: var(--text-lg);
 }
 
@@ -30,21 +31,21 @@
   gap: var(--space-4);
   align-content: start;
   padding: var(--space-5);
-  border: 3px double var(--border-dark);
-  border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgba(255, 249, 235, 0.95), rgba(239, 225, 188, 0.9)),
-    radial-gradient(circle at top, rgba(122, 30, 30, 0.12), transparent 50%);
-  box-shadow: var(--shadow-soft);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-xl);
+  background: var(--panel-bg);
+  backdrop-filter: var(--blur-panel);
+  -webkit-backdrop-filter: var(--blur-panel);
 }
 
 .optionTitle {
   font-size: clamp(1.5rem, 3vw, 2rem);
+  color: var(--text);
 }
 
 .description {
   font-size: var(--text-base);
-  color: var(--ink-muted);
+  color: var(--text-muted);
 }
 
 .submitBtn {
@@ -57,10 +58,10 @@
 .backLink {
   display: inline-flex;
   width: fit-content;
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--border-light);
-  border-radius: 999px;
-  background: rgba(255, 249, 235, 0.62);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  background: var(--item-bg);
 }
 
 @media (max-width: 720px) {
