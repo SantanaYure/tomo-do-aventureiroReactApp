@@ -24,7 +24,7 @@
 }
 
 .skillRow:hover {
-  background: rgba(212, 196, 154, 0.2);
+  background: var(--chip-bg);
 }
 
 .profIcon {

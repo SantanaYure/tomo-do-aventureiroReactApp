@@ -88,7 +88,7 @@
   --accent-faint: var(--chip-violet-bg);
   --accent-soft: var(--chip-violet-bg);
 
-  --parchment-bg: transparent;
+  --parchment-bg: var(--item-bg);
   --parchment-light: var(--panel-bg);
   --parchment-dark: var(--chip-bg);
   --parchment-shadow: var(--chip-bg);

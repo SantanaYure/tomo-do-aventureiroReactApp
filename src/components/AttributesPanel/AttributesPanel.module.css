@@ -27,21 +27,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: var(--parchment-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  background: var(--item-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
   padding: var(--space-4) var(--space-3);
   text-align: center;
   position: relative;
-}
-
-.attrBox::before {
-  content: '';
-  position: absolute;
-  inset: 2px;
-  border: 1px solid var(--border-light);
-  border-radius: 1px;
-  pointer-events: none;
 }
 
 .attrLabel {

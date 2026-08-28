@@ -29,40 +29,35 @@
 }
 
 .savingIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   font-family: var(--font-display);
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
   padding: var(--space-1) var(--space-3);
-  border-radius: 999px;
-  border: 1px solid var(--border-light);
-  background: var(--parchment-light);
-  color: var(--ink-muted);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--panel-border);
+  background: var(--item-bg);
+  color: var(--text-muted);
   transition: color var(--transition), border-color var(--transition);
   white-space: nowrap;
 }
 
 .savingIndicator[data-status='saved'] {
-  color: #3a6b3a;
-  border-color: #a0c4a0;
-  background: #f0f8f0;
+  color: var(--chip-violet-text);
+  border-color: var(--chip-violet-border);
+  background: var(--chip-violet-bg);
 }
 
 .savingIndicator[data-status='error'] {
-  color: var(--accent);
-  border-color: var(--accent-light);
-  background: var(--accent-faint);
-}
-
-/* ── Persistência: pendente, retry, histórico e recuperação de rascunho ── */
-
-.savingIndicator {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
+  color: var(--danger-solid);
+  border-color: var(--danger-solid);
+  background: var(--item-bg);
 }
 
 .savingIndicator[data-status='pending'] {
-  color: var(--ink-muted);
+  color: var(--text-muted);
   border-style: dashed;
 }
 
@@ -70,10 +65,10 @@
   font-family: var(--font-display);
   font-size: var(--text-xs);
   padding: 0 var(--space-2);
-  border: 1px solid var(--accent-light);
-  border-radius: 999px;
+  border: 1px solid var(--danger-solid);
+  border-radius: var(--radius-md);
   background: transparent;
-  color: var(--accent);
+  color: var(--danger-solid);
   cursor: pointer;
 }
 
@@ -88,10 +83,10 @@
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
   padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--border-light);
-  border-radius: 999px;
-  background: var(--parchment-light);
-  color: var(--ink-muted);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  background: var(--item-bg);
+  color: var(--text-muted);
   cursor: pointer;
   white-space: nowrap;
   transition: color var(--transition), border-color var(--transition);
@@ -105,7 +100,7 @@
 .dialogOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(20, 12, 4, 0.6);
+  background: oklch(0% 0 0 / 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -116,19 +111,22 @@
 .dialog {
   width: min(100%, 28rem);
   padding: var(--space-6) var(--space-5);
-  border: 2px double var(--border-dark);
-  border-radius: var(--radius-md);
-  background: linear-gradient(180deg, rgba(255, 248, 229, 0.98), rgba(239, 225, 188, 0.96));
-  box-shadow: var(--shadow-card);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-xl);
+  background: var(--panel-bg);
+  backdrop-filter: var(--blur-panel);
+  -webkit-backdrop-filter: var(--blur-panel);
+  box-shadow: var(--shadow-lg);
   display: grid;
   gap: var(--space-5);
   text-align: center;
 }
 
 .dialogTitle {
+  font-family: var(--font-display);
   font-size: var(--text-base);
   font-weight: 700;
-  color: var(--ink);
+  color: var(--text);
   line-height: 1.5;
   margin: 0;
 }
@@ -146,27 +144,21 @@
   justify-content: center;
   min-width: 9rem;
   padding: var(--space-2) var(--space-4);
-  border: 2px double rgba(122, 30, 30, 0.55);
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255, 242, 238, 0.98), rgba(243, 217, 205, 0.94));
+  border: 1px solid var(--danger-solid);
+  border-radius: var(--radius-md);
+  background: var(--danger-solid);
   font-family: var(--font-display);
   font-size: var(--text-sm);
   font-weight: 700;
-  color: var(--accent);
+  color: var(--on-solid);
   cursor: pointer;
-  transition:
-    background-color var(--transition),
-    border-color var(--transition),
-    color var(--transition),
-    box-shadow var(--transition),
-    transform var(--transition),
-    opacity var(--transition);
+  transition: background-color var(--transition), border-color var(--transition),
+    color var(--transition), opacity var(--transition);
   white-space: nowrap;
 }
 
 .confirmDeleteBtn:hover:not(:disabled) {
-  border-color: var(--accent);
-  background: linear-gradient(180deg, rgba(255, 238, 232, 1), rgba(236, 202, 188, 0.96));
+  opacity: 0.9;
 }
 
 .confirmDeleteBtn:focus-visible {
@@ -184,26 +176,22 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255, 248, 229, 0.96), rgba(239, 225, 188, 0.92));
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  background: var(--item-bg);
   font-family: var(--font-display);
   font-size: var(--text-sm);
-  color: var(--ink-muted);
+  color: var(--text-muted);
   cursor: pointer;
-  transition:
-    background-color var(--transition),
-    border-color var(--transition),
-    color var(--transition),
-    box-shadow var(--transition),
-    transform var(--transition),
-    opacity var(--transition);
+  transition: background-color var(--transition), border-color var(--transition),
+    color var(--transition), opacity var(--transition);
   white-space: nowrap;
 }
 
 .cancelDeleteBtn:hover:not(:disabled) {
-  border-color: var(--border-dark);
-  color: var(--ink);
+  border-color: var(--panel-border);
+  color: var(--text);
+  background: var(--chip-bg);
 }
 
 .cancelDeleteBtn:focus-visible {
@@ -220,28 +208,23 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  color: var(--ink-muted);
+  color: var(--text-muted);
   font-size: var(--text-sm);
   font-family: var(--font-display);
   letter-spacing: 0.03em;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-light);
-  border-radius: 999px;
-  background: var(--parchment-light);
-  transition:
-    background-color var(--transition),
-    border-color var(--transition),
-    color var(--transition),
-    box-shadow var(--transition),
-    transform var(--transition),
-    opacity var(--transition);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  background: var(--item-bg);
+  transition: background-color var(--transition), border-color var(--transition),
+    color var(--transition);
   text-decoration: none;
 }
 
 .backLink:hover {
   color: var(--accent);
-  border-color: var(--border);
-  background: var(--parchment-dark);
+  border-color: var(--chip-violet-border);
+  background: var(--chip-bg);
   text-decoration: none;
 }
 
@@ -259,10 +242,11 @@
   overflow-x: auto;
   scrollbar-width: none;
   scroll-snap-type: x mandatory;
-  background: var(--parchment-dark);
-  border: 1px solid var(--border);
-  border-radius: calc(var(--radius-sm) + 0.35rem);
-  box-shadow: var(--shadow-card);
+  background: var(--panel-bg);
+  backdrop-filter: var(--blur-panel);
+  -webkit-backdrop-filter: var(--blur-panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
   gap: var(--space-1);
   padding: var(--space-1);
 }
@@ -279,19 +263,20 @@
   font-family: var(--font-display);
   font-size: var(--text-sm);
   letter-spacing: 0.04em;
-  color: var(--ink-muted);
+  color: var(--text-muted);
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: color var(--transition), border-color var(--transition), background var(--transition);
+  transition: color var(--transition), border-color var(--transition),
+    background var(--transition);
   white-space: nowrap;
 }
 
 .tab:hover:not(:disabled) {
-  color: var(--ink);
-  background: rgba(255, 249, 235, 0.4);
+  color: var(--text);
+  background: var(--item-bg);
   border-color: transparent;
 }
 
@@ -301,9 +286,9 @@
 }
 
 .tabActive {
-  color: var(--ink);
-  border-bottom-color: var(--accent);
-  background: rgba(255, 249, 235, 0.6);
+  color: var(--text);
+  border-bottom-color: var(--chip-violet-border);
+  background: var(--item-bg);
 }
 
 .tabScrollHint {
@@ -312,10 +297,10 @@
   justify-content: center;
   margin-top: var(--space-2);
   padding: 0.2rem 0.7rem;
-  border: 1px solid var(--border-light);
-  border-radius: 999px;
-  background: rgba(255, 248, 229, 0.72);
-  color: var(--ink-muted);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  background: var(--item-bg);
+  color: var(--text-muted);
   font-family: var(--font-display);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
@@ -331,7 +316,7 @@
   text-align: center;
   padding: var(--space-12);
   font-style: italic;
-  color: var(--ink-muted);
+  color: var(--text-muted);
   font-size: var(--text-lg);
 }
 
@@ -422,29 +407,21 @@
   padding: var(--space-2) var(--space-5);
   font-weight: 700;
   font-size: var(--text-sm);
-  color: var(--ink);
-  border: 2px double var(--border-dark);
-  border-radius: 999px;
-  box-shadow: var(--shadow-card);
-  background:
-    linear-gradient(180deg, rgba(255, 248, 229, 0.96), rgba(239, 225, 188, 0.92)),
-    radial-gradient(circle at top, rgba(122, 30, 30, 0.14), transparent 48%);
+  color: var(--chip-violet-text);
+  border: 1px solid var(--chip-violet-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  background: var(--chip-violet-bg);
+  backdrop-filter: var(--blur-panel);
+  -webkit-backdrop-filter: var(--blur-panel);
   cursor: pointer;
-  transition:
-    background-color var(--transition),
-    border-color var(--transition),
-    color var(--transition),
-    box-shadow var(--transition),
-    transform var(--transition),
-    opacity var(--transition);
+  transition: background-color var(--transition), border-color var(--transition),
+    color var(--transition);
   white-space: nowrap;
 }
 
 .editToggleButton:hover {
-  background:
-    linear-gradient(180deg, rgba(255, 248, 229, 0.98), rgba(232, 214, 164, 0.94)),
-    radial-gradient(circle at top, rgba(122, 30, 30, 0.18), transparent 48%);
-  border-color: var(--border-dark);
+  background: var(--chip-bg);
 }
 
 .editToggleButton:focus-visible {

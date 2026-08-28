@@ -30,7 +30,7 @@
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  background: rgba(255, 250, 241, 0.7);
+  background: var(--item-bg);
 }
 
 .total {

@@ -35,7 +35,7 @@
   padding: var(--space-3);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  background: rgba(255, 250, 241, 0.72);
+  background: var(--item-bg);
   text-align: center;
 }
 
@@ -65,7 +65,7 @@
   overflow-x: auto;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  background: rgba(255, 250, 241, 0.58);
+  background: var(--item-bg);
 }
 
 .inventoryTable {

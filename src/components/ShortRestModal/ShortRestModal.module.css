@@ -1,7 +1,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 5, 2, 0.72);
+  background: oklch(0% 0 0 / 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -20,12 +20,12 @@
   max-width: 26rem;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #fffbf0 0%, #f5e8c8 100%);
-  border: 3px double var(--border-dark);
-  border-radius: var(--radius-md);
-  box-shadow:
-    0 20px 60px rgba(10, 5, 2, 0.5),
-    0 0 0 1px rgba(196, 144, 58, 0.15);
+  background: var(--panel-bg);
+  backdrop-filter: var(--blur-panel);
+  -webkit-backdrop-filter: var(--blur-panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
   position: relative;
   animation: slideUp 200ms ease;
   overflow: hidden;
@@ -34,21 +34,6 @@
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(12px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.dialog::before {
-  content: '';
-  position: absolute;
-  inset: 6px;
-  border: 1px solid var(--border-light);
-  border-radius: calc(var(--radius-md) - 5px);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.dialog > * {
-  position: relative;
-  z-index: 1;
 }
 
 /* ── Header ── */
@@ -60,7 +45,7 @@
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   border-bottom: 2px solid var(--border-light);
-  background: linear-gradient(180deg, rgba(255, 249, 235, 0.95), rgba(241, 227, 189, 0.85));
+  background: linear-gradient(180deg, var(--item-bg), var(--chip-bg));
   flex-shrink: 0;
 }
 
@@ -123,7 +108,7 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--space-2) var(--space-3);
-  background: rgba(212, 196, 154, 0.25);
+  background: var(--chip-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
 }
@@ -159,7 +144,7 @@
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  background: rgba(255, 252, 245, 0.7);
+  background: var(--item-bg);
 }
 
 .dieMeta {
@@ -249,7 +234,7 @@
   gap: var(--space-1) var(--space-3);
   padding: var(--space-3);
   background: var(--bronze-faint);
-  border: 1px solid rgba(110, 80, 16, 0.2);
+  border: 1px solid var(--heal-solid);
   border-radius: var(--radius-sm);
 }
 
@@ -285,7 +270,7 @@
   justify-content: flex-end;
   padding: var(--space-4) var(--space-5);
   border-top: 2px solid var(--border-light);
-  background: linear-gradient(0deg, rgba(241, 227, 189, 0.9), rgba(255, 249, 235, 0.85));
+  background: linear-gradient(0deg, var(--chip-bg), var(--item-bg));
 }
 
 .cancelButton {
@@ -309,18 +294,18 @@
 .cancelButton:hover {
   border-color: var(--border-dark);
   color: var(--ink);
-  background: rgba(241, 227, 189, 0.5);
+  background: var(--chip-bg);
 }
 
 .confirmButton {
   padding: var(--space-2) var(--space-5);
-  background: linear-gradient(180deg, rgba(122, 30, 30, 0.88), rgba(90, 18, 18, 0.96));
-  border: 1px solid rgba(122, 30, 30, 0.55);
+  background: var(--chip-violet-bg);
+  border: 1px solid var(--chip-violet-bg);
   border-radius: var(--radius-sm);
   font-family: var(--font-display);
   font-size: var(--text-sm);
   font-weight: 700;
-  color: rgba(255, 245, 220, 0.96);
+  color: var(--item-bg);
   letter-spacing: 0.05em;
   cursor: pointer;
   transition:
@@ -333,7 +318,7 @@
 }
 
 .confirmButton:hover {
-  background: linear-gradient(180deg, rgba(140, 40, 40, 0.92), rgba(105, 22, 22, 0.98));
+  background: var(--chip-bg);
 }
 
 /* ── Result phase ── */
@@ -342,7 +327,7 @@
   display: grid;
   gap: var(--space-1);
   padding: var(--space-3) var(--space-4);
-  background: rgba(255, 252, 245, 0.7);
+  background: var(--item-bg);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
 }
@@ -405,7 +390,7 @@
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
   background: var(--bronze-faint);
-  border: 1px solid rgba(110, 80, 16, 0.2);
+  border: 1px solid var(--heal-solid);
   border-radius: var(--radius-sm);
 }
 

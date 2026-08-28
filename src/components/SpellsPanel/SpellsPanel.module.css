@@ -22,7 +22,7 @@
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  background: rgba(255, 252, 245, 0.72);
+  background: var(--item-bg);
 }
 
 .spellStatDc {
@@ -34,7 +34,7 @@
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  background: rgba(255, 252, 245, 0.72);
+  background: var(--item-bg);
 }
 
 .spellStatLabel {
@@ -80,7 +80,7 @@
 .spellAbilitySelect {
   width: 100%;
   max-width: 100%;
-  background: rgba(255, 251, 241, 0.8);
+  background: var(--item-bg);
   border: 1px solid var(--border-dark);
 }
 
@@ -92,7 +92,7 @@
   padding: var(--space-3);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  background: rgba(255, 250, 241, 0.7);
+  background: var(--item-bg);
 }
 
 .levelHeader {
@@ -188,7 +188,7 @@
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  background: rgba(255, 252, 245, 0.72);
+  background: var(--item-bg);
 }
 
 /* No modo de edição o card vira coluna */

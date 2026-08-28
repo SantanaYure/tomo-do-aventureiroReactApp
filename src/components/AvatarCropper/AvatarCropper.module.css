@@ -5,7 +5,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(20, 12, 4, 0.72);
+  background: oklch(0% 0 0 / 0.5);
   backdrop-filter: blur(3px);
   padding: var(--space-4);
 }
@@ -16,11 +16,12 @@
   gap: var(--space-4);
   width: min(100%, 460px);
   padding: var(--space-6);
-  background:
-    linear-gradient(180deg, rgba(255, 249, 235, 0.98), rgba(243, 228, 192, 0.96));
-  border: 2px double var(--border-dark);
-  border-radius: var(--radius-md);
-  box-shadow: 0 12px 40px rgba(20, 12, 4, 0.45);
+  background: var(--panel-bg);
+  backdrop-filter: var(--blur-panel);
+  -webkit-backdrop-filter: var(--blur-panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
 }
 
 .title {
@@ -39,7 +40,7 @@
   padding: var(--space-5);
   border: 2px dashed var(--border);
   border-radius: var(--radius-md);
-  background: rgba(255, 251, 241, 0.6);
+  background: var(--item-bg);
 }
 
 .currentAvatar {
@@ -47,7 +48,7 @@
   height: 96px;
   object-fit: cover;
   border-radius: var(--radius-sm);
-  border: 2px double var(--border-dark);
+  border: 1px solid var(--panel-border);
 }
 
 .hint {
@@ -60,8 +61,8 @@
 .selectButton {
   padding: var(--space-2) var(--space-5);
   background:
-    linear-gradient(180deg, rgba(255, 248, 229, 0.96), rgba(239, 225, 188, 0.92));
-  border: 2px double var(--border-dark);
+    linear-gradient(180deg, var(--item-bg), var(--chip-bg));
+  border: 1px solid var(--panel-border);
   border-radius: 999px;
   font-family: var(--font-display);
   font-size: var(--text-sm);
@@ -122,13 +123,13 @@
 .confirmButton {
   padding: var(--space-2) var(--space-5);
   background:
-    linear-gradient(180deg, rgba(122, 30, 30, 0.9), rgba(95, 20, 20, 0.95));
+    var(--chip-violet-bg);
   border: none;
   border-radius: var(--radius-sm);
   font-family: var(--font-display);
   font-size: var(--text-sm);
   font-weight: 700;
-  color: rgba(255, 245, 220, 0.95);
+  color: var(--item-bg);
   cursor: pointer;
   letter-spacing: 0.04em;
 }

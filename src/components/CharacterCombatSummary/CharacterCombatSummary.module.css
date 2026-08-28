@@ -11,9 +11,9 @@
   justify-content: center;
   gap: 1px;
   padding: var(--space-2) var(--space-1);
-  background: rgba(255, 252, 240, 0.7);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius);
+  background: var(--item-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
   text-align: center;
   min-width: 0;
 }
@@ -25,7 +25,7 @@
 .statLabel {
   font-family: var(--font-display);
   font-size: 0.65rem;
-  color: var(--ink-faint);
+  color: var(--text-faint);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -37,19 +37,19 @@
 .statValue {
   font-family: var(--font-display);
   font-size: var(--text-xl);
-  color: var(--ink);
+  color: var(--text);
   line-height: 1;
 }
 
 .statMax {
   font-size: var(--text-sm);
-  color: var(--ink-muted);
+  color: var(--text-muted);
   font-weight: 400;
 }
 
 .statSub {
   font-size: var(--text-xs);
-  color: var(--accent-light);
+  color: var(--chip-violet-text);
   font-family: var(--font-body);
 }
 
@@ -63,12 +63,12 @@
 .hpInput {
   width: 5rem;
   padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
   font-family: var(--font-display);
   font-size: var(--text-sm);
-  background: var(--parchment-light);
-  color: var(--ink);
+  background: var(--input-bg);
+  color: var(--text);
   text-align: center;
 }
 
@@ -82,38 +82,31 @@
   font-family: var(--font-display);
   font-size: var(--text-sm);
   letter-spacing: 0.03em;
-  border: 1px solid var(--border-dark);
-  border-radius: var(--radius-sm);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--on-solid);
   cursor: pointer;
-  transition: background var(--transition);
+  transition: opacity var(--transition);
+}
+
+.hpBtn:hover {
+  opacity: 0.9;
 }
 
 .btnDamage {
   composes: hpBtn;
-  background: var(--rust-faint);
-  color: var(--rust);
-  border-color: rgba(122, 48, 24, 0.28);
+  background: var(--danger-solid);
 }
-
-.btnDamage:hover { background: rgba(122, 48, 24, 0.16); }
 
 .btnHeal {
   composes: hpBtn;
-  background: var(--bronze-faint);
-  color: var(--bronze);
-  border-color: rgba(110, 80, 16, 0.28);
+  background: var(--heal-solid);
 }
-
-.btnHeal:hover { background: rgba(110, 80, 16, 0.16); }
 
 .btnTemp {
   composes: hpBtn;
-  background: var(--pewter-faint);
-  color: var(--pewter);
-  border-color: rgba(98, 90, 74, 0.25);
+  background: var(--temp-solid);
 }
-
-.btnTemp:hover { background: rgba(98, 90, 74, 0.15); }
 
 .sectionTitle {
   font-family: var(--font-display);
@@ -121,11 +114,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent);
-  padding: 2px var(--space-2);
-  border: 1px solid var(--accent-faint);
-  border-radius: var(--radius-sm);
-  background: var(--accent-faint);
+  color: var(--chip-violet-text);
   white-space: nowrap;
   align-self: flex-start;
 }
@@ -142,9 +131,9 @@
   align-items: center;
   gap: 2px;
   padding: var(--space-2) var(--space-1);
-  background: rgba(255, 252, 240, 0.7);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius);
+  background: var(--item-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
   text-align: center;
 }
 
@@ -154,28 +143,34 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--text-faint);
 }
 
 .abilityValue {
   font-family: var(--font-display);
   font-size: var(--text-lg);
   font-weight: 700;
-  color: var(--ink);
+  color: var(--text);
   line-height: 1;
 }
 
 .abilityMod {
   font-family: var(--font-display);
   font-size: var(--text-sm);
-  color: var(--ink-muted);
+  color: var(--text-muted);
 }
 
 @media (min-width: 480px) {
-  .statCardHp { grid-column: span 1; }
-  .statsGrid { grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr)); }
+  .statCardHp {
+    grid-column: span 1;
+  }
+  .statsGrid {
+    grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+  }
 }
 
 @media (max-width: 479px) {
-  .abilityGrid { grid-template-columns: repeat(3, 1fr); }
+  .abilityGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
