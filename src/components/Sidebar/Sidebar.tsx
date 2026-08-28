@@ -3,6 +3,7 @@ import { signOut } from 'firebase/auth'
 import { auth } from '../../services/firebase'
 import { useAuth } from '../../context/AuthContext'
 import { BRAND_LOGO_URL } from '../../assets/brandLogo'
+import { ThemeToggle } from '../ThemeToggle/ThemeToggle'
 import styles from './Sidebar.module.css'
 
 interface NavItem {
@@ -83,6 +84,10 @@ export function Sidebar() {
 
         <div className={styles.spacer} />
 
+        <div className={styles.themeRow}>
+          <ThemeToggle className={styles.themeToggle} />
+        </div>
+
         <div className={styles.ornamentLine} aria-hidden="true" />
 
         {/* Usuário */}
@@ -128,6 +133,10 @@ export function Sidebar() {
               </NavLink>
             </li>
           ))}
+
+          <li className={styles.bottomItem}>
+            <ThemeToggle className={styles.bottomThemeToggle} />
+          </li>
 
           {user && (
             <li className={styles.bottomItem}>
