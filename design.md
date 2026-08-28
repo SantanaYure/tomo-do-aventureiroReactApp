@@ -2,13 +2,62 @@
 
 ## Filosofia visual
 
-A interface imita a estética de um **tomo medieval iluminado**: pergaminho envelhecido, tinta sépia, metais gastos por uso. Toda decisão de cor parte dessa metáfora — não do design de software moderno.
+A interface adota **Glass Morphism + Flat**: painéis semitransparentes com desfoque de fundo (`backdrop-filter`), sobre um fundo escuro ou claro quase sem saturação, com 2–3 "blobs" desfocados dando profundidade sem cor viva. Sem molduras decorativas, sem gradientes ornamentais, sem sombras pesadas.
 
 **Princípios:**
-- Paleta exclusivamente de tons quentes e terrosos. Sem verde vivo, azul saturado, roxo ou vermelho puro.
-- Diferenciação semântica feita por **rótulos e tipografia**, não por cor de alerta moderna.
-- Variações de peso, estilo e tom dentro da mesma família para distinguir categorias (não cores diferentes).
-- Elegância por contenção: menos cor, mais forma.
+- Paleta de destaque **monocromática** em torno de um violeta acinzentado neutro (hue ~300, chroma baixo ~0.03–0.06). Sem verde, azul saturado ou vermelho puro.
+- HP/dano/cura/temp: família **sépia/dourada** (hue ~75) variando só a luminosidade — dano é o tom mais escuro, cura o médio, temp o mais claro. Nada de vermelho/verde de "barra de HP".
+- Diferenciação semântica por **rótulo e tipografia** quando possível, não por cor de alerta.
+- Elegância por contenção: menos cor, menos sombra, mais forma e espaço.
+- Tema claro/escuro alternável, mesma estrutura de tokens invertendo a luminosidade.
+
+---
+
+## Tokens — `src/styles/theme.css`
+
+`theme.css` é a única fonte de verdade. `:root` define o **tema claro**; `:root[data-theme="dark"]` sobrescreve para o **escuro**. Um bloco `@media (prefers-color-scheme: dark)` sobre `:root:not([data-theme])` espelha o escuro para o estado "system" antes do JS montar. O `ThemeContext` (`src/context/ThemeContext.tsx`) grava `data-theme` no `<html>` e persiste em `localStorage['tomo:theme']`; o default segue `prefers-color-scheme`. Um script inline em `index.html` aplica `data-theme` no primeiro paint (anti-flash).
+
+### Cores (OKLCH)
+
+| Token | Papel | Claro | Escuro |
+|---|---|---|---|
+| `--bg` | Fundo da página (gradiente) | `linear-gradient(160deg, oklch(97% .004 280), oklch(94% .006 280))` | `linear-gradient(160deg, oklch(15% .015 280), oklch(11% .01 280))` |
+| `--blob-1` | Blob violeta | `oklch(80% .04 300 / .22)` | `oklch(40% .05 300 / .22)` |
+| `--blob-2` | Blob neutro frio | `oklch(82% .03 240 / .16)` | `oklch(40% .04 240 / .16)` |
+| `--blob-3` | Blob neutro quente | `oklch(84% .02 280 / .14)` | `oklch(42% .03 280 / .14)` |
+| `--text` | Texto principal | `oklch(24% .01 280)` | `oklch(96% .005 280)` |
+| `--text-muted` | Texto secundário | `oklch(44% .01 280)` | `oklch(76% .01 280)` |
+| `--text-faint` | Rótulos apagados | `oklch(50% .01 280)` | `oklch(60% .01 280)` |
+| `--panel-bg` | Painel de 1º nível | `oklch(100% 0 0 / .55)` | `oklch(28% .01 280 / .32)` |
+| `--panel-border` | Borda de painel/base | `oklch(20% .01 280 / .1)` | `oklch(90% .01 280 / .1)` |
+| `--item-bg` | Card/linha interna | `oklch(100% 0 0 / .48)` | `oklch(33% .01 280 / .26)` |
+| `--avatar-bg` | Placeholder de avatar | `oklch(100% 0 0 / .6)` | `oklch(33% .01 280 / .4)` |
+| `--chip-bg` | Chip neutro | `oklch(100% 0 0 / .5)` | `oklch(38% .01 280 / .28)` |
+| `--chip-border` | Borda de chip | `oklch(20% .01 280 / .09)` | `oklch(90% .01 280 / .09)` |
+| `--chip-violet-bg` | Chip/ação de destaque | `oklch(90% .03 300 / .6)` | `oklch(38% .05 300 / .3)` |
+| `--chip-violet-border` | Borda do destaque | `oklch(55% .05 300 / .35)` | `oklch(70% .06 300 / .4)` |
+| `--chip-violet-text` | Texto do destaque, links, foco, sectionTitle | `oklch(38% .05 300)` | `oklch(84% .03 300)` |
+| `--input-bg` | Fundo de campo | `oklch(100% 0 0 / .7)` | `oklch(36% .01 280 / .4)` |
+| `--track-bg` | Trilho de barra de progresso | `oklch(90% .005 280 / .6)` | `oklch(22% .01 280 / .5)` |
+| `--danger-solid` | Botão/estado Dano | `oklch(38% .07 75)` | igual |
+| `--heal-solid` | Botão/estado Cura | `oklch(56% .07 75)` | igual |
+| `--temp-solid` | Botão/estado Temp | `oklch(70% .06 75)` | igual |
+| `--on-solid` | Texto sobre os sólidos sépia | `oklch(97% .015 75)` | igual |
+
+### Blur
+
+| Token | Valor | Uso |
+|---|---|---|
+| `--blur-panel` | `blur(20px)` | `backdrop-filter` de painel de 1º nível |
+| `--blur-blob` | `90px` | `filter: blur()` dos blobs de fundo |
+
+### Apelidos de compatibilidade
+
+Os tokens do tema anterior ("pergaminho") continuam definidos como apelidos, apontando para os novos, para não quebrar módulos ainda não migrados:
+
+`--ink` → `--text` · `--ink-muted` → `--text-muted` · `--ink-faint`/`--ink-soft` → `--text-faint` · `--accent`/`--accent-light` → `--chip-violet-text` · `--accent-faint`/`--accent-soft` → `--chip-violet-bg` · `--parchment-light`/`--parchment` → `--panel-bg` · `--parchment-dark`/`--parchment-shadow` → `--chip-bg` · `--border`/`--border-light`/`--border-dark`/`--input-border` → `--panel-border` · `--rust`/`--bronze`/`--pewter` → `--danger-solid`/`--heal-solid`/`--temp-solid`.
+
+> Os apelidos são temporários. Cada módulo tocado deve migrar para o token semântico correto. `--accent` e `--accent-faint` são exceção: `index.css` os usa na regra global de `:focus-visible` e devem permanecer.
 
 ---
 
@@ -16,302 +65,141 @@ A interface imita a estética de um **tomo medieval iluminado**: pergaminho enve
 
 | Token | Valor | Uso |
 |---|---|---|
-| `--font-display` | `'Cinzel', 'Palatino Linotype', Georgia, serif` | Títulos, rótulos, valores numéricos, botões |
-| `--font-body` | `'Crimson Text', 'Palatino Linotype', Georgia, serif` | Descrições, corpo de texto, chips de conteúdo |
+| `--font-display` | `'Cinzel', 'Palatino Linotype', Georgia, serif` | Títulos, rótulos de seção, valores numéricos |
+| `--font-body` | `'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif` | Corpo, descrições, botões, chips |
 
-Carregadas via Google Fonts (`@import` em `theme.css`):
-- **Cinzel** pesos: 400, 600, 700
-- **Crimson Text** pesos: 400 (normal e itálico), 600
+Carregadas via `@import` em `theme.css`: **Cinzel** 600/700/800, **Inter** 400/500/600/700.
 
-### Escala de tamanhos
+### Escala
 
-| Token | Valor | Uso típico |
-|---|---|---|
-| `--text-xs` | `0.75rem` | Rótulos de chip, labels de campo |
-| `--text-sm` | `0.875rem` | Texto secundário, botões, meta de item |
-| `--text-base` | `1rem` | Texto padrão |
-| `--text-lg` | `1.125rem` | Valores de atributo |
-| `--text-xl` | `1.25rem` | Valores principais (HP, CA) |
-| `--text-2xl` | `1.5rem` | Títulos de seção |
-| `--text-3xl` | `1.875rem` | Títulos de página |
-
-Tamanhos não padronizados (hardcoded) usados pontualmente:
-- `0.65rem` — micro-rótulos (statLabel, coinLabel, resetBadge)
-- `0.62rem` — atributo curto (abilityShort, slotLevel)
-
----
-
-## Paleta de cores
-
-### Fundos — família pergaminho
-
-| Token | Valor hex | Uso |
-|---|---|---|
-| `--parchment-bg` | `#f0e6c8` | Fundo geral da página |
-| `--parchment-light` | `#faf5e8` | Campos de input, fundos de card |
-| `--parchment-dark` | `#e8d9ad` | Fundo de chips, badges, botões secundários |
-| `--parchment-shadow` | `#d4c49a` | Chips com ênfase (imune, condição) |
-
-### Texto — família tinta
-
-| Token | Valor hex | Uso |
-|---|---|---|
-| `--ink` | `#1e1208` | Texto principal, valores |
-| `--ink-muted` | `#5a3e28` | Texto secundário, rótulos de grupo |
-| `--ink-faint` | `#8a6e50` | Labels apagados, ícones, micro-rótulos |
-
-Aliases de compatibilidade:
-- `--ink-soft` → `var(--ink-faint)`
-
-### Destaque — vermelho sépia (accent)
-
-| Token | Valor hex | Uso |
-|---|---|---|
-| `--accent` | `#7a1e1e` | Links ativos, bordas de foco, sectionTitle |
-| `--accent-light` | `#a83232` | statSub, variante mais clara |
-| `--accent-faint` | `#f0d8d8` | Fundo de sectionTitle, seleção de texto |
-
-Aliases de compatibilidade:
-- `--accent-soft` → `var(--accent-faint)`
-
-### Bordas
-
-| Token | Valor hex | Uso |
-|---|---|---|
-| `--border` | `#b8965a` | Bordas de input, fieldset |
-| `--border-light` | `#d4b87a` | Bordas de card, chip |
-| `--border-dark` | `#8a6428` | Bordas de botão de ação |
-
-### Input
-
-| Token | Uso |
-|---|---|
-| `--input-bg: #fffdf4` | Fundo de campos de texto |
-| `--input-border: #c4a06a` | Borda de campos de texto |
-
-### Acento tonal funcional — metais envelhecidos
-
-Usado exclusivamente para botões de ação com semântica de **perda / ganho / neutro**. Todos os tons derivam de metais e pigmentos antigos — sem cores modernas de alerta.
-
-| Token | Valor | Metáfora | Ação |
-|---|---|---|---|
-| `--rust` | `#7a3018` | Ferrugem / cobre escuro | Dano (perda de HP) |
-| `--rust-faint` | `rgba(122, 48, 24, 0.09)` | — | Fundo do botão Dano |
-| `--bronze` | `#6e5010` | Bronze / dourado gasto | Cura (ganho de HP) |
-| `--bronze-faint` | `rgba(110, 80, 16, 0.09)` | — | Fundo do botão Cura |
-| `--pewter` | `#625a4a` | Chumbo sépia / ardósia quente | HP Temporário (neutro/defensivo) |
-| `--pewter-faint` | `rgba(98, 90, 74, 0.08)` | — | Fundo do botão Temp |
-
-**Regra:** A diferenciação entre Dano/Cura/Temp é de tom dentro da mesma família terrosa — não de cores opostas no espectro. Todos os três botões pertencem à mesma paleta.
+`--text-xs 0.75rem` · `--text-sm 0.875rem` · `--text-base 1rem` · `--text-lg 1.125rem` · `--text-xl 1.25rem` · `--text-2xl 1.5rem` · `--text-3xl 1.875rem`.
 
 ---
 
 ## Espaçamento
 
-| Token | Valor |
-|---|---|
-| `--space-1` | `0.25rem` |
-| `--space-2` | `0.5rem` |
-| `--space-3` | `0.75rem` |
-| `--space-4` | `1rem` |
-| `--space-5` | `1.25rem` |
-| `--space-6` | `1.5rem` |
-| `--space-8` | `2rem` |
-| `--space-10` | `2.5rem` |
-| `--space-12` | `3rem` |
+`--space-1 .25rem` · `--space-2 .5rem` · `--space-3 .75rem` · `--space-4 1rem` · `--space-5 1.25rem` · `--space-6 1.5rem` · `--space-8 2rem` · `--space-10 2.5rem` · `--space-12 3rem`.
 
 ---
 
-## Bordas e raios
+## Raios
 
 | Token | Valor | Uso |
 |---|---|---|
-| `--radius-sm` | `5px` | Chips, badges, inputs, botões |
-| `--radius` | `4px` | Cards de stat, slotChip |
-| `--radius-lg` | `8px` | — |
-| `--radius-md` | `12px` | Fieldsets (alias) |
+| `--radius-sm` / `--radius` | `8px` | Chips, badges |
+| `--radius-md` | `12px` | Inputs, botões |
+| `--radius-lg` | `16px` | Cards internos, listItem, tableWrap |
+| `--radius-xl` | `18px` | Painéis principais |
 
 ---
 
 ## Sombras
 
-| Token | Valor | Uso |
-|---|---|---|
-| `--shadow-sm` | `0 1px 3px rgba(30,18,8,0.12)` | Elevação mínima |
-| `--shadow` | `0 2px 8px rgba(30,18,8,0.18)` | Cards, dropdowns |
-| `--shadow-lg` | `0 4px 16px rgba(30,18,8,0.22)` | Modais, painéis flutuantes |
-
-Aliases de compatibilidade:
-- `--shadow-soft` → `var(--shadow-lg)`
-- `--shadow-card` → `var(--shadow)`
+`--shadow-sm: none` · `--shadow: 0 1px 2px oklch(0% 0 0 / .04)` (card, uso raro) · `--shadow-lg: 0 4px 24px oklch(0% 0 0 / .12)` (modais, dropdowns). Aliases: `--shadow-soft` → `--shadow-lg`, `--shadow-card` → `--shadow`. Painéis glass **não** levam sombra.
 
 ---
 
 ## Transições
 
-| Token | Valor |
-|---|---|
-| `--transition` | `150ms ease` |
-
-Usar apenas em propriedades interativas: `background`, `color`, `border-color`, `opacity`.
+`--transition: 150ms ease`. Usar só em `background`, `color`, `border-color`, `opacity`. **Nunca** `transition: all` (anima layout, causa reflow — barrado por `src/test/motion.test.ts`). O bloco `@media (prefers-reduced-motion: reduce)` em `theme.css` zera o token e neutraliza animações/rolagem — não removê-lo.
 
 ---
 
 ## Padrões de componente
 
+### Painel glass (1º nível)
+
+```css
+background: var(--panel-bg);
+backdrop-filter: var(--blur-panel);
+-webkit-backdrop-filter: var(--blur-panel);
+border: 1px solid var(--panel-border);
+border-radius: var(--radius-xl);
+```
+
+**`backdrop-filter` só no painel de 1º nível.** Cards internos empilhados usam `background: var(--item-bg)` sem blur próprio — blur aninhado fica leitoso.
+
+### Card interno
+
+```css
+background: var(--item-bg);
+border: 1px solid var(--panel-border);
+border-radius: var(--radius-lg);
+```
+
+### Chip
+
+```css
+background: var(--chip-bg);
+border: 1px solid var(--chip-border);
+border-radius: var(--radius-sm);
+font-family: var(--font-body);
+font-size: var(--text-xs);
+color: var(--text-muted);
+padding: 3px var(--space-2);
+```
+
+Variante de destaque (tipo de ficha, item sintonizado, imunidade): `--chip-violet-bg` / `--chip-violet-border` / `--chip-violet-text`.
+
+### Section title
+
+Só texto — sem caixa.
+
+```css
+font-family: var(--font-display);
+font-size: var(--text-xs);
+font-weight: 700;
+letter-spacing: 0.08em;
+text-transform: uppercase;
+color: var(--chip-violet-text);
+```
+
 ### Botões de HP (Dano / Cura / Temp)
 
-```css
-/* Base compartilhada */
-.hpBtn {
-  padding: var(--space-1) var(--space-3);
-  font-family: var(--font-display);
-  font-size: var(--text-sm);
-  letter-spacing: 0.03em;
-  border: 1px solid var(--border-dark);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: background var(--transition);
-}
-
-/* Variantes por semântica */
-.btnDamage { composes: hpBtn; background: var(--rust-faint);   color: var(--rust);   border-color: rgba(122, 48, 24, 0.28); }
-.btnDamage:hover { background: rgba(122, 48, 24, 0.16); }
-
-.btnHeal   { composes: hpBtn; background: var(--bronze-faint); color: var(--bronze); border-color: rgba(110, 80, 16, 0.28); }
-.btnHeal:hover { background: rgba(110, 80, 16, 0.16); }
-
-.btnTemp   { composes: hpBtn; background: var(--pewter-faint); color: var(--pewter); border-color: rgba(98, 90, 74, 0.25); }
-.btnTemp:hover { background: rgba(98, 90, 74, 0.15); }
-```
-
-### Cards de stat (CA, HP, Iniciativa…)
+Fundo sólido sépia, texto `--on-solid`, sem borda:
 
 ```css
-.statCard {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
-  padding: var(--space-2) var(--space-1);
-  background: rgba(255, 252, 240, 0.7);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius);
-  text-align: center;
-  min-width: 0;
-}
+.btnDamage { background: var(--danger-solid); color: var(--on-solid); border: none; }
+.btnHeal   { background: var(--heal-solid);   color: var(--on-solid); border: none; }
+.btnTemp   { background: var(--temp-solid);   color: var(--on-solid); border: none; }
 ```
 
-Hierarquia interna:
-- `.statLabel` — `font-display`, `0.65rem`, `ink-faint`, uppercase, letter-spacing
-- `.statValue` — `font-display`, `text-xl`, `ink`, `line-height: 1`
-- `.statMax` — `text-sm`, `ink-muted`, peso 400
-- `.statSub` — `text-xs`, `accent-light`, `font-body`
+### Barra de HP
 
-### Cards colapsáveis (recursos, ataques, itens de inventário)
+Trilho `var(--track-bg)`; preenchimento troca de tom conforme a razão atual/máx: `> 50%` → `--heal-solid`; `> 25%` → `--temp-solid`; `<= 25%` → `--danger-solid`. A lógica de razão é do componente; o CSS só fornece as cores.
 
-Padrão para qualquer item com conteúdo expandível:
+### Pontos de uso (recursos, ações lendárias, espaços de magia)
 
-```
-.itemCard (container com border)
-  ├── .itemToggle (button) ou .itemRow (div, para itens sem corpo)
-  │     ├── .itemTitle
-  │     ├── .itemMeta (chips de meta inline)
-  │     └── .collapseIcon (▸ / ▾)
-  └── .itemBody (conteúdo colapsável)
-        ├── .description
-        └── .metaRow > .metaChip[]
-```
+Dot preenchido: `var(--chip-violet-border)`. Dot vazio: `var(--chip-bg)`. Sempre com botão "Recarregar" fora do corpo colapsável.
 
-**Regra de colapso:** o ícone de toggle e o comportamento expansível só aparecem quando o item tem conteúdo no corpo. Itens sem corpo usam `.itemRow` (não clicável).
+### Grades
 
-**Regra de ManagedResourceControls:** sempre fora do corpo colapsável — o usuário precisa gerenciar usos sem precisar expandir o card.
+- Atributos: `grid-template-columns: repeat(6, minmax(80px, 1fr))`; `<480px`: `repeat(3, 1fr)`.
+- Cards de ficha (dashboard): `repeat(auto-fill, minmax(260px, 1fr))`.
+- Faixa de combate: `repeat(auto-fit, minmax(160px, 1fr))`.
 
-### Chips
+### Blobs de fundo
 
-Chips são rótulos de metadata compactos. Seguem a regra de **diferenciação por tom/peso/estilo, não por cor**.
-
-```css
-/* Base */
-.chip {
-  font-family: var(--font-body);
-  font-size: var(--text-xs);
-  color: var(--ink-muted);
-  background: var(--parchment-dark);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  padding: 2px var(--space-2);
-}
-
-/* Variantes semânticas — apenas tom e peso */
-.chipResist { composes: chip; }                                            /* Normal */
-.chipImmune { composes: chip; background: var(--parchment-shadow); font-weight: 600; }  /* Negrito */
-.chipCondIm { composes: chip; background: var(--parchment-shadow); font-style: italic; } /* Itálico */
-```
-
-O contexto semântico (Resistência / Imunidade / Condição) é dado pelo **rótulo de grupo acima** (`chipGroupLabel`), não pela cor do chip.
-
-### Section Title (badge de seção)
-
-```css
-.sectionTitle {
-  font-family: var(--font-display);
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--accent);
-  padding: 2px var(--space-2);
-  border: 1px solid var(--accent-faint);
-  border-radius: var(--radius-sm);
-  background: var(--accent-faint);
-  white-space: nowrap;
-  align-self: flex-start;
-}
-```
-
-### Grids responsivos
-
-**Stats grid** (painéis de combate):
-```css
-grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
-/* ≥480px: minmax(6rem, 1fr) */
-/* HP card: grid-column: span 2 → span 1 em ≥480px */
-```
-
-**Atributos (6 colunas)**:
-```css
-grid-template-columns: repeat(6, 1fr);
-/* <480px: repeat(3, 1fr) */
-```
+3 `<span>` em `.blobs` (`position: fixed; inset: 0; pointer-events: none; z-index: 0`), cada um `border-radius: 50%; filter: blur(var(--blur-blob))`, cor `var(--blob-1/2/3)`, 460–520px, posicionados nos cantos. O `AppLayout` os monta para páginas autenticadas; telas de auth replicam no próprio CSS.
 
 ---
 
 ## Cores proibidas
 
-Nunca usar em nenhum elemento de UI:
-
-| Cor | Por quê |
-|---|---|
-| Verde vivo (`#00ff00`, `green`, `#1a6b2e`) | Fora da paleta; lembra alertas de software |
-| Azul saturado (`blue`, `#0000ff`, `#1a3680`) | Fora da paleta; contraste cultural errado |
-| Roxo / lilás (`purple`, `#800080`, `#5b1a80`) | Fora da paleta |
-| Vermelho puro (`red`, `#ff0000`) | Fora da paleta; muito agressivo |
-| Qualquer saturação > ~50% HSL | Quebra a coerência do tema envelhecido |
+Nunca hardcodar cor em módulo CSS. Nunca usar hex/rgb literais de cor de marca ou alerta (`#7a1e1e`, `green`, `blue`, `red`, cremes de pergaminho `#f0e6c8` etc.). Exceção tolerada: `oklch(0% 0 0 / .5)` para overlay de modal e cores dentro de `data:` URI de ícone SVG.
 
 ---
 
 ## Validação de coerência visual
 
-Antes de aprovar uma mudança visual, verificar:
+Antes de aprovar uma mudança:
 
-1. **Pertence à paleta?** A cor existe em `theme.css` ou deriva diretamente de um token?
-2. **Se for nova cor funcional**, existe justificativa de metáfora (metal, pigmento, papel)?
-3. **Diferenciação semântica** está em rótulo/tipografia e não só em cor?
-4. **Hover state** usa a versão ligeiramente mais escura do mesmo tom (sem mudar de família)?
-5. **Focus visible** usa `outline: 2px solid var(--accent)` (sem cor diferente)?
-6. **Transições** usam `var(--transition)` (150ms ease)?
+1. A cor vem de um token de `theme.css` (ou deriva de um via `color-mix`)?
+2. Painel de 1º nível: tem `backdrop-filter: var(--blur-panel)` e **um só** nível de blur?
+3. Diferenciação semântica está em rótulo/tipografia, não só em cor?
+4. Foco de teclado: `outline: 2px solid var(--accent)` (regra global em `index.css`) — não sobrescrito, nunca `outline: none`?
+5. Transições: só propriedades de pintura, nunca `transition: all`?
+6. Funciona nos dois temas (claro e escuro)? Contraste de texto AA nos dois?
 
 ---
 
@@ -319,15 +207,18 @@ Antes de aprovar uma mudança visual, verificar:
 
 ```
 src/styles/
-  theme.css          → tokens globais (única fonte de verdade de cores, tipografia, espaçamento)
-  panel.module.css   → estilos compartilhados entre painéis
+  theme.css          → tokens globais (cores, tipografia, espaçamento, raios, blur)
+  panel.module.css   → classes compartilhadas entre painéis
+
+src/context/
+  ThemeContext.tsx   → ThemeProvider + useTheme(); data-theme + localStorage
 
 src/components/<Nome>/
-  <Nome>.module.css  → estilos locais do componente (CSS Modules)
+  <Nome>.module.css  → estilos locais (CSS Modules)
 ```
 
 **Regras:**
-- Nunca usar Tailwind, styled-components ou qualquer biblioteca de estilo.
-- Nunca hardcodar valores que existem como token (cores, espaçamentos, raios, sombras).
-- Adicionar novos tokens em `theme.css` quando um valor funcional se repete em mais de um lugar.
-- `composes:` é permitido e recomendado para variantes de botão dentro do mesmo módulo.
+- Sem Tailwind, styled-components ou qualquer lib de estilo.
+- Nunca hardcodar valor que exista como token.
+- Novo valor funcional repetido em >1 lugar vira token em `theme.css`.
+- `composes:` permitido para variantes de botão no mesmo módulo.
