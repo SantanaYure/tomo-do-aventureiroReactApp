@@ -1,0 +1,23 @@
+name: Production Monitoring
+
+# Monitoramento leve: roda o smoke test contra a produção a cada 6h.
+# Se falhar, o job fica vermelho e o GitHub notifica os mantenedores do repo.
+# Também pode ser disparado manualmente. Para desativar, remova este arquivo.
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: Smoke test de produção
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Smoke test
+        run: node scripts/smoke-test.mjs "https://${{ vars.PRODUCTION_URL || 'tomo-do-aventureiro-react-app.vercel.app' }}"

@@ -1,0 +1,45 @@
+name: CI
+
+# Gate de qualidade. Roda em todo PR para main/develop e é reutilizado pelos
+# workflows de deploy (via workflow_call) antes de publicar staging/produção.
+on:
+  pull_request:
+    branches: [main, develop]
+  workflow_call:
+
+# Em PR, cancela a execução anterior quando chega um novo push. Quando é
+# reutilizado por um deploy (workflow_call), cada run fica no seu próprio grupo.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    # O nome do job é o "context" do required status check na proteção de branch.
+    name: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint (ESLint — .js/.jsx)
+        run: npm run lint
+
+      - name: Type check (tsc --noEmit — .ts/.tsx)
+        run: npm run typecheck
+
+      - name: Testes (Vitest)
+        run: npm run test
+
+      - name: Build de produção (Vite)
+        run: npm run build
+
+      - name: Auditoria de dependências (bloqueia em high/critical)
+        run: npm audit --audit-level=high

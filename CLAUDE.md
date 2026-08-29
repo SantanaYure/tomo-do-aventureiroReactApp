@@ -260,9 +260,17 @@ npm run test:watch
 
 # Verificação de tipos TypeScript
 npm run typecheck
+
+# Smoke test contra uma URL implantada (pós-deploy)
+npm run smoke -- https://tomo-do-aventureiro-react-app.vercel.app
 ```
 
-Não há CI nem suíte E2E configurados. Os comandos de teste, typecheck, lint e build precisam ser executados localmente antes da integração; fluxos que dependem de layout real ou Firebase devem ser conferidos no navegador.
+**CI/CD** (GitHub Actions + Vercel) — ver [docs/ci-cd.md](docs/ci-cd.md):
+- PR para `main`/`develop`: `ci.yml` roda o job **`verify`** (lint + typecheck + test + build + `npm audit`). O Preview Deployment é criado pela **integração nativa da Vercel** (check `Vercel`), não por workflow.
+- `deploy-staging.yml` / `deploy-production.yml` / `rollback.yml` implementam deploy 100% via Vercel CLI, mas ficam **dormentes** (job `guard`) até o secret `VERCEL_TOKEN` existir. Hoje o deploy segue como estava (Vercel nativo + `vercel --prod` manual). `monitoring.yml` roda smoke contra produção a cada 6h.
+- Testes rodam **sem `.env`**: `src/test/setup.ts` mocka `src/services/firebase.ts`.
+- Não há suíte E2E. jsdom não cobre layout real, media queries nem Firebase autenticado — validar no navegador (Preview) continua necessário.
+- As regras do Firestore continuam com deploy manual (`firebase deploy --only firestore:rules`), fora do pipeline.
 
 ---
 

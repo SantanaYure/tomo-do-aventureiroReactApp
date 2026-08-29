@@ -1,0 +1,107 @@
+name: Deploy Production
+
+# Produção. Push/merge em `main` -> CI -> deploy de produção na Vercel (CLI)
+# -> smoke test. Em falha, o resumo traz o passo a passo de rollback.
+#
+# DORMENTE por padrão (job `guard`): só roda o deploy se o secret VERCEL_TOKEN
+# existir. Hoje o deploy é feito pela integração nativa da Vercel + `vercel --prod`
+# manual — este workflow é a opção "deploy 100% via CLI" pronta para ativar.
+# Se ativar: desligue o deploy automático de produção da Vercel
+# (Project Settings -> Git, ou `vercel.json` "git": {"deploymentEnabled": {"main": false}})
+# para não ter deploy dobrado. O job `ci` roda sempre, independentemente disso.
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  # Enquanto o secret VERCEL_TOKEN não existir, o deploy automático fica
+  # dormente e o deploy segue manual (`vercel --prod` local). O CI continua
+  # rodando normalmente. Ao adicionar o secret, a automação passa a valer.
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - id: check
+        run: echo "enabled=${{ secrets.VERCEL_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Deploy + smoke (produção)
+    needs: [guard, ci]
+    if: needs.guard.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://${{ vars.PRODUCTION_URL || 'tomo-do-aventureiro-react-app.vercel.app' }}
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'tomo-do-aventureiro-react-app.vercel.app' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Vercel pull (env de produção)
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Vercel build (--prod)
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Vercel deploy (--prod)
+        id: deploy
+        run: echo "url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test de produção
+        id: smoke
+        run: node scripts/smoke-test.mjs "https://$PRODUCTION_URL"
+
+      - name: Resumo do deploy
+        if: success()
+        run: |
+          {
+            echo "### ✅ Deploy de produção concluído"
+            echo ""
+            echo "| Campo | Valor |"
+            echo "|---|---|"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Deployment | ${{ steps.deploy.outputs.url }} |"
+            echo "| Produção | https://$PRODUCTION_URL |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Instruções de rollback (em caso de falha)
+        if: failure()
+        run: |
+          {
+            echo "### ❌ Deploy de produção FALHOU"
+            echo ""
+            echo "Commit \`${{ github.sha }}\`. Se um deployment ruim chegou a ser promovido,"
+            echo "reverta imediatamente para o anterior:"
+            echo ""
+            echo '**Opção A — pelo GitHub (recomendado):**'
+            echo "Actions → workflow **Rollback Production** → *Run workflow* (deixe o campo vazio para voltar ao deployment anterior)."
+            echo ""
+            echo '**Opção B — pela Vercel CLI (local):**'
+            echo '```bash'
+            echo "vercel rollback --yes --token=\$VERCEL_TOKEN            # volta ao deployment de produção anterior"
+            echo "# ou, para um alvo específico:"
+            echo "vercel ls tomo-do-aventureiro-react-app                 # lista os deployments"
+            echo "vercel rollback <url-do-deployment-bom> --yes --token=\$VERCEL_TOKEN"
+            echo '```'
+            echo ""
+            echo '**Opção C — pelo painel:** Vercel → projeto → Deployments → deployment estável → **⋯ → Promote to Production**.'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
