@@ -1,8 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { UserAvatar, initialFor } from './UserAvatar'
-
-afterEach(() => vi.unstubAllGlobals())
 
 describe('initialFor', () => {
   it('usa a inicial do primeiro nome', () => {
@@ -24,36 +22,28 @@ describe('UserAvatar', () => {
     const { container } = render(
       <UserAvatar photoURL="https://example.com/p.jpg" email="a@b.com" displayName="Ana" />,
     )
-    expect(container.querySelector('img')).toHaveAttribute(
-      'src',
-      'https://example.com/p.jpg',
-    )
+    const img = container.querySelector('img')
+    expect(img).toHaveAttribute('src', 'https://example.com/p.jpg')
   })
 
-  it('sem foto do provedor, usa o Gravatar do e-mail quando ele existe', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }))
+  it('com e-mail e sem foto do provedor, sobrepõe o Gravatar (d=blank) à inicial', async () => {
     const { container } = render(<UserAvatar email="test@example.com" displayName="Ana" />)
+    // A inicial é a base, sempre presente.
+    expect(screen.getByText('A')).toBeInTheDocument()
     await waitFor(() => {
-      expect(container.querySelector('img')?.getAttribute('src')).toContain(
-        'gravatar.com/avatar/',
-      )
+      const src = container.querySelector('img')?.getAttribute('src') ?? ''
+      expect(src).toContain('gravatar.com/avatar/')
+      expect(src).toContain('d=blank')
     })
   })
 
-  it('sem Gravatar cadastrado (404), mostra a inicial', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
-    const { container } = render(<UserAvatar email="test@example.com" displayName="Ana" />)
-    await waitFor(() => expect(screen.getByText('A')).toBeInTheDocument())
-    expect(container.querySelector('img')).toBeNull()
-  })
-
-  it('sem foto e sem e-mail, mostra a inicial do primeiro nome', () => {
+  it('sem foto e sem e-mail, mostra só a inicial do primeiro nome', () => {
     const { container } = render(<UserAvatar displayName="Ana Lima" />)
     expect(container.querySelector('img')).toBeNull()
     expect(screen.getByText('A')).toBeInTheDocument()
   })
 
-  it('cai na inicial quando a foto falha ao carregar', () => {
+  it('cai na inicial quando a foto do provedor falha ao carregar', () => {
     const { container } = render(
       <UserAvatar photoURL="https://example.com/quebrada.jpg" displayName="Ana" />,
     )

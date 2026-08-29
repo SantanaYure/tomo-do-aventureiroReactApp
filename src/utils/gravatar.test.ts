@@ -7,12 +7,12 @@ describe('gravatarUrlFromEmail', () => {
     const expected =
       '973dfe463ec85785f5f95af5ba3906eedb2d931c24e69824a89ea65dba4e813b'
     const url = await gravatarUrlFromEmail('  Test@Example.com  ')
-    expect(url).toBe(`https://www.gravatar.com/avatar/${expected}?d=404&s=200`)
+    expect(url).toBe(`https://www.gravatar.com/avatar/${expected}?d=blank&s=200`)
   })
 
-  it('inclui d=404 para permitir o fallback quando não há avatar', async () => {
+  it('inclui d=blank para devolver PNG transparente (200) quando não há avatar', async () => {
     const url = await gravatarUrlFromEmail('a@b.com')
-    expect(url).toContain('d=404')
+    expect(url).toContain('d=blank')
   })
 
   it('aceita um tamanho customizado', async () => {

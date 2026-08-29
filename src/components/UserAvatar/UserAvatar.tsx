@@ -21,55 +21,51 @@ export function initialFor(displayName?: string | null, email?: string | null): 
 
 export function UserAvatar({ photoURL, email, displayName, size = 'md' }: UserAvatarProps) {
   const [gravatar, setGravatar] = useState<string | null>(null)
-  const [broken, setBroken] = useState<Record<string, true>>({})
+  const [providerBroken, setProviderBroken] = useState(false)
 
   useEffect(() => {
     let active = true
+    setProviderBroken(false)
     if (!email) {
       setGravatar(null)
       return
     }
-    // Confere o Gravatar via fetch antes de renderizar o <img>: com d=404, uma
-    // conta sem avatar responde 404 e cairíamos na inicial de qualquer forma —
-    // mas checar aqui evita o erro "Failed to load resource" no console.
-    gravatarUrlFromEmail(email)
-      .then(async (url) => {
-        if (!url) return null
-        try {
-          const response = await fetch(url, { mode: 'cors' })
-          return response.ok ? url : null
-        } catch {
-          return null
-        }
-      })
-      .then((url) => {
-        if (active) setGravatar(url)
-      })
+    gravatarUrlFromEmail(email).then((url) => {
+      if (active) setGravatar(url)
+    })
     return () => {
       active = false
     }
-  }, [email])
+  }, [email, photoURL])
 
-  // Prioridade: foto do provedor → foto do e-mail (Gravatar) → inicial.
-  const src =
-    [photoURL, gravatar].find((url): url is string => !!url && !broken[url]) ?? null
   const classes = `${styles.avatar} ${styles[size]}`
 
-  if (src) {
+  // Foto do provedor (Google): opaca, tem prioridade.
+  if (photoURL && !providerBroken) {
     return (
       <img
-        src={src}
+        src={photoURL}
         alt=""
         className={classes}
         referrerPolicy="no-referrer"
-        onError={() => setBroken((current) => ({ ...current, [src]: true }))}
+        onError={() => setProviderBroken(true)}
       />
     )
   }
 
+  // Base = inicial do nome. Se houver e-mail, o Gravatar (d=blank) fica por cima:
+  // opaco quando existe avatar, transparente (deixa ver a inicial) quando não.
   return (
     <span className={`${classes} ${styles.fallback}`} aria-hidden="true">
       {initialFor(displayName, email)}
+      {gravatar && (
+        <img
+          src={gravatar}
+          alt=""
+          className={styles.gravatarOverlay}
+          referrerPolicy="no-referrer"
+        />
+      )}
     </span>
   )
 }
