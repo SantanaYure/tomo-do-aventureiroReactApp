@@ -7,8 +7,18 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import {
+  BRAND_COLOR_KEY,
+  FONT_KEY,
+  applyAppearance,
+  isValidColor,
+  readStoredBrandColor,
+  readStoredFont,
+  type FontChoice,
+} from '../utils/appearance'
 
 export type ThemeMode = 'light' | 'dark' | 'parchment'
+export type { FontChoice }
 
 /** Ordem do ciclo do botão de alternância. */
 export const THEME_ORDER: ThemeMode[] = ['light', 'dark', 'parchment']
@@ -24,6 +34,12 @@ interface ThemeContextValue {
   /** Avança para o próximo tema no ciclo (claro → escuro → pergaminho → claro). */
   toggle: () => void
   setMode: (mode: ThemeMode) => void
+  /** Cor de marca do usuário; `null` = destaque padrão do tema. */
+  brandColor: string | null
+  setBrandColor: (color: string | null) => void
+  /** 'literary' = Cinzel + corpo do tema; 'modern' = sans neutra em tudo. */
+  fontChoice: FontChoice
+  setFontChoice: (font: FontChoice) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
@@ -45,6 +61,8 @@ function readInitialMode(): ThemeMode {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>(readInitialMode)
+  const [brandColor, setBrandColorState] = useState<string | null>(readStoredBrandColor)
+  const [fontChoice, setFontChoiceState] = useState<FontChoice>(readStoredFont)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', mode)
@@ -55,6 +73,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [mode])
 
+  useEffect(() => {
+    applyAppearance(document.documentElement, brandColor, fontChoice)
+    try {
+      if (brandColor) localStorage.setItem(BRAND_COLOR_KEY, brandColor)
+      else localStorage.removeItem(BRAND_COLOR_KEY)
+      localStorage.setItem(FONT_KEY, fontChoice)
+    } catch {
+      /* persistência indisponível */
+    }
+  }, [brandColor, fontChoice])
+
   const setMode = useCallback((next: ThemeMode) => setModeState(next), [])
   const toggle = useCallback(
     () =>
@@ -64,10 +93,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       }),
     [],
   )
+  const setBrandColor = useCallback((color: string | null) => {
+    setBrandColorState(color && isValidColor(color) ? color : null)
+  }, [])
+  const setFontChoice = useCallback((font: FontChoice) => setFontChoiceState(font), [])
 
   const value = useMemo<ThemeContextValue>(
-    () => ({ mode, toggle, setMode }),
-    [mode, toggle, setMode],
+    () => ({ mode, toggle, setMode, brandColor, setBrandColor, fontChoice, setFontChoice }),
+    [mode, toggle, setMode, brandColor, setBrandColor, fontChoice, setFontChoice],
   )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>

@@ -10,13 +10,15 @@ A interface adota **Glass Morphism + Flat**: painéis semitransparentes com desf
 - Diferenciação semântica por **rótulo e tipografia** quando possível, não por cor de alerta.
 - Elegância por contenção: menos cor, menos sombra, mais forma e espaço.
 - **Botões**: sempre quadrados de cantos levemente arredondados (`--radius-btn: 6px`) — nunca pílula/`999px`. Botões sólidos (HP, ações destrutivas) têm acabamento "espelhado": reflexo no topo + sombra sutil na base (`--btn-gloss`), realce de borda (`--btn-edge`) e brilho interno (`--btn-sheen`). Hover é suave: leve ganho de luminosidade da cor (`--*-hover`) e/ou intensificação do brilho, nunca salto de opacidade nem troca para cor neutra.
-- **Três temas**: claro (glass), escuro (glass) e **pergaminho** (a paleta sépia/tinta original, sem glass, corpo em Crimson Text). Nas telas de auth a troca é o `ThemeToggle` (ciclo); no app autenticado é um `<select>` (Claro/Escuro/Pergaminho) no `SettingsModal`.
+- **Três temas**: claro (glass), escuro (glass) e **pergaminho** (a paleta sépia/tinta original, sem glass, corpo em Crimson Text). Nas telas de auth a troca é o `ThemeToggle` (ciclo); no app autenticado é o **painel Aparência** (`AppearancePanel`, dentro do `SettingsModal`): tema, **cor de marca** e **tipografia**.
+- **Cor de marca**: o usuário escolhe uma cor (5 presets, caixa de cores nativa ou hex/rgb/rgba). Ela sobrescreve, em runtime e para todos os temas, `--brand` e a família `--chip-violet-*` (e por consequência `--accent`) via `color-mix`. "Padrão" volta ao destaque nativo do tema.
+- **Tipografia**: "Literária" = Cinzel no display + corpo do tema (padrão); "Moderna" = uma sans neutra (`Inter`) em display e corpo, valendo inclusive sobre o pergaminho.
 
 ---
 
 ## Tokens — `src/styles/theme.css`
 
-`theme.css` é a única fonte de verdade. `:root` define o **tema claro**; `:root[data-theme="dark"]` e `:root[data-theme="parchment"]` sobrescrevem para o **escuro** e o **pergaminho**. Um bloco `@media (prefers-color-scheme: dark)` sobre `:root:not([data-theme])` espelha o escuro para o estado "system" antes do JS montar. O `ThemeContext` (`src/context/ThemeContext.tsx`) grava `data-theme` no `<html>` e persiste em `localStorage['tomo:theme']` (`'light' | 'dark' | 'parchment'`); `toggle()` cicla claro → escuro → pergaminho → claro; o default (sem valor salvo) segue `prefers-color-scheme` (nunca cai em pergaminho automaticamente). Um script inline em `index.html` aplica `data-theme` no primeiro paint (anti-flash).
+`theme.css` é a única fonte de verdade. `:root` define o **tema claro**; `:root[data-theme="dark"]` e `:root[data-theme="parchment"]` sobrescrevem para o **escuro** e o **pergaminho**. Um bloco `@media (prefers-color-scheme: dark)` sobre `:root:not([data-theme])` espelha o escuro para o estado "system" antes do JS montar. O `ThemeContext` (`src/context/ThemeContext.tsx`) grava `data-theme` no `<html>` e persiste em `localStorage['tomo:theme']` (`'light' | 'dark' | 'parchment'`); `toggle()` cicla claro → escuro → pergaminho → claro; o default (sem valor salvo) segue `prefers-color-scheme` (nunca cai em pergaminho automaticamente). O mesmo contexto gerencia **cor de marca** (`localStorage['tomo:brand-color']`) e **tipografia** (`localStorage['tomo:font']` = `'literary' | 'modern'`), aplicadas como custom properties inline no `<html>` por `src/utils/appearance.ts` (`applyAppearance`). Um script inline em `index.html` reaplica os três (tema + cor + fonte) no primeiro paint — **manter esse script em sincronia com `applyAppearance`**.
 
 O **modo pergaminho** reusa os mesmos tokens semânticos, redefinindo-os com a paleta legada (`#1e1208` tinta, `#7a1e1e` sépia de destaque, cremes `#f5ead0`…), trocando `--font-body` para `'Crimson Text'`, zerando `--blur-panel` e os blobs, e reduzindo os raios de painel. Não restaura as molduras decorativas/duplas do tema original — é a paleta pergaminho sobre a estrutura flat atual.
 
@@ -40,6 +42,7 @@ O **modo pergaminho** reusa os mesmos tokens semânticos, redefinindo-os com a p
 | `--chip-violet-bg` | Chip/ação de destaque | `oklch(90% .03 300 / .6)` | `oklch(38% .05 300 / .3)` |
 | `--chip-violet-border` | Borda do destaque | `oklch(55% .05 300 / .35)` | `oklch(70% .06 300 / .4)` |
 | `--chip-violet-text` | Texto do destaque, links, foco, sectionTitle | `oklch(38% .05 300)` | `oklch(84% .03 300)` |
+| `--brand` | Cor de marca escolhida pelo usuário; ausente = destaque nativo do tema. Quando presente, a família `--chip-violet-*` é derivada dela via `color-mix` | — | — |
 | `--input-bg` | Fundo de campo | `oklch(100% 0 0 / .7)` | `oklch(36% .01 280 / .4)` |
 | `--track-bg` | Trilho de barra de progresso | `oklch(90% .005 280 / .6)` | `oklch(22% .01 280 / .5)` |
 | `--danger-solid` | Botão/estado Dano | `oklch(38% .07 75)` | igual |
@@ -71,6 +74,8 @@ Os tokens do tema anterior ("pergaminho") continuam definidos como apelidos, apo
 | `--font-display` | `'Cinzel', 'Palatino Linotype', Georgia, serif` | Títulos, rótulos de seção, valores numéricos |
 | `--font-body` | `'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif` | Corpo, descrições, botões, chips |
 | `--font-serif` | `'Crimson Text', 'Palatino Linotype', Georgia, serif` | Serifa "de tomo": corpo do modo pergaminho (onde `--font-body` = `var(--font-serif)`) e o `ThemeToggle` nos três temas |
+
+A opção **Tipografia "Moderna"** do painel Aparência sobrescreve `--font-display` e `--font-body` inline no `<html>` com a sans neutra (`Inter`), valendo sobre qualquer tema. "Literária" (padrão) remove os overrides.
 
 Carregadas via `@import` em `theme.css`: **Cinzel** 600/700/800, **Inter** 400/500/600/700, **Crimson Text** 400/600 (+itálico).
 
