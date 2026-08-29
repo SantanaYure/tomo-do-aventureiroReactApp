@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { UserAvatar, initialFor } from './UserAvatar'
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('initialFor', () => {
   it('usa a inicial do primeiro nome', () => {
@@ -28,13 +30,21 @@ describe('UserAvatar', () => {
     )
   })
 
-  it('sem foto do provedor, busca o Gravatar pelo e-mail', async () => {
+  it('sem foto do provedor, usa o Gravatar do e-mail quando ele existe', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }))
     const { container } = render(<UserAvatar email="test@example.com" displayName="Ana" />)
     await waitFor(() => {
       expect(container.querySelector('img')?.getAttribute('src')).toContain(
         'gravatar.com/avatar/',
       )
     })
+  })
+
+  it('sem Gravatar cadastrado (404), mostra a inicial', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
+    const { container } = render(<UserAvatar email="test@example.com" displayName="Ana" />)
+    await waitFor(() => expect(screen.getByText('A')).toBeInTheDocument())
+    expect(container.querySelector('img')).toBeNull()
   })
 
   it('sem foto e sem e-mail, mostra a inicial do primeiro nome', () => {

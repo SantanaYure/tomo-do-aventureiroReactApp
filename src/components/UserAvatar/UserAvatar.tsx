@@ -29,9 +29,22 @@ export function UserAvatar({ photoURL, email, displayName, size = 'md' }: UserAv
       setGravatar(null)
       return
     }
-    gravatarUrlFromEmail(email).then((url) => {
-      if (active) setGravatar(url)
-    })
+    // Confere o Gravatar via fetch antes de renderizar o <img>: com d=404, uma
+    // conta sem avatar responde 404 e cairíamos na inicial de qualquer forma —
+    // mas checar aqui evita o erro "Failed to load resource" no console.
+    gravatarUrlFromEmail(email)
+      .then(async (url) => {
+        if (!url) return null
+        try {
+          const response = await fetch(url, { mode: 'cors' })
+          return response.ok ? url : null
+        } catch {
+          return null
+        }
+      })
+      .then((url) => {
+        if (active) setGravatar(url)
+      })
     return () => {
       active = false
     }
