@@ -10,7 +10,7 @@ A interface adota **Glass Morphism + Flat**: painéis semitransparentes com desf
 - Diferenciação semântica por **rótulo e tipografia** quando possível, não por cor de alerta.
 - Elegância por contenção: menos cor, menos sombra, mais forma e espaço.
 - **Botões**: sempre quadrados de cantos levemente arredondados (`--radius-btn: 6px`) — nunca pílula/`999px`. Botões sólidos (HP, ações destrutivas) têm acabamento "espelhado": reflexo no topo + sombra sutil na base (`--btn-gloss`), realce de borda (`--btn-edge`) e brilho interno (`--btn-sheen`). Hover é suave: leve ganho de luminosidade da cor (`--*-hover`) e/ou intensificação do brilho, nunca salto de opacidade nem troca para cor neutra.
-- **Três temas** alternáveis pelo mesmo `ThemeToggle` (ciclo): claro (glass), escuro (glass) e **pergaminho** (a paleta sépia/tinta original, sem glass, corpo em Crimson Text).
+- **Três temas**: claro (glass), escuro (glass) e **pergaminho** (a paleta sépia/tinta original, sem glass, corpo em Crimson Text). Nas telas de auth a troca é o `ThemeToggle` (ciclo); no app autenticado é um `<select>` (Claro/Escuro/Pergaminho) no `SettingsModal`.
 
 ---
 
@@ -78,8 +78,8 @@ Carregadas via `@import` em `theme.css`: **Cinzel** 600/700/800, **Inter** 400/5
 
 Sempre monocromáticos e herdando `currentColor` — nunca emoji coloridos (puxam uma fonte à parte e destoam). Duas fontes:
 
-- **Glifos Unicode** para marcadores curtos que já convivem bem com a fonte da UI. Ex.: Sidebar `⌂` `⚔` `⇥`; `ThemeToggle` `☼` (claro) `☾` (escuro) `❧` (pergaminho), este último em `var(--font-serif)` nos três temas.
-- **`lucide-react`** para ícones de conteúdo (tipos de ficha, estados vazios). SVG de traço, `strokeWidth` 1.5–1.75, `size` casado ao contexto. Ex.: `Home` usa `Swords` (PJ), `Skull` (monstro), `Users` (NPC), `ScrollText` (vazio). O ícone fica dentro de um selo de vidro (`--panel-bg` + `--blur-panel` + `--panel-border`, `--radius-md`) com a cor em `--text-muted`.
+- **Glifos Unicode** para marcadores curtos que já convivem bem com a fonte da UI. Ex.: Sidebar `⌂` `⚔` `⚙` (Configurações); bottom bar mobile `⚙` (Ajustes); `ThemeToggle` `☼` (claro) `☾` (escuro) `❧` (pergaminho), este último em `var(--font-serif)` nos três temas.
+- **`lucide-react`** para ícones de conteúdo (tipos de ficha, estados vazios, ícones das telas de auth). SVG de traço, `strokeWidth` 1.5–1.75, `size` casado ao contexto. Ex.: `Home` usa `Swords` (PJ), `Skull` (monstro), `Users` (NPC), `ScrollText` (vazio); `LoginPage` usa `Swords` (selo), `KeyRound` e `UserPlus` (links); `RegisterPage` usa `UserRoundPlus` (selo). O ícone fica dentro de um selo (`--radius-md`, cor `--text-muted`): sobre o fundo da página usa `--panel-bg` + `--blur-panel` + `--panel-border` (Home); dentro de um painel glass usa `--item-bg` + `--panel-border`, **sem blur próprio** (selo do card de auth). Nunca emoji colorido.
 
 ### Escala
 

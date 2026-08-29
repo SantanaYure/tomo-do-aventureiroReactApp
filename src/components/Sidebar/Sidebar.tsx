@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../../services/firebase'
 import { useAuth } from '../../context/AuthContext'
 import { BRAND_LOGO_URL } from '../../assets/brandLogo'
-import { ThemeToggle } from '../ThemeToggle/ThemeToggle'
+import { UserAvatar } from '../UserAvatar/UserAvatar'
+import { SettingsModal } from '../SettingsModal/SettingsModal'
 import styles from './Sidebar.module.css'
 
 interface NavItem {
@@ -18,28 +20,10 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/fichas', label: 'Fichas', icon: '⚔' },
 ]
 
-function UserAvatar({ photoURL, displayName }: { photoURL: string | null; displayName: string | null }) {
-  const initial = displayName?.[0]?.toUpperCase() ?? '?'
-
-  return (
-    <div className={styles.avatarWrapper} aria-hidden="true">
-      {photoURL ? (
-        <img
-          src={photoURL}
-          alt={displayName ?? 'avatar'}
-          className={styles.avatarImg}
-          referrerPolicy="no-referrer"
-        />
-      ) : (
-        <div className={styles.avatarFallback}>{initial}</div>
-      )}
-    </div>
-  )
-}
-
 export function Sidebar() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   async function handleLogout() {
     try {
@@ -84,35 +68,23 @@ export function Sidebar() {
 
         <div className={styles.spacer} />
 
-        <div className={styles.themeRow}>
-          <ThemeToggle className={styles.themeToggle} />
-        </div>
-
         <div className={styles.ornamentLine} aria-hidden="true" />
 
-        {/* Usuário */}
+        {/* Configurações — foto (provedor → e-mail → inicial) + rótulo */}
         {user && (
-          <div className={styles.userArea}>
-            <div className={styles.userInfo}>
-              <UserAvatar photoURL={user.photoURL} displayName={user.displayName} />
-              <div className={styles.userText}>
-                <span className={styles.userName}>
-                  {user.displayName ?? 'Aventureiro'}
-                </span>
-                <span className={styles.userEmail}>{user.email}</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className={styles.logoutButton}
-              onClick={handleLogout}
-              aria-label="Sair do sistema"
-            >
-              <span className={styles.logoutIcon} aria-hidden="true">⇥</span>
-              <span>Sair do sistema</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            className={styles.settingsButton}
+            onClick={() => setSettingsOpen(true)}
+            aria-haspopup="dialog"
+          >
+            <UserAvatar
+              photoURL={user.photoURL}
+              email={user.email}
+              displayName={user.displayName}
+            />
+            <span className={styles.settingsLabel}>Configurações</span>
+          </button>
         )}
       </aside>
 
@@ -134,25 +106,34 @@ export function Sidebar() {
             </li>
           ))}
 
-          <li className={styles.bottomItem}>
-            <ThemeToggle className={styles.bottomThemeToggle} />
-          </li>
-
           {user && (
             <li className={styles.bottomItem}>
               <button
                 type="button"
                 className={styles.bottomLink}
-                onClick={handleLogout}
-                aria-label="Sair do sistema"
+                onClick={() => setSettingsOpen(true)}
+                aria-haspopup="dialog"
               >
-                <span className={styles.bottomIcon} aria-hidden="true">⇥</span>
-                <span className={styles.bottomLabel}>Sair</span>
+                <span className={styles.bottomIcon} aria-hidden="true">⚙</span>
+                <span className={styles.bottomLabel}>Ajustes</span>
               </button>
             </li>
           )}
         </ul>
       </nav>
+
+      {user && settingsOpen && (
+        <SettingsModal
+          displayName={user.displayName}
+          email={user.email}
+          photoURL={user.photoURL}
+          onLogout={() => {
+            setSettingsOpen(false)
+            handleLogout()
+          }}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </>
   )
 }

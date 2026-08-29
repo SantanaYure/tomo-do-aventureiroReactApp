@@ -1,0 +1,28 @@
+.avatar {
+  border-radius: 50%;
+  border: 1px solid var(--panel-border);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.md {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+
+.lg {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--chip-violet-bg);
+  color: var(--chip-violet-text);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}

@@ -42,7 +42,9 @@ src/
     CharacterTableMode/     ← modo mesa do PJ: apenas Seções C/D/E (recursos, ataques, espaços de magia)
     AttacksPanel/ CharacterHeader/ CombatPanel/ InventoryPanel/
     ResourcesPanel/ SkillsPanel/ SpellsPanel/ CharacterDetailsPanel/
-    AttributesPanel/ SkillPanel/ Sidebar/ UserMenu/
+    AttributesPanel/ SkillPanel/ Sidebar/ UserMenu/ (UserMenu = código morto)
+    SettingsModal/  ← modal de configurações (tema em <select>, sair); abre pela Sidebar
+    UserAvatar/     ← avatar do usuário: foto do provedor → Gravatar (hash do e-mail) → inicial do 1º nome
     AvatarCropper/ ProtectedRoute/ PrivacyPolicyModal/
     RoomHeader/ RoomInstancesPanel/ RoomMembersPanel/ SheetGallery/  ← VAZIOS
   context/
@@ -157,7 +159,8 @@ src/
 ### Temas (claro / escuro / pergaminho)
 - `src/context/ThemeContext.tsx` expõe `ThemeProvider` + `useTheme()`; grava `data-theme` (`light` | `dark` | `parchment`) no `<html>` e persiste em `localStorage['tomo:theme']`. `toggle()` cicla claro → escuro → pergaminho → claro. Default (sem valor salvo) segue `prefers-color-scheme` — nunca cai em pergaminho automaticamente.
 - `ThemeProvider` é montado em `main.tsx` por fora do `AuthProvider`. Um script inline em `index.html` aplica `data-theme` no primeiro paint (anti-flash).
-- `theme.css` define a paleta clara (glass) em `:root` e sobrescreve a escura (glass) e a pergaminho (paleta sépia legada, sem blur, corpo em Crimson Text) em `:root[data-theme="dark"|"parchment"]`. O botão de alternância é o componente `ThemeToggle`, presente na `Sidebar` e nas telas de autenticação.
+- `theme.css` define a paleta clara (glass) em `:root` e sobrescreve a escura (glass) e a pergaminho (paleta sépia legada, sem blur, corpo em Crimson Text) em `:root[data-theme="dark"|"parchment"]`.
+- **Troca de tema na UI**: nas telas de autenticação é o botão `ThemeToggle` (ciclo, glifo `☼`/`☾`/`❧`). No app autenticado, é um `<select>` (Claro / Escuro / Pergaminho) dentro do `SettingsModal` — que usa `useTheme().setMode` diretamente, não `toggle()`. A `Sidebar` não tem mais `ThemeToggle`; o acesso é pelo item "Configurações" (desktop: foto + rótulo; mobile: aba "Ajustes" ⚙ na barra inferior). "Sair do sistema" também vive só no `SettingsModal`.
 
 ---
 

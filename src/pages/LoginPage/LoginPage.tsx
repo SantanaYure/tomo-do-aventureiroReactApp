@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { KeyRound, Swords, UserPlus } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { BRAND_LOGO_URL } from '../../assets/brandLogo'
 import { ThemeToggle } from '../../components/ThemeToggle/ThemeToggle'
@@ -156,7 +157,9 @@ export function LoginPage() {
       <div className={styles.formSide}>
         <div className={styles.formCard}>
           <header className={styles.cardHeader}>
-            <span className={styles.cardIcon} aria-hidden="true">⚔️</span>
+            <span className={styles.cardIcon} aria-hidden="true">
+              <Swords size={26} strokeWidth={1.75} />
+            </span>
             <h2 className={styles.cardTitle}>Tomo do Aventureiro</h2>
             <p className={styles.cardSubtitle}>
               {mode === 'login' ? 'Faça login para continuar' : 'Recuperar senha'}
@@ -266,10 +269,12 @@ export function LoginPage() {
                   className={styles.textLink}
                   onClick={() => { setMode('reset'); setError(null); setResetSent(false) }}
                 >
-                  🔑 Esqueceu sua senha?
+                  <KeyRound size={15} strokeWidth={1.75} aria-hidden="true" />
+                  Esqueceu sua senha?
                 </button>
                 <Link to="/cadastro" className={styles.textLink}>
-                  👤 Criar nova conta
+                  <UserPlus size={15} strokeWidth={1.75} aria-hidden="true" />
+                  Criar nova conta
                 </Link>
               </>
             ) : (

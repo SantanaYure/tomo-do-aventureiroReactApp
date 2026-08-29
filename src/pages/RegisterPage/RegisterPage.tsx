@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { UserRoundPlus } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { PrivacyPolicyModal } from '../../components/PrivacyPolicyModal/PrivacyPolicyModal'
 import { ThemeToggle } from '../../components/ThemeToggle/ThemeToggle'
@@ -123,7 +124,9 @@ export function RegisterPage() {
       <ThemeToggle className={styles.themeFloat} />
       <div className={styles.card}>
         <header className={styles.cardHeader}>
-          <span className={styles.cardIcon} aria-hidden="true">👤</span>
+          <span className={styles.cardIcon} aria-hidden="true">
+            <UserRoundPlus size={26} strokeWidth={1.75} />
+          </span>
           <h1 className={styles.cardTitle}>Criar Conta</h1>
           <p className={styles.cardSubtitle}>Junte-se aos aventureiros</p>
         </header>
@@ -258,7 +261,7 @@ export function RegisterPage() {
           {error && <p className={styles.errorMsg} role="alert">{error}</p>}
 
           <button type="submit" className={styles.primaryButton} disabled={isSubmitting}>
-            {isSubmitting ? 'Criando conta...' : '👤 Criar Conta'}
+            {isSubmitting ? 'Criando conta...' : '→ Criar Conta'}
           </button>
         </form>
 
