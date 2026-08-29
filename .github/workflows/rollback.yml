@@ -1,0 +1,58 @@
+name: Rollback Production
+
+# Reverte a produção para um deployment anterior (bom). Disparo manual.
+on:
+  workflow_dispatch:
+    inputs:
+      deployment:
+        description: 'URL do deployment para restaurar (vazio = deployment de produção anterior)'
+        required: false
+        default: ''
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    name: vercel rollback + smoke
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://${{ vars.PRODUCTION_URL || 'tomo-do-aventureiro-react-app.vercel.app' }}
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'tomo-do-aventureiro-react-app.vercel.app' }}
+      TARGET_DEPLOYMENT: ${{ inputs.deployment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Instalar Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Vercel rollback
+        run: |
+          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          if [ -n "$TARGET_DEPLOYMENT" ]; then
+            vercel rollback "$TARGET_DEPLOYMENT" --yes --token=${{ secrets.VERCEL_TOKEN }}
+          else
+            vercel rollback --yes --token=${{ secrets.VERCEL_TOKEN }}
+          fi
+
+      - name: Smoke test após rollback
+        run: node scripts/smoke-test.mjs "https://$PRODUCTION_URL"
+
+      - name: Resumo
+        if: always()
+        run: |
+          {
+            echo "### Rollback de produção — ${{ job.status }}"
+            echo ""
+            echo "- Alvo: ${TARGET_DEPLOYMENT:-deployment de produção anterior}"
+            echo "- Produção: https://$PRODUCTION_URL"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -117,8 +117,21 @@ O servidor de desenvolvimento sobe em `http://localhost:5173` com hot-reload.
 | `test` | `vitest run` | Executa a suíte automatizada uma vez |
 | `test:watch` | `vitest` | Executa os testes em modo de observação |
 | `typecheck` | `tsc --noEmit` | Verifica os tipos TypeScript sem gerar arquivos |
+| `smoke` | `node scripts/smoke-test.mjs` | Smoke tests contra uma URL implantada — ex.: `npm run smoke -- https://tomo-do-aventureiro-react-app.vercel.app` |
 
 > **Atenção:** o ESLint está configurado apenas para `.js/.jsx`. Arquivos `.ts/.tsx` são verificados por `npm run typecheck`. O Vitest usa jsdom, portanto layout real, media queries e fluxos autenticados no Firebase ainda precisam de validação no navegador.
+
+---
+
+## CI/CD
+
+**GitHub Actions + Vercel.** Em todo PR para `main`/`develop`: o job `verify`
+(lint · type check · test · build · `npm audit`) + o Preview Deployment automático
+da Vercel. O deploy continua como está (Vercel nativo + `vercel --prod` manual);
+os workflows de deploy 100% via CLI (`deploy-staging`, `deploy-production`,
+`rollback`) ficam **dormentes** até o secret `VERCEL_TOKEN` ser configurado.
+`monitoring.yml` roda um smoke contra produção a cada 6h. Detalhes, secrets,
+proteção de branch e como ativar o deploy via CLI: **[docs/ci-cd.md](docs/ci-cd.md)**.
 
 ---
 
