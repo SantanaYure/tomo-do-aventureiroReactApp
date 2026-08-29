@@ -10,6 +10,7 @@ function wrapper({ children }: { children: ReactNode }) {
 beforeEach(() => {
   localStorage.clear()
   document.documentElement.removeAttribute('data-theme')
+  document.documentElement.removeAttribute('style')
   vi.stubGlobal('matchMedia', (q: string) => ({
     matches: false,
     media: q,
@@ -68,5 +69,37 @@ describe('ThemeContext', () => {
 
   it('useTheme lança fora do provider', () => {
     expect(() => renderHook(() => useTheme())).toThrow()
+  })
+
+  it('brandColor: aplica, persiste e volta ao padrão', () => {
+    const { result } = renderHook(() => useTheme(), { wrapper })
+    expect(result.current.brandColor).toBeNull()
+
+    act(() => result.current.setBrandColor('#3b82f6'))
+    expect(result.current.brandColor).toBe('#3b82f6')
+    expect(localStorage.getItem('tomo:brand-color')).toBe('#3b82f6')
+    expect(document.documentElement.style.getPropertyValue('--chip-violet-text')).toBe('#3b82f6')
+
+    act(() => result.current.setBrandColor('cor-inválida'))
+    expect(result.current.brandColor).toBeNull()
+
+    act(() => result.current.setBrandColor(null))
+    expect(localStorage.getItem('tomo:brand-color')).toBeNull()
+    expect(document.documentElement.style.getPropertyValue('--brand')).toBe('')
+  })
+
+  it('brandColor salvo é lido na montagem', () => {
+    localStorage.setItem('tomo:brand-color', '#22a06b')
+    const { result } = renderHook(() => useTheme(), { wrapper })
+    expect(result.current.brandColor).toBe('#22a06b')
+  })
+
+  it('fontChoice: default literary; modern troca as fontes e persiste', () => {
+    const { result } = renderHook(() => useTheme(), { wrapper })
+    expect(result.current.fontChoice).toBe('literary')
+
+    act(() => result.current.setFontChoice('modern'))
+    expect(localStorage.getItem('tomo:font')).toBe('modern')
+    expect(document.documentElement.style.getPropertyValue('--font-body')).toContain('Inter')
   })
 })

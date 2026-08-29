@@ -43,7 +43,8 @@ src/
     AttacksPanel/ CharacterHeader/ CombatPanel/ InventoryPanel/
     ResourcesPanel/ SkillsPanel/ SpellsPanel/ CharacterDetailsPanel/
     AttributesPanel/ SkillPanel/ Sidebar/ UserMenu/ (UserMenu = código morto)
-    SettingsModal/  ← modal de configurações (tema em <select>, sair); abre pela Sidebar
+    SettingsModal/  ← modal de configurações (identidade + AppearancePanel + sair); abre pela Sidebar
+    AppearancePanel/ ← tema, cor de marca (presets/caixa de cores/hex-rgb-rgba) e tipografia (Literária/Moderna)
     UserAvatar/     ← avatar do usuário: foto do provedor → Gravatar (hash do e-mail) → inicial do 1º nome
     AvatarCropper/ ProtectedRoute/ PrivacyPolicyModal/
     RoomHeader/ RoomInstancesPanel/ RoomMembersPanel/ SheetGallery/  ← VAZIOS
@@ -88,6 +89,7 @@ src/
   utils/
     recentlyOpened.ts   → registro de abertura recente em localStorage
     weaponCatalog.ts    → utilitários de proficiências com armas
+    appearance.ts       → cor de marca + tipografia: aplica custom properties no <html>, valida cor, persiste
   App.tsx               → definição das rotas e layout principal
   main.tsx              → ponto de entrada (monta AuthProvider + App)
   index.css             → reset global e importação de theme.css
@@ -156,11 +158,14 @@ src/
 - `CharacterSheetPage` define `document.title` com o nome do personagem assim que a ficha carrega; restaura `'Tomo do Aventureiro'` ao desmontar.
 - `MonsterSheetPage` faz o mesmo com o nome do monstro/NPC.
 
-### Temas (claro / escuro / pergaminho)
-- `src/context/ThemeContext.tsx` expõe `ThemeProvider` + `useTheme()`; grava `data-theme` (`light` | `dark` | `parchment`) no `<html>` e persiste em `localStorage['tomo:theme']`. `toggle()` cicla claro → escuro → pergaminho → claro. Default (sem valor salvo) segue `prefers-color-scheme` — nunca cai em pergaminho automaticamente.
-- `ThemeProvider` é montado em `main.tsx` por fora do `AuthProvider`. Um script inline em `index.html` aplica `data-theme` no primeiro paint (anti-flash).
+### Aparência (tema + cor de marca + tipografia)
+- `src/context/ThemeContext.tsx` expõe `ThemeProvider` + `useTheme()` com: `mode`/`setMode`/`toggle` (`light` | `dark` | `parchment`, ciclo claro → escuro → pergaminho → claro, default segue `prefers-color-scheme`), `brandColor`/`setBrandColor` e `fontChoice`/`setFontChoice`.
+- **Persistência**: `localStorage['tomo:theme' | 'tomo:brand-color' | 'tomo:font']`.
+- **Aplicação**: `data-theme` no `<html>` (tema) + custom properties inline no `<html>` para cor e fonte, via `src/utils/appearance.ts` (`applyAppearance`). A cor de marca deriva `--brand` e a família `--chip-violet-*` (logo `--accent`) por `color-mix`. `fontChoice = 'modern'` troca `--font-display`/`--font-body` por `Inter` (vale sobre qualquer tema); `'literary'` remove os overrides.
+- **Anti-flash**: o script inline em `index.html` reaplica os três no primeiro paint. **Espelha `applyAppearance` — manter em sincronia.**
+- `ThemeProvider` é montado em `main.tsx` por fora do `AuthProvider`.
 - `theme.css` define a paleta clara (glass) em `:root` e sobrescreve a escura (glass) e a pergaminho (paleta sépia legada, sem blur, corpo em Crimson Text) em `:root[data-theme="dark"|"parchment"]`.
-- **Troca de tema na UI**: nas telas de autenticação é o botão `ThemeToggle` (ciclo, glifo `☼`/`☾`/`❧`). No app autenticado, é um `<select>` (Claro / Escuro / Pergaminho) dentro do `SettingsModal` — que usa `useTheme().setMode` diretamente, não `toggle()`. A `Sidebar` não tem mais `ThemeToggle`; o acesso é pelo item "Configurações" (desktop: foto + rótulo; mobile: aba "Ajustes" ⚙ na barra inferior). "Sair do sistema" também vive só no `SettingsModal`.
+- **Na UI**: telas de autenticação → botão `ThemeToggle` (ciclo de tema, glifo `☼`/`☾`/`❧`). App autenticado → painel **`AppearancePanel`** dentro do `SettingsModal` (tema em 3 botões, cor de marca, tipografia). A `Sidebar` não tem `ThemeToggle`; o acesso ao `SettingsModal` é pelo item "Configurações" (desktop: foto + rótulo; mobile: aba "Ajustes" ⚙). "Sair do sistema" também vive só no `SettingsModal`.
 
 ---
 
@@ -186,6 +191,8 @@ Regra de segurança: cada usuário só pode ler e escrever seus próprios docume
 
 ### LocalStorage
 - `tomo:theme` → `'light' | 'dark' | 'parchment'` (preferência de tema)
+- `tomo:brand-color` → cor de marca (hex/rgb/rgba); ausente = destaque padrão do tema
+- `tomo:font` → `'literary' | 'modern'` (tipografia)
 - `tomo:recentlyOpened` → map de `{id: ISOTimestamp}` com últimas aberturas
 - `tomo-char-order-{uid}` → ordem customizada de personagens
 - `tomo-monster-order-{uid}` → ordem customizada de monstros

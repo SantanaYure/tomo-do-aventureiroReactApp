@@ -12,12 +12,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tomo do Aventureiro</title>
   <script>
+    // Anti-flash: aplica tema + cor de marca + tipografia antes do primeiro
+    // paint. Espelha src/utils/appearance.ts (applyAppearance) — manter em sincronia.
     try {
+      var r = document.documentElement;
       var t = localStorage.getItem('tomo:theme');
       if (t !== 'light' && t !== 'dark' && t !== 'parchment') {
         t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       }
-      document.documentElement.setAttribute('data-theme', t);
+      r.setAttribute('data-theme', t);
+
+      var b = localStorage.getItem('tomo:brand-color');
+      if (b) {
+        r.style.setProperty('--brand', b);
+        r.style.setProperty('--chip-violet-text', b);
+        r.style.setProperty('--chip-violet-bg', 'color-mix(in oklab, ' + b + ' 16%, transparent)');
+        r.style.setProperty('--chip-violet-bg-hover', 'color-mix(in oklab, ' + b + ' 26%, transparent)');
+        r.style.setProperty('--chip-violet-border', 'color-mix(in oklab, ' + b + ' 42%, transparent)');
+      }
+      if (localStorage.getItem('tomo:font') === 'modern') {
+        var sans = "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+        r.style.setProperty('--font-display', sans);
+        r.style.setProperty('--font-body', sans);
+      }
     } catch (e) { /* localStorage/matchMedia indisponivel */ }
   </script>
 </head>

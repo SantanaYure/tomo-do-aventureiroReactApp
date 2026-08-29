@@ -44,28 +44,16 @@ describe('SettingsModal', () => {
     ).toBeInTheDocument()
   })
 
-  it('oferece os três temas no select e aplica a escolha', async () => {
+  it('embute o painel de aparência com os três temas', async () => {
     const user = userEvent.setup()
     wrap(<SettingsModal {...baseProps} />)
 
-    const select = screen.getByRole('combobox', { name: /tema/i })
-    expect(
-      screen.getAllByRole('option').map((option) => (option as HTMLOptionElement).value),
-    ).toEqual(['light', 'dark', 'parchment'])
+    expect(screen.getByRole('button', { name: 'Claro' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pergaminho' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Escuro' })).toBeInTheDocument()
 
-    await user.selectOptions(select, 'parchment')
+    await user.click(screen.getByRole('button', { name: 'Pergaminho' }))
     expect(document.documentElement.getAttribute('data-theme')).toBe('parchment')
-
-    await user.selectOptions(select, 'dark')
-    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
-  })
-
-  it('o select reflete o tema salvo', () => {
-    localStorage.setItem('tomo:theme', 'dark')
-    wrap(<SettingsModal {...baseProps} />)
-    expect(
-      (screen.getByRole('combobox', { name: /tema/i }) as HTMLSelectElement).value,
-    ).toBe('dark')
   })
 
   it('o botão Sair dispara onLogout', async () => {

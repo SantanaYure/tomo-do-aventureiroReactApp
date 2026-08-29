@@ -1,13 +1,7 @@
 import { useEffect, useRef } from 'react'
-import { useTheme, THEME_ORDER, type ThemeMode } from '../../context/ThemeContext'
 import { UserAvatar } from '../UserAvatar/UserAvatar'
+import { AppearancePanel } from '../AppearancePanel/AppearancePanel'
 import styles from './SettingsModal.module.css'
-
-const THEME_LABELS: Record<ThemeMode, string> = {
-  light: 'Claro',
-  dark: 'Escuro',
-  parchment: 'Pergaminho',
-}
 
 interface SettingsModalProps {
   displayName: string | null
@@ -25,7 +19,6 @@ export function SettingsModal({
   onLogout,
   onClose,
 }: SettingsModalProps) {
-  const { mode, setMode } = useTheme()
   const closeRef = useRef<HTMLButtonElement>(null)
 
   // ESC fecha
@@ -96,20 +89,7 @@ export function SettingsModal({
           </div>
         </div>
 
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Tema</span>
-          <select
-            className={styles.select}
-            value={mode}
-            onChange={(event) => setMode(event.target.value as ThemeMode)}
-          >
-            {THEME_ORDER.map((theme) => (
-              <option key={theme} value={theme}>
-                {THEME_LABELS[theme]}
-              </option>
-            ))}
-          </select>
-        </label>
+        <AppearancePanel />
 
         <div className={styles.divider} aria-hidden="true" />
 
