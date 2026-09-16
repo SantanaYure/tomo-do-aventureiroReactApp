@@ -18,6 +18,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Home', icon: '⌂', exact: true },
   { to: '/fichas', label: 'Fichas', icon: '⚔' },
+  { to: '/mesas', label: 'Mesas', icon: '♜' },
 ]
 
 export function Sidebar() {

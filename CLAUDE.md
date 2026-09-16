@@ -19,7 +19,7 @@ O projeto está em produção, implantado via Vercel. Não há backend customiza
 | Banco de dados | Firebase Firestore (persistência em nuvem) |
 | Autenticação | Firebase Auth (e-mail/senha + Google) |
 | Crop de avatar | react-easy-crop |
-| Ícones | lucide-react (ícones de conteúdo, SVG monocromático) |
+| Ícones | Estritamente clean e monocromáticos (`currentColor`): `lucide-react` (SVG traço fino 1.5–1.75) e glifos Unicode (`⌂`, `⚔`, `♜`, `⚙`). Proibido emojis coloridos. |
 | Estilo | CSS Modules + variáveis CSS globais (theme.css) — tema Glass Morphism com toggle claro/escuro |
 | Linting | ESLint 9 (flat config) |
 | Testes | Vitest 3 + Testing Library + jsdom |

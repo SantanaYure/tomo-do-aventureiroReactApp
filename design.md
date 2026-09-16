@@ -79,12 +79,25 @@ A opção **Tipografia "Moderna"** do painel Aparência sobrescreve `--font-disp
 
 Carregadas via `@import` em `theme.css`: **Cinzel** 600/700/800, **Inter** 400/500/600/700, **Crimson Text** 400/600 (+itálico).
 
-### Ícones inline
+### Ícones inline e marcadores visuais (Regra Clean)
 
-Sempre monocromáticos e herdando `currentColor` — nunca emoji coloridos (puxam uma fonte à parte e destoam). Duas fontes:
+Todos os ícones devem seguir rigorosamente o padrão visual estabelecido no restante da aplicação: **estritamente clean, minimalistas, monocromáticos e herdando `currentColor`**. É **terminantemente proibido o uso de emojis coloridos ou ícones com preenchimentos pesados**, pois destoam da identidade Glass Morphism e puxam fontes nativas inconsistentes entre sistemas operacionais.
 
-- **Glifos Unicode** para marcadores curtos que já convivem bem com a fonte da UI. Ex.: Sidebar `⌂` `⚔` `⚙` (Configurações); bottom bar mobile `⚙` (Ajustes); `ThemeToggle` `☼` (claro) `☾` (escuro) `❧` (pergaminho), este último em `var(--font-serif)` nos três temas.
-- **`lucide-react`** para ícones de conteúdo (tipos de ficha, estados vazios, ícones das telas de auth). SVG de traço, `strokeWidth` 1.5–1.75, `size` casado ao contexto. Ex.: `Home` usa `Swords` (PJ), `Skull` (monstro), `Users` (NPC), `ScrollText` (vazio); `LoginPage` usa `Swords` (selo), `KeyRound` e `UserPlus` (links); `RegisterPage` usa `UserRoundPlus` (selo). O ícone fica dentro de um selo (`--radius-md`, cor `--text-muted`): sobre o fundo da página usa `--panel-bg` + `--blur-panel` + `--panel-border` (Home); dentro de um painel glass usa `--item-bg` + `--panel-border`, **sem blur próprio** (selo do card de auth). Nunca emoji colorido.
+As duas fontes autorizadas são:
+
+1. **Glifos Unicode Monocromáticos (Texto/Navegação):** Usados como marcadores tipográficos curtos e elegantes que se integram perfeitamente às fontes da interface (`Cinzel` e `Inter`). Devem ser caracteres puramente textuais que herdam a cor da fonte ativa.
+   - Exemplos vigentes:
+     - Sidebar / Menu: `⌂` (Home), `⚔` (Fichas), `♜` (Mesas/Campanhas), `⚙` (Configurações);
+     - Bottom bar mobile: `⚙` (Ajustes);
+     - ThemeToggle: `☼` (claro), `☾` (escuro), `❧` (pergaminho).
+
+2. **`lucide-react` (Interface, Ações e Conteúdo):** Ícones SVG em vetor com estilo de traço leve e uniforme:
+   - **Traço:** `strokeWidth` fixado entre `1.5` e `1.75` (nunca traços grossos como 2.5 ou preenchimentos sólidos coloridos).
+   - **Tamanho:** Casado estritamente ao tamanho do texto ao redor (normalmente `14px` a `18px` para botões/chips e `24px` a `28px` para estados vazios principais).
+   - **Cor:** Sempre `color="currentColor"` ou classes herdando `var(--text)`, `var(--text-muted)` ou `var(--chip-violet-text)`.
+   - **Selos e Molduras:** Quando aplicados dentro de cartões ou cabeçalhos, devem ficar envolvidos por um selo minimalista (`--radius-md`, cor `--text-muted`):
+     - Sobre fundo da página: `--panel-bg` + `--blur-panel` + `--panel-border`;
+     - Dentro de painel glass: `--item-bg` + `--panel-border`, **sem blur próprio**.
 
 ### Escala
 

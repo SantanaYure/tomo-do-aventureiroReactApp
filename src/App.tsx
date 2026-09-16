@@ -39,6 +39,12 @@ const PrivacyPolicyPage = lazy(() =>
 const NotFound = lazy(() =>
   import('./pages/NotFound/NotFound').then((m) => ({ default: m.NotFound })),
 )
+const CampaignsPage = lazy(() =>
+  import('./pages/CampaignsPage/CampaignsPage').then((m) => ({ default: m.CampaignsPage })),
+)
+const CampaignDetailPage = lazy(() =>
+  import('./pages/CampaignDetailPage/CampaignDetailPage').then((m) => ({ default: m.CampaignDetailPage })),
+)
 
 function AppLayout() {
   return (
@@ -80,6 +86,8 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route path="/" element={<Home />} />
               <Route path="/fichas" element={<CharactersPage />} />
+              <Route path="/mesas" element={<CampaignsPage />} />
+              <Route path="/mesas/:id" element={<CampaignDetailPage />} />
               <Route path="/ficha/nova" element={<Navigate to="/fichas" replace />} />
               <Route path="/ficha/:id" element={<CharacterSheetPage />} />
               <Route path="/monstro/novo" element={<NewMonsterPage />} />
