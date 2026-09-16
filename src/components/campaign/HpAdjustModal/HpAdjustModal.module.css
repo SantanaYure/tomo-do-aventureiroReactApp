@@ -1,0 +1,261 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 1000;
+}
+
+.dialog {
+  width: 100%;
+  max-width: 420px;
+  background: var(--panel-bg);
+  backdrop-filter: var(--blur-panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  animation: modalIn 180ms ease-out;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.eyebrow {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-btn);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 120ms ease;
+}
+
+.closeBtn:hover {
+  color: var(--text);
+}
+
+.closeBtn:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+.previewBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: var(--space-3) var(--space-4);
+  background: var(--item-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.statLabel {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.statVal {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.tempVal {
+  color: var(--temp-solid);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.tabBtn {
+  flex: 1;
+  padding: var(--space-2);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  font-weight: 600;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--panel-border);
+  background: var(--item-bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+
+.tabBtn:hover {
+  background: var(--panel-bg);
+  color: var(--text);
+}
+
+.tabBtnDamageActive {
+  background: var(--danger-solid);
+  border-color: var(--danger-solid);
+  color: var(--on-solid);
+}
+
+.tabBtnHealActive {
+  background: var(--heal-solid);
+  border-color: var(--heal-solid);
+  color: var(--on-solid);
+}
+
+.tabBtnTempActive {
+  background: var(--temp-solid);
+  border-color: var(--temp-solid);
+  color: var(--on-solid);
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.amountInput {
+  width: 100%;
+  padding: var(--space-3);
+  font-size: var(--text-xl);
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-align: center;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--panel-border);
+  background: var(--input-bg);
+  color: var(--text);
+}
+
+.amountInput:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+.quickRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.quickBtn {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  font-family: var(--font-body);
+  font-weight: 600;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--panel-border);
+  background: var(--item-bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.quickBtn:hover {
+  background: var(--panel-bg);
+  color: var(--text);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  border-top: 1px solid var(--panel-border);
+  padding-top: var(--space-4);
+}
+
+.cancelBtn {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--panel-border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.cancelBtn:hover {
+  background: var(--item-bg);
+  color: var(--text);
+}
+
+.submitBtn {
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  font-weight: 600;
+  border-radius: var(--radius-btn);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: opacity 120ms ease;
+}
+
+.submitDamage {
+  background: var(--danger-solid);
+  color: var(--on-solid);
+}
+
+.submitHeal {
+  background: var(--heal-solid);
+  color: var(--on-solid);
+}
+
+.submitTemp {
+  background: var(--temp-solid);
+  color: var(--on-solid);
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

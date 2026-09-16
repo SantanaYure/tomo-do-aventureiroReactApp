@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useCharacterSheets } from '../../../hooks/useCharacterSheets'
+import { extractVitalsFromCharacterSheet } from '../../../store/campaignStore'
+import type { CharacterVitals } from '../../../types/campaign/campaign'
 import styles from './SelectCharacterModal.module.css'
 
 interface SelectCharacterModalProps {
@@ -10,9 +12,11 @@ interface SelectCharacterModalProps {
     characterName: string | null
     characterClass: string | null
     characterAvatarUrl: string | null
+    vitals?: CharacterVitals | null
   }) => Promise<void>
   onClose: () => void
 }
+
 
 export function SelectCharacterModal({
   userId,
@@ -59,15 +63,18 @@ export function SelectCharacterModal({
             ?.filter((c) => c.className)
             .map((c) => (c.level > 0 ? `${c.className} ${c.level}` : c.className))
             .join(' · ')
+          const vitals = extractVitalsFromCharacterSheet(found.data)
           await onSelect({
             characterSheetId: found.id,
             characterName: char.name || 'Sem nome',
             characterClass: classText || null,
             characterAvatarUrl: char.avatar || null,
+            vitals,
           })
         }
       }
       onClose()
+
     } catch (err) {
       console.error('Erro ao atualizar personagem:', err)
       setIsSubmitting(false)

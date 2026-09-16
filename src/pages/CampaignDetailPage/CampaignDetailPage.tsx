@@ -6,7 +6,10 @@ import {
   Copy,
   Crown,
   LogOut,
+  Plus,
   RefreshCw,
+  Skull,
+  Swords,
   Users,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -14,14 +17,22 @@ import { useCampaign } from '../../hooks/useCampaign'
 import {
   removeMember,
   updateMemberCharacter,
+  updateMemberVitals,
   regenerateInviteCode,
-  updateCampaign,
+  addCreatureToCampaign,
+  updateCreatureInCampaign,
+  removeCreatureFromCampaign,
 } from '../../store/campaignStore'
 import { MemberCard } from '../../components/campaign/MemberCard/MemberCard'
 import { SelectCharacterModal } from '../../components/campaign/SelectCharacterModal/SelectCharacterModal'
+import { HeroVitalCard } from '../../components/campaign/HeroVitalCard/HeroVitalCard'
+import { CreatureVitalCard } from '../../components/campaign/CreatureVitalCard/CreatureVitalCard'
+import { AddCreatureModal } from '../../components/campaign/AddCreatureModal/AddCreatureModal'
 import { formatInviteCode } from '../../utils/inviteCode'
-import type { CampaignMember } from '../../types/campaign/campaign'
+import type { CampaignCreature, CharacterVitals } from '../../types/campaign/campaign'
 import styles from './CampaignDetailPage.module.css'
+
+type TabType = 'session' | 'members'
 
 export function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -33,9 +44,11 @@ export function CampaignDetailPage() {
     user?.uid,
   )
 
+  const [activeTab, setActiveTab] = useState<TabType>('session')
   const [copied, setCopied] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [isSelectCharOpen, setIsSelectCharOpen] = useState(false)
+  const [isAddCreatureOpen, setIsAddCreatureOpen] = useState(false)
 
   async function handleCopyCode() {
     if (!campaign) return
@@ -44,7 +57,6 @@ export function CampaignDetailPage() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      // Fallback simples
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
@@ -100,15 +112,66 @@ export function CampaignDetailPage() {
     characterName: string | null
     characterClass: string | null
     characterAvatarUrl: string | null
+    vitals?: CharacterVitals | null
   }) {
     if (!campaign || !user) return
-    await updateMemberCharacter(campaign.id, user.uid, data)
+    await updateMemberCharacter(campaign.id, user.uid, {
+      characterSheetId: data.characterSheetId,
+      characterName: data.characterName,
+      characterClass: data.characterClass,
+      characterAvatarUrl: data.characterAvatarUrl,
+    })
+    if (data.vitals) {
+      await updateMemberVitals(campaign.id, user.uid, data.vitals)
+    }
+  }
+
+  async function handleUpdateVitals(userId: string, newVitals: CharacterVitals) {
+    if (!campaign) return
+    try {
+      await updateMemberVitals(campaign.id, userId, newVitals)
+    } catch (err) {
+      console.error('Erro ao atualizar vitais:', err)
+    }
+  }
+
+  async function handleAddCreature(creatureData: Omit<CampaignCreature, 'id' | 'addedAt'>) {
+    if (!campaign) return
+    try {
+      await addCreatureToCampaign(campaign.id, campaign.creatures, creatureData)
+    } catch (err) {
+      console.error('Erro ao adicionar criatura:', err)
+    }
+  }
+
+  async function handleUpdateCreature(creatureId: string, updates: Partial<CampaignCreature>) {
+    if (!campaign) return
+    try {
+      await updateCreatureInCampaign(campaign.id, campaign.creatures || [], creatureId, updates)
+    } catch (err) {
+      console.error('Erro ao atualizar criatura:', err)
+    }
+  }
+
+  async function handleRemoveCreature(creatureId: string) {
+    if (!campaign) return
+    try {
+      await removeCreatureFromCampaign(campaign.id, campaign.creatures || [], creatureId)
+    } catch (err) {
+      console.error('Erro ao remover criatura:', err)
+    }
   }
 
   if (isLoading) {
     return (
       <div className={styles.page}>
-        <div style={{ height: '12rem', background: 'var(--item-bg)', borderRadius: 'var(--radius-xl)' }} />
+        <div
+          style={{
+            height: '12rem',
+            background: 'var(--item-bg)',
+            borderRadius: 'var(--radius-xl)',
+          }}
+        />
       </div>
     )
   }
@@ -128,6 +191,8 @@ export function CampaignDetailPage() {
       </div>
     )
   }
+
+  const creatures = campaign.creatures || []
 
   return (
     <div className={styles.page}>
@@ -191,34 +256,127 @@ export function CampaignDetailPage() {
         </div>
       </div>
 
-      <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>
-          Integrantes da Mesa ({members.length})
-        </h2>
+      <nav className={styles.navTabs} aria-label="Navegação da campanha">
+        <button
+          type="button"
+          className={`${styles.tabButton} ${activeTab === 'session' ? styles.tabButtonActive : ''}`}
+          onClick={() => setActiveTab('session')}
+          aria-selected={activeTab === 'session'}
+          role="tab"
+        >
+          <Swords size={15} strokeWidth={1.75} aria-hidden="true" />
+          Painel da Sessão
+        </button>
+        <button
+          type="button"
+          className={`${styles.tabButton} ${activeTab === 'members' ? styles.tabButtonActive : ''}`}
+          onClick={() => setActiveTab('members')}
+          aria-selected={activeTab === 'members'}
+          role="tab"
+        >
+          <Users size={15} strokeWidth={1.75} aria-hidden="true" />
+          Integrantes & Convite ({members.length})
+        </button>
+      </nav>
 
-        {!isDm && currentMember && (
-          <button
-            type="button"
-            className={styles.dangerBtn}
-            onClick={handleLeaveCampaign}
-          >
-            <LogOut size={13} /> Sair da Mesa
-          </button>
-        )}
-      </div>
+      {activeTab === 'session' ? (
+        <div className={styles.sessionDashboard}>
+          <div>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>
+                Heróis na Sessão ({members.length})
+              </h2>
+            </div>
 
-      <div className={styles.membersGrid}>
-        {members.map((member) => (
-          <MemberCard
-            key={member.userId}
-            member={member}
-            isDm={isDm}
-            currentUserId={user?.uid}
-            onRemove={handleRemoveMember}
-            onChangeCharacter={() => setIsSelectCharOpen(true)}
-          />
-        ))}
-      </div>
+            <div className={styles.vitalsGrid} style={{ marginTop: 'var(--space-3)' }}>
+              {members.map((member) => (
+                <HeroVitalCard
+                  key={member.userId}
+                  member={member}
+                  isDm={isDm}
+                  currentUserId={user?.uid}
+                  onUpdateVitals={handleUpdateVitals}
+                  onSelectCharacter={() => setIsSelectCharOpen(true)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.creaturesSection}>
+            <div className={styles.creaturesHeader}>
+              <h2 className={styles.creaturesTitle}>
+                <Skull size={18} strokeWidth={1.75} aria-hidden="true" />
+                Criaturas & Monstros em Cena ({creatures.length})
+              </h2>
+
+              {isDm && (
+                <button
+                  type="button"
+                  className={styles.addCreatureBtn}
+                  onClick={() => setIsAddCreatureOpen(true)}
+                >
+                  <Plus size={14} strokeWidth={2} aria-hidden="true" />
+                  Adicionar Criatura
+                </button>
+              )}
+            </div>
+
+            {creatures.length === 0 ? (
+              <div className={styles.emptyCreatures}>
+                <p>Nenhuma criatura ou monstro instanciado em cena.</p>
+                {isDm && (
+                  <p style={{ marginTop: 'var(--space-1)', fontSize: 'var(--text-xs)' }}>
+                    Clique em &quot;Adicionar Criatura&quot; para importar monstros da sua biblioteca ou cadastrar ameaças para o combate.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className={styles.vitalsGrid}>
+                {creatures.map((creature) => (
+                  <CreatureVitalCard
+                    key={creature.id}
+                    creature={creature}
+                    isDm={isDm}
+                    onUpdate={handleUpdateCreature}
+                    onRemove={handleRemoveCreature}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>
+              Integrantes da Mesa ({members.length})
+            </h2>
+
+            {!isDm && currentMember && (
+              <button
+                type="button"
+                className={styles.dangerBtn}
+                onClick={handleLeaveCampaign}
+              >
+                <LogOut size={13} /> Sair da Mesa
+              </button>
+            )}
+          </div>
+
+          <div className={styles.membersGrid} style={{ marginTop: 'var(--space-3)' }}>
+            {members.map((member) => (
+              <MemberCard
+                key={member.userId}
+                member={member}
+                isDm={isDm}
+                currentUserId={user?.uid}
+                onRemove={handleRemoveMember}
+                onChangeCharacter={() => setIsSelectCharOpen(true)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {isSelectCharOpen && user && (
         <SelectCharacterModal
@@ -226,6 +384,14 @@ export function CampaignDetailPage() {
           currentSheetId={currentMember?.characterSheetId}
           onSelect={handleUpdateCharacter}
           onClose={() => setIsSelectCharOpen(false)}
+        />
+      )}
+
+      {isAddCreatureOpen && user && (
+        <AddCreatureModal
+          userId={user.uid}
+          onAdd={handleAddCreature}
+          onClose={() => setIsAddCreatureOpen(false)}
         />
       )}
     </div>
