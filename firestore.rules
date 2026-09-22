@@ -132,7 +132,10 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.dmId == request.auth.uid;
 
       match /members/{memberId} {
-        allow read: if isCampaignMember(campaignId);
+        // O próprio usuário pode ler o seu documento de membro mesmo antes de
+        // entrar (joinCampaignByCode confere se ele já existia).
+        allow read: if isCampaignMember(campaignId) ||
+          (signedIn() && request.auth.uid == memberId);
         allow create: if signedIn() && (
           isCampaignDm(campaignId) || (
             request.auth.uid == memberId &&
