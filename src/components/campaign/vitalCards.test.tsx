@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { HeroVitalCard } from './HeroVitalCard/HeroVitalCard'
 import { CreatureVitalCard } from './CreatureVitalCard/CreatureVitalCard'
 import { ConditionsModal } from './ConditionsModal/ConditionsModal'
@@ -98,6 +99,33 @@ describe('Componentes Vitais e Combate da Fase 2', () => {
         'u1',
         expect.objectContaining({ hpCurrent: 25, hpTemp: 4 }),
       )
+    })
+
+    it('permite que um jogador autorizado desvincule o herói de outro integrante', () => {
+      const onRemoveHero = vi.fn()
+      window.confirm = vi.fn(() => true)
+      const linkedMember = { ...mockMember, characterSheetId: 'sheet-1' }
+
+      render(
+        <MemoryRouter>
+          <HeroVitalCard
+            member={linkedMember}
+            campaignId="camp-1"
+            isDm={false}
+            canManageHeroes={true}
+            currentUserId="helper-1"
+            onUpdateVitals={vi.fn()}
+            onRemoveHero={onRemoveHero}
+          />
+        </MemoryRouter>,
+      )
+
+      expect(screen.getByTitle('Abrir ficha')).toHaveAttribute(
+        'href',
+        '/ficha/sheet-1?owner=u1&campaign=camp-1',
+      )
+      fireEvent.click(screen.getByRole('button', { name: /Desvincular Thorin/i }))
+      expect(onRemoveHero).toHaveBeenCalledWith('u1', 'sheet-1')
     })
   })
 

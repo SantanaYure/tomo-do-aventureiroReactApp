@@ -16,12 +16,16 @@ import { useAuth } from '../../context/AuthContext'
 import { useCampaign } from '../../hooks/useCampaign'
 import {
   removeMember,
-  updateMemberCharacter,
   updateMemberVitals,
   regenerateInviteCode,
   addCreatureToCampaign,
   updateCreatureInCampaign,
   removeCreatureFromCampaign,
+  linkCharacterSheetToCampaign,
+  unlinkCharacterSheetFromCampaign,
+  linkMonsterSheetToCampaign,
+  removeHeroFromCampaign,
+  toggleMemberAuthorization,
 } from '../../store/campaignStore'
 import { MemberCard } from '../../components/campaign/MemberCard/MemberCard'
 import { SelectCharacterModal } from '../../components/campaign/SelectCharacterModal/SelectCharacterModal'
@@ -30,6 +34,7 @@ import { CreatureVitalCard } from '../../components/campaign/CreatureVitalCard/C
 import { AddCreatureModal } from '../../components/campaign/AddCreatureModal/AddCreatureModal'
 import { formatInviteCode } from '../../utils/inviteCode'
 import type { CampaignCreature, CharacterVitals } from '../../types/campaign/campaign'
+import type { CharacterSheet } from '../../types/system/dnd/CharacterSheet'
 import styles from './CampaignDetailPage.module.css'
 
 type TabType = 'session' | 'members'
@@ -113,16 +118,46 @@ export function CampaignDetailPage() {
     characterClass: string | null
     characterAvatarUrl: string | null
     vitals?: CharacterVitals | null
+    sheetData?: CharacterSheet | null
   }) {
     if (!campaign || !user) return
-    await updateMemberCharacter(campaign.id, user.uid, {
-      characterSheetId: data.characterSheetId,
-      characterName: data.characterName,
-      characterClass: data.characterClass,
-      characterAvatarUrl: data.characterAvatarUrl,
-    })
-    if (data.vitals) {
-      await updateMemberVitals(campaign.id, user.uid, data.vitals)
+
+    try {
+      if (data.characterSheetId && data.sheetData) {
+        await linkCharacterSheetToCampaign(
+          campaign.id,
+          campaign.name,
+          user.uid,
+          data.characterSheetId,
+          data.sheetData,
+        )
+      } else {
+        await unlinkCharacterSheetFromCampaign(
+          campaign.id,
+          user.uid,
+          currentMember?.characterSheetId,
+        )
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar vínculo do personagem:', err)
+    }
+  }
+
+  async function handleRemoveHero(targetUserId: string, sheetId?: string | null) {
+    if (!campaign) return
+    try {
+      await removeHeroFromCampaign(campaign.id, targetUserId, sheetId)
+    } catch (err) {
+      console.error('Erro ao desvincular herói da mesa:', err)
+    }
+  }
+
+  async function handleToggleAuthorization(targetUserId: string, canManage: boolean) {
+    if (!campaign || !isDm) return
+    try {
+      await toggleMemberAuthorization(campaign.id, targetUserId, canManage)
+    } catch (err) {
+      console.error('Erro ao alternar autorização:', err)
     }
   }
 
@@ -136,9 +171,24 @@ export function CampaignDetailPage() {
   }
 
   async function handleAddCreature(creatureData: Omit<CampaignCreature, 'id' | 'addedAt'>) {
-    if (!campaign) return
+    if (!campaign || !user) return
     try {
-      await addCreatureToCampaign(campaign.id, campaign.creatures, creatureData)
+      if (creatureData.monsterSheetId) {
+        const { getMonsterSheet } = await import('../../store/monsterSheetStore')
+        const monster = await getMonsterSheet(user.uid, creatureData.monsterSheetId)
+        if (!monster) throw new Error('A ficha de monstro/NPC não foi encontrada.')
+        await linkMonsterSheetToCampaign(
+          campaign.id,
+          campaign.name,
+          user.uid,
+          creatureData.monsterSheetId,
+          monster.data,
+          campaign.creatures || [],
+          creatureData.name,
+        )
+      } else {
+        await addCreatureToCampaign(campaign.id, campaign.creatures, creatureData)
+      }
     } catch (err) {
       console.error('Erro ao adicionar criatura:', err)
     }
@@ -293,10 +343,13 @@ export function CampaignDetailPage() {
                 <HeroVitalCard
                   key={member.userId}
                   member={member}
+                  campaignId={campaign.id}
                   isDm={isDm}
+                  canManageHeroes={Boolean(currentMember?.canManageHeroes)}
                   currentUserId={user?.uid}
                   onUpdateVitals={handleUpdateVitals}
                   onSelectCharacter={() => setIsSelectCharOpen(true)}
+                  onRemoveHero={handleRemoveHero}
                 />
               ))}
             </div>
@@ -336,6 +389,7 @@ export function CampaignDetailPage() {
                   <CreatureVitalCard
                     key={creature.id}
                     creature={creature}
+                    campaignId={campaign.id}
                     isDm={isDm}
                     onUpdate={handleUpdateCreature}
                     onRemove={handleRemoveCreature}
@@ -368,10 +422,14 @@ export function CampaignDetailPage() {
               <MemberCard
                 key={member.userId}
                 member={member}
+                campaignId={campaign.id}
                 isDm={isDm}
+                canManageHeroes={Boolean(currentMember?.canManageHeroes)}
                 currentUserId={user?.uid}
                 onRemove={handleRemoveMember}
                 onChangeCharacter={() => setIsSelectCharOpen(true)}
+                onUnlinkCharacter={handleRemoveHero}
+                onToggleAuthorization={handleToggleAuthorization}
               />
             ))}
           </div>

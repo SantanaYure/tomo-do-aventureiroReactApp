@@ -18,4 +18,6 @@ export interface CharacterSheet {
   combatNotes: string
   isEditMode: boolean
   groupId?: string
+  campaignId?: string | null
+  campaignName?: string | null
 }

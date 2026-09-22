@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useCharacterSheets } from '../../../hooks/useCharacterSheets'
 import { extractVitalsFromCharacterSheet } from '../../../store/campaignStore'
 import type { CharacterVitals } from '../../../types/campaign/campaign'
+import type { CharacterSheet } from '../../../types/system/dnd/CharacterSheet'
 import styles from './SelectCharacterModal.module.css'
 
 interface SelectCharacterModalProps {
@@ -13,6 +14,7 @@ interface SelectCharacterModalProps {
     characterClass: string | null
     characterAvatarUrl: string | null
     vitals?: CharacterVitals | null
+    sheetData?: CharacterSheet | null
   }) => Promise<void>
   onClose: () => void
 }
@@ -70,6 +72,7 @@ export function SelectCharacterModal({
             characterClass: classText || null,
             characterAvatarUrl: char.avatar || null,
             vitals,
+            sheetData: found.data,
           })
         }
       }

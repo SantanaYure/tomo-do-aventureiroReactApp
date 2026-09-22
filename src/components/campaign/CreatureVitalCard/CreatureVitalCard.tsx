@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Eye, Shield, Skull, Trash2, Plus, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Eye, Shield, Skull, Trash2, Plus, X, ExternalLink } from 'lucide-react'
 import type { CampaignCreature } from '../../../types/campaign/campaign'
 import { ConditionsModal } from '../ConditionsModal/ConditionsModal'
 import { HpAdjustModal } from '../HpAdjustModal/HpAdjustModal'
@@ -7,6 +8,7 @@ import styles from './CreatureVitalCard.module.css'
 
 interface CreatureVitalCardProps {
   creature: CampaignCreature
+  campaignId?: string
   isDm: boolean
   onUpdate: (creatureId: string, updates: Partial<CampaignCreature>) => void
   onRemove: (creatureId: string) => void
@@ -14,6 +16,7 @@ interface CreatureVitalCardProps {
 
 export function CreatureVitalCard({
   creature,
+  campaignId,
   isDm,
   onUpdate,
   onRemove,
@@ -64,10 +67,24 @@ export function CreatureVitalCard({
     }
   }
 
+  const sheetUrl = creature.monsterSheetId
+    ? `/monstro/${creature.monsterSheetId}?campaign=${campaignId || ''}${creature.ownerId ? `&owner=${creature.ownerId}` : ''}`
+    : null
+
   return (
     <article className={styles.card} aria-label={`Status de ${creature.name}`}>
       <div className={styles.header}>
-        {creature.avatar ? (
+        {sheetUrl ? (
+          <Link to={sheetUrl} title="Abrir ficha da criatura">
+            {creature.avatar ? (
+              <img src={creature.avatar} alt={creature.name} className={styles.avatar} />
+            ) : (
+              <div className={styles.avatarPlaceholder} aria-hidden="true">
+                <Skull size={20} strokeWidth={1.5} />
+              </div>
+            )}
+          </Link>
+        ) : creature.avatar ? (
           <img src={creature.avatar} alt={creature.name} className={styles.avatar} />
         ) : (
           <div className={styles.avatarPlaceholder} aria-hidden="true">
@@ -76,8 +93,19 @@ export function CreatureVitalCard({
         )}
 
         <div className={styles.titleArea}>
-          <h3 className={styles.name}>{creature.name}</h3>
-          <p className={styles.subtitle}>Criatura / Monstro em Cena</p>
+          <h3 className={styles.name}>
+            {sheetUrl ? (
+              <Link to={sheetUrl} className={styles.link} title="Abrir ficha de monstro">
+                {creature.name}
+                <ExternalLink size={12} strokeWidth={2} />
+              </Link>
+            ) : (
+              creature.name
+            )}
+          </h3>
+          <p className={styles.subtitle}>
+            {creature.monsterSheetId ? 'Monstro / NPC Vinculado' : 'Criatura / Monstro em Cena'}
+          </p>
         </div>
 
         {isDm && (

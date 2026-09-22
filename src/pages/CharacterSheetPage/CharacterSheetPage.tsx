@@ -2,7 +2,7 @@
 // Carrega e persiste a ficha de um personagem pelo id da rota
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import type { CharacterSheet } from '../../types/system/dnd'
 import {
   saveCharacterSheet,
@@ -11,6 +11,8 @@ import {
   parseUntrustedCharacterSheet,
   type StoredCharacterSheet,
 } from '../../store/characterSheetStore'
+import { syncSheetToCampaignMember } from '../../store/campaignStore'
+import { LinkToCampaignModal } from '../../components/campaign/LinkToCampaignModal/LinkToCampaignModal'
 import { normalizeFileName, downloadJsonFile } from '../../utils/exportSheet'
 import { recordOpened } from '../../utils/recentlyOpened'
 import { applyRestToCharacterSheet, calcEffectiveHpMaxForRest, hasWarlockClass } from '../../utils/restRules'
@@ -96,8 +98,12 @@ function readStoredTab(id?: string): Tab {
 export function CharacterSheetPage() {
   const { uid } = useAuth()
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
+  const ownerUid = searchParams.get('owner')
+  const campaignIdParam = searchParams.get('campaign')
+  const isSpectator = Boolean(ownerUid && uid && ownerUid !== uid)
   const navigate = useNavigate()
-  const { sheet: storedSheet, notFound, error } = useCharacterSheet(uid, id ?? null)
+  const { sheet: storedSheet, notFound, error } = useCharacterSheet(uid, id ?? null, ownerUid)
   const {
     sheet,
     commit,
@@ -114,11 +120,17 @@ export function CharacterSheetPage() {
     remoteChangedElsewhere,
     dismissRemoteChange,
   } = useSheetAutosave<CharacterSheet>({
-    uid,
+    uid: isSpectator ? null : uid,
     id: id ?? null,
     remote: storedSheet,
     scope: 'pj',
-    save: saveCharacterSheet,
+    save: async (u, sheetId, data, createdAt, updatedAt) => {
+      const res = await saveCharacterSheet(u, sheetId, data, createdAt, updatedAt)
+      if (data.campaignId && u) {
+        syncSheetToCampaignMember(data.campaignId, u, data, sheetId).catch(() => {})
+      }
+      return res
+    },
     parseDraft: parseUntrustedCharacterSheet,
   })
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
@@ -128,6 +140,7 @@ export function CharacterSheetPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showGroupManager, setShowGroupManager] = useState(false)
+  const [showLinkModal, setShowLinkModal] = useState(false)
   const { groups, isLoading: isLoadingGroups } = useSheetGroups(uid)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -180,63 +193,78 @@ export function CharacterSheetPage() {
   // atual de uma ref. Isso os torna estáveis entre renders — condição para que
   // o `memo` dos painéis realmente aborte o render. Um handler recriado a cada
   // render invalida a comparação rasa e anula a memoização.
-  const handleUpdate = commit
+  const handleUpdate = useCallback(
+    (updater: Parameters<typeof commit>[0]) => {
+      if (!isSpectator) commit(updater)
+    },
+    [commit, isSpectator],
+  )
 
   const handleCharacterChange = useCallback(
     (updated: CharacterSheet['character']) => {
+      if (isSpectator) return
       commit((current) => ({ ...current, character: updated }))
     },
-    [commit],
+    [commit, isSpectator],
   )
 
   const handleChangeAttacks = useCallback(
     (updated: CharacterSheet['attacks']) => {
+      if (isSpectator) return
       commit((current) => ({ ...current, attacks: updated }))
     },
-    [commit],
+    [commit, isSpectator],
   )
 
   const handleChangeSpells = useCallback(
     (updated: CharacterSheet['spells']) => {
+      if (isSpectator) return
       commit((current) => ({ ...current, spells: updated }))
     },
-    [commit],
+    [commit, isSpectator],
   )
 
   const handleChangeSpellSlots = useCallback(
     (updated: CharacterSheet['spellSlots']) => {
+      if (isSpectator) return
       commit((current) => ({ ...current, spellSlots: updated }))
     },
-    [commit],
+    [commit, isSpectator],
   )
 
   const handleChangeResources = useCallback(
     (updated: CharacterSheet['resources']) => {
+      if (isSpectator) return
       commit((current) => ({ ...current, resources: updated }))
     },
-    [commit],
+    [commit, isSpectator],
   )
 
   const handleChangeInventory = useCallback(
     (updated: CharacterSheet['inventory']) => {
+      if (isSpectator) return
       commit((current) => ({ ...current, inventory: updated }))
     },
-    [commit],
+    [commit, isSpectator],
   )
 
   const handleToggleEditMode = useCallback(() => {
+    if (isSpectator) return
     commit((current) => ({ ...current, isEditMode: !current.isEditMode }))
-  }, [commit])
+  }, [commit, isSpectator])
 
   const handleGroupChange = useCallback(
     (nextGroupId: string) => {
+      if (isSpectator) return
       commit((current) => ({ ...current, groupId: nextGroupId }))
     },
-    [commit],
+    [commit, isSpectator],
   )
 
   const handleOpenGroupManager = useCallback(() => setShowGroupManager(true), [])
-  const handleShortRest = useCallback(() => setShowShortRestModal(true), [])
+  const handleShortRest = useCallback(() => {
+    if (!isSpectator) setShowShortRestModal(true)
+  }, [isSpectator])
 
   const showRestFeedback = useCallback((message: string) => {
     if (restFeedbackTimerRef.current) clearTimeout(restFeedbackTimerRef.current)
@@ -246,6 +274,7 @@ export function CharacterSheetPage() {
 
   const handleShortRestConfirm = useCallback(
     (hpHealed: number, diceSpent: number) => {
+      if (isSpectator) return
       setShowShortRestModal(false)
       let warlock = false
       commit((current) => {
@@ -275,13 +304,14 @@ export function CharacterSheetPage() {
         )
       }
     },
-    [commit, showRestFeedback],
+    [commit, isSpectator, showRestFeedback],
   )
 
   const handleLongRest = useCallback(() => {
+    if (isSpectator) return
     commit((current) => applyRestToCharacterSheet(current, 'long'))
     showRestFeedback('Recursos e espaços de magia restaurados (descanso longo)')
-  }, [commit, showRestFeedback])
+  }, [commit, isSpectator, showRestFeedback])
 
   function handleExport() {
     if (!sheet || !storedSheet || !id) return
@@ -480,14 +510,36 @@ export function CharacterSheetPage() {
         />
       )}
       <div className={styles.topBar}>
-        <Link className={styles.backLink} to="/">← Voltar</Link>
+        <Link
+          className={styles.backLink}
+          to={sheet?.campaignId || campaignIdParam ? `/mesas/${sheet?.campaignId || campaignIdParam}` : '/fichas'}
+        >
+          ← {sheet?.campaignName ? `Voltar para Mesa: ${sheet.campaignName}` : 'Voltar para Fichas'}
+        </Link>
+
+        {(sheet?.campaignId || campaignIdParam) && (
+          <Link
+            to={`/mesas/${sheet?.campaignId || campaignIdParam}`}
+            className={styles.campaignLinkBadge}
+            title="Ir para a Mesa da Campanha"
+          >
+            ♜ Mesa: {sheet?.campaignName || 'Mesa Ativa'}
+          </Link>
+        )}
+
+        {isSpectator && (
+          <span className={styles.spectatorBadge}>
+            Visualizando como Visitante (Modo Leitura)
+          </span>
+        )}
+
         <div className={styles.topBarActions}>
           <div className={styles.historyControls}>
             <button
               type="button"
               className={styles.historyButton}
               onClick={undo}
-              disabled={!canUndo}
+              disabled={!canUndo || isSpectator}
               title="Desfazer (Ctrl+Z)"
               aria-label="Desfazer última alteração"
             >
@@ -497,7 +549,7 @@ export function CharacterSheetPage() {
               type="button"
               className={styles.historyButton}
               onClick={redo}
-              disabled={!canRedo}
+              disabled={!canRedo || isSpectator}
               title="Refazer (Ctrl+Shift+Z)"
               aria-label="Refazer alteração desfeita"
             >
@@ -526,9 +578,11 @@ export function CharacterSheetPage() {
           <SheetActionsMenu
             onExport={handleExport}
             onDelete={handleRequestDelete}
+            onLinkToCampaign={() => setShowLinkModal(true)}
+            linkToCampaignLabel={sheet?.campaignId ? 'Gerenciar Vínculo com Mesa' : 'Vincular à Mesa'}
             exportLabel="Exportar PJ"
             deleteLabel="Excluir PJ"
-            disabled={!sheet || isDeleting}
+            disabled={!sheet || isDeleting || isSpectator}
           />
         </div>
       </div>
@@ -593,6 +647,7 @@ export function CharacterSheetPage() {
             className={styles.editToggleButton}
             onClick={handleToggleEditMode}
             aria-controls={activePanelId}
+            disabled={isSpectator}
           >
             {currentSheet.isEditMode ? '✓ Concluir edição' : '✎ Editar ficha'}
           </button>
@@ -644,6 +699,18 @@ export function CharacterSheetPage() {
             </div>
           </div>
         </div>
+      )}
+      {showLinkModal && uid && sheet && id && (
+        <LinkToCampaignModal
+          userId={uid}
+          sheetType="character"
+          sheetId={id}
+          sheetName={sheet.character.name || 'Personagem'}
+          sheetData={sheet}
+          currentCampaignId={sheet.campaignId}
+          currentCampaignName={sheet.campaignName}
+          onClose={() => setShowLinkModal(false)}
+        />
       )}
     </div>
   )

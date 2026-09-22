@@ -10,6 +10,7 @@ import {
 export function useCharacterSheet(
   uid: string | null,
   id: string | null,
+  ownerUid?: string | null,
 ): {
   sheet: StoredCharacterSheet | null
   loading: boolean
@@ -22,7 +23,8 @@ export function useCharacterSheet(
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
-    if (!uid || !id) {
+    const effectiveUid = ownerUid || uid
+    if (!effectiveUid || !id) {
       setSheet(null)
       setLoading(false)
       setNotFound(true)
@@ -33,7 +35,7 @@ export function useCharacterSheet(
     setNotFound(false)
     setError(null)
 
-    const docRef = doc(db, 'users', uid, 'characterSheets', id)
+    const docRef = doc(db, 'users', effectiveUid, 'characterSheets', id)
 
     const unsubscribe = onSnapshot(
       docRef,
@@ -60,7 +62,7 @@ export function useCharacterSheet(
     )
 
     return unsubscribe
-  }, [uid, id])
+  }, [uid, id, ownerUid])
 
   return { sheet, loading, notFound, error }
 }

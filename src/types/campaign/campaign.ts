@@ -1,3 +1,5 @@
+import type { CharacterSheet } from '../system/dnd/CharacterSheet'
+
 export type CampaignRole = 'dm' | 'player'
 
 export interface CharacterVitals {
@@ -19,6 +21,7 @@ export interface CampaignCreature {
   id: string
   name: string
   monsterSheetId?: string | null
+  ownerId?: string | null
   avatar?: string | null
   hpCurrent: number
   hpMax: number
@@ -34,6 +37,7 @@ export interface CampaignMember {
   displayName: string
   photoURL?: string | null
   role: CampaignRole
+  canManageHeroes?: boolean
   joinedAt: number
   characterSheetId?: string | null
   characterName?: string | null
@@ -71,4 +75,5 @@ export interface JoinCampaignDTO {
   characterName?: string | null
   characterClass?: string | null
   characterAvatarUrl?: string | null
+  characterSheetData?: CharacterSheet | null
 }

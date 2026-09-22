@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Eye, Shield, Sparkles, Plus, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Eye, Shield, Sparkles, Plus, X, ExternalLink, Trash2 } from 'lucide-react'
 import type { CampaignMember, CharacterVitals } from '../../../types/campaign/campaign'
 import { ConditionsModal } from '../ConditionsModal/ConditionsModal'
 import { HpAdjustModal } from '../HpAdjustModal/HpAdjustModal'
@@ -7,18 +8,24 @@ import styles from './HeroVitalCard.module.css'
 
 interface HeroVitalCardProps {
   member: CampaignMember
+  campaignId?: string
   isDm: boolean
+  canManageHeroes?: boolean
   currentUserId?: string | null
   onUpdateVitals: (userId: string, newVitals: CharacterVitals) => void
   onSelectCharacter?: () => void
+  onRemoveHero?: (userId: string, sheetId?: string | null) => void
 }
 
 export function HeroVitalCard({
   member,
+  campaignId,
   isDm,
+  canManageHeroes = false,
   currentUserId,
   onUpdateVitals,
   onSelectCharacter,
+  onRemoveHero,
 }: HeroVitalCardProps) {
   const [isHpModalOpen, setIsHpModalOpen] = useState(false)
   const [hpModalMode, setHpModalMode] = useState<'damage' | 'heal' | 'temp'>('damage')
@@ -26,6 +33,7 @@ export function HeroVitalCard({
 
   const isOwner = member.userId === currentUserId
   const canEdit = isDm || isOwner
+  const canRemove = (isDm || canManageHeroes || isOwner) && Boolean(member.characterSheetId)
 
   const vitals: CharacterVitals = member.vitals || {
     hpCurrent: 10,
@@ -103,10 +111,34 @@ export function HeroVitalCard({
   const heroName = member.characterName || (member.role === 'dm' ? 'Mestre da Mesa' : 'Aventureiro Sem Ficha')
   const heroClass = member.characterClass || (member.role === 'dm' ? 'Narrador' : 'Sem classe vinculada')
 
+  const sheetUrl = member.characterSheetId
+    ? `/ficha/${member.characterSheetId}?owner=${member.userId}&campaign=${campaignId || ''}`
+    : null
+
+  function handleConfirmRemove() {
+    if (window.confirm(`Deseja desvincular o herói "${heroName}" da mesa?`)) {
+      onRemoveHero?.(member.userId, member.characterSheetId)
+    }
+  }
+
   return (
     <article className={styles.card} aria-label={`Status de ${heroName}`}>
       <div className={styles.header}>
-        {member.characterAvatarUrl ? (
+        {sheetUrl ? (
+          <Link to={sheetUrl} title="Abrir ficha do personagem">
+            {member.characterAvatarUrl ? (
+              <img
+                src={member.characterAvatarUrl}
+                alt={heroName}
+                className={styles.avatar}
+              />
+            ) : (
+              <div className={styles.avatarPlaceholder}>
+                {heroName.charAt(0).toUpperCase()}
+              </div>
+            )}
+          </Link>
+        ) : member.characterAvatarUrl ? (
           <img
             src={member.characterAvatarUrl}
             alt={heroName}
@@ -119,22 +151,45 @@ export function HeroVitalCard({
         )}
 
         <div className={styles.titleArea}>
-          <h3 className={styles.heroName}>{heroName}</h3>
+          <h3 className={styles.heroName}>
+            {sheetUrl ? (
+              <Link to={sheetUrl} className={styles.heroLink} title="Abrir ficha">
+                {heroName}
+                <ExternalLink size={12} strokeWidth={2} />
+              </Link>
+            ) : (
+              heroName
+            )}
+          </h3>
           <p className={styles.playerName}>{member.displayName}</p>
           <p className={styles.heroClass}>{heroClass}</p>
         </div>
 
-        {canEdit && (
-          <button
-            type="button"
-            className={`${styles.inspirationBtn} ${vitals.heroicInspiration ? styles.inspirationActive : ''}`}
-            onClick={handleToggleInspiration}
-            title={vitals.heroicInspiration ? 'Inspiração Heróica ativa' : 'Conceder Inspiração Heróica'}
-            aria-pressed={vitals.heroicInspiration}
-          >
-            <Sparkles size={16} strokeWidth={1.75} />
-          </button>
-        )}
+        <div className={styles.headerActions}>
+          {canRemove && onRemoveHero && (
+            <button
+              type="button"
+              className={styles.removeHeroBtn}
+              onClick={handleConfirmRemove}
+              title="Desvincular herói da mesa"
+              aria-label={`Desvincular ${heroName}`}
+            >
+              <Trash2 size={15} strokeWidth={1.75} />
+            </button>
+          )}
+
+          {canEdit && (
+            <button
+              type="button"
+              className={`${styles.inspirationBtn} ${vitals.heroicInspiration ? styles.inspirationActive : ''}`}
+              onClick={handleToggleInspiration}
+              title={vitals.heroicInspiration ? 'Inspiração Heróica ativa' : 'Conceder Inspiração Heróica'}
+              aria-pressed={vitals.heroicInspiration}
+            >
+              <Sparkles size={16} strokeWidth={1.75} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className={styles.statsRow}>

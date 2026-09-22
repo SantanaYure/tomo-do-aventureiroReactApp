@@ -7,7 +7,7 @@ import styles from './AddCreatureModal.module.css'
 
 interface AddCreatureModalProps {
   userId: string
-  onAdd: (creatureData: Omit<CampaignCreature, 'id' | 'addedAt'>) => void
+  onAdd: (creatureData: Omit<CampaignCreature, 'id' | 'addedAt'>) => Promise<void> | void
   onClose: () => void
 }
 
@@ -27,6 +27,8 @@ export function AddCreatureModal({
   const [customName, setCustomName] = useState('')
   const [customHp, setCustomHp] = useState('10')
   const [customAc, setCustomAc] = useState('10')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -41,37 +43,46 @@ export function AddCreatureModal({
     setInstanceName(name)
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    if (activeTab === 'library') {
-      const monster = monsters.find((m) => m.id === selectedMonsterId)
-      if (!monster) return
+    try {
+      setIsSubmitting(true)
+      setError(null)
+      if (activeTab === 'library') {
+        const monster = monsters.find((m) => m.id === selectedMonsterId)
+        if (!monster) return
 
-      const vitals = extractVitalsFromMonsterSheet(monster.data, monster.id)
-      onAdd({
-        ...vitals,
-        name: instanceName.trim() || vitals.name,
-      })
+        const vitals = extractVitalsFromMonsterSheet(monster.data, monster.id)
+        await onAdd({
+          ...vitals,
+          ownerId: userId,
+          name: instanceName.trim() || vitals.name,
+        })
+      } else {
+        if (!customName.trim()) return
+
+        const hp = Math.max(1, parseInt(customHp, 10) || 10)
+        const ac = Math.max(1, parseInt(customAc, 10) || 10)
+
+        await onAdd({
+          name: customName.trim(),
+          monsterSheetId: null,
+          avatar: null,
+          hpCurrent: hp,
+          hpMax: hp,
+          hpTemp: 0,
+          armorClass: ac,
+          passivePerception: 10,
+          conditions: [],
+        })
+      }
       onClose()
-    } else {
-      if (!customName.trim()) return
-
-      const hp = Math.max(1, parseInt(customHp, 10) || 10)
-      const ac = Math.max(1, parseInt(customAc, 10) || 10)
-
-      onAdd({
-        name: customName.trim(),
-        monsterSheetId: null,
-        avatar: null,
-        hpCurrent: hp,
-        hpMax: hp,
-        hpTemp: 0,
-        armorClass: ac,
-        passivePerception: 10,
-        conditions: [],
-      })
-      onClose()
+    } catch (submitError) {
+      console.error('Erro ao adicionar criatura:', submitError)
+      setError('Não foi possível vincular a criatura à mesa. Tente novamente.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -248,6 +259,7 @@ export function AddCreatureModal({
           )}
 
           <div className={styles.footer}>
+            {error && <p role="alert">{error}</p>}
             <button type="button" className={styles.cancelBtn} onClick={onClose}>
               Cancelar
             </button>
@@ -255,12 +267,12 @@ export function AddCreatureModal({
               type="submit"
               className={styles.submitBtn}
               disabled={
-                activeTab === 'library'
+                isSubmitting || (activeTab === 'library'
                   ? !selectedMonsterId
-                  : !customName.trim()
+                  : !customName.trim())
               }
             >
-              Adicionar à Sessão
+              {isSubmitting ? 'Vinculando...' : 'Adicionar à Sessão'}
             </button>
           </div>
         </form>

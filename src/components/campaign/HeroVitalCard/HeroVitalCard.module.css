@@ -63,6 +63,43 @@
   text-overflow: ellipsis;
 }
 
+.heroLink {
+  color: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: color 140ms ease;
+}
+
+.heroLink:hover {
+  color: var(--brand);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.removeHeroBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-btn);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 140ms ease, background-color 140ms ease;
+}
+
+.removeHeroBtn:hover {
+  color: var(--danger-solid);
+  background: oklch(0.65 0.22 25 / 0.15);
+}
+
 .playerName {
   font-size: var(--text-xs);
   color: var(--text-muted);

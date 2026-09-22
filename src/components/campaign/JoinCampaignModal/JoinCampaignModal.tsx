@@ -68,6 +68,7 @@ export function JoinCampaignModal({
         characterName?: string | null
         characterClass?: string | null
         characterAvatarUrl?: string | null
+        characterSheetData?: (typeof sheets)[number]['data'] | null
       } = {}
 
       if (selectedSheetId) {
@@ -83,6 +84,7 @@ export function JoinCampaignModal({
             characterName: char.name || 'Sem nome',
             characterClass: classText || null,
             characterAvatarUrl: char.avatar || null,
+            characterSheetData: selectedSheet.data,
           }
         }
       }

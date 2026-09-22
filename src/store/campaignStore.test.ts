@@ -9,6 +9,10 @@ const getDoc = vi.fn()
 const getDocs = vi.fn()
 const updateDoc = vi.fn().mockResolvedValue(undefined)
 const deleteDoc = vi.fn().mockResolvedValue(undefined)
+const batchSet = vi.fn()
+const batchUpdate = vi.fn()
+const batchDelete = vi.fn()
+const batchCommit = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('firebase/firestore', () => ({
   collection: (...path: unknown[]) => ({ type: 'collection', path }),
@@ -18,13 +22,27 @@ vi.mock('firebase/firestore', () => ({
   getDocs: (...args: unknown[]) => getDocs(...args),
   updateDoc: (...args: unknown[]) => updateDoc(...args),
   deleteDoc: (...args: unknown[]) => deleteDoc(...args),
+  writeBatch: () => ({
+    set: (...args: unknown[]) => batchSet(...args),
+    update: (...args: unknown[]) => batchUpdate(...args),
+    delete: (...args: unknown[]) => batchDelete(...args),
+    commit: (...args: unknown[]) => batchCommit(...args),
+  }),
+  arrayUnion: (...values: unknown[]) => ({ type: 'arrayUnion', values }),
+  arrayRemove: (...values: unknown[]) => ({ type: 'arrayRemove', values }),
   query: (...args: unknown[]) => ({ type: 'query', args }),
   where: (...args: unknown[]) => ({ type: 'where', args }),
 }))
 
 vi.mock('../services/firebase', () => ({ db: { type: 'firestore-mock' }, auth: {} }))
 
-const { createCampaign, getCampaign, joinCampaignByCode } = await import('./campaignStore')
+const {
+  createCampaign,
+  getCampaign,
+  joinCampaignByCode,
+  linkCharacterSheetToCampaign,
+  unlinkCharacterSheetFromCampaign,
+} = await import('./campaignStore')
 
 beforeEach(() => {
   setDoc.mockClear()
@@ -32,6 +50,10 @@ beforeEach(() => {
   getDocs.mockClear()
   updateDoc.mockClear()
   deleteDoc.mockClear()
+  batchSet.mockClear()
+  batchUpdate.mockClear()
+  batchDelete.mockClear()
+  batchCommit.mockClear()
 })
 
 describe('normalizeCampaign', () => {
@@ -124,5 +146,68 @@ describe('createCampaign & joinCampaignByCode', () => {
     await expect(
       joinCampaignByCode('user-player', 'Gimli', null, { inviteCode: 'INEXIST' }),
     ).rejects.toThrow('Mesa não encontrada')
+  })
+})
+
+describe('vínculo com a ficha real', () => {
+  const sheet = {
+    character: {
+      name: 'Lia',
+      avatar: '',
+      classes: [{ className: 'Maga', level: 4 }],
+      attributes: [],
+      skills: {},
+      hpCurrent: 18,
+      hpMax: 22,
+      hpTemp: 0,
+      armorClassBase: 13,
+      heroicInspiration: 0,
+      deathSaves: { success: 0, failure: 0 },
+    },
+    spellSlots: {},
+  } as never
+
+  it('grava membro e ficha no mesmo batch ao vincular', async () => {
+    getDoc.mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({ characterSheetId: null }),
+    })
+
+    await linkCharacterSheetToCampaign('camp-1', 'Mesa 1', 'user-1', 'sheet-1', sheet)
+
+    expect(batchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'doc' }),
+      expect.objectContaining({ characterSheetId: 'sheet-1', characterName: 'Lia' }),
+    )
+    expect(batchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'doc' }),
+      expect.objectContaining({
+        campaignId: 'camp-1',
+        campaignName: 'Mesa 1',
+        'data.campaignId': 'camp-1',
+      }),
+    )
+    expect(batchCommit).toHaveBeenCalledOnce()
+  })
+
+  it('limpa membro e ficha no mesmo batch ao desvincular', async () => {
+    getDoc
+      .mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ characterSheetId: 'sheet-1' }),
+      })
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({}) })
+
+    await unlinkCharacterSheetFromCampaign('camp-1', 'user-1', 'sheet-1')
+
+    expect(batchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'doc' }),
+      expect.objectContaining({ characterSheetId: null, vitals: null }),
+    )
+    expect(batchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'doc' }),
+      expect.objectContaining({ campaignId: null, 'data.campaignId': null }),
+    )
+    expect(batchCommit).toHaveBeenCalledOnce()
   })
 })

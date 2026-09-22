@@ -431,6 +431,8 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
     return {
         systemId: normalizeMonsterSystemId(nextValue.systemId),
         groupId: typeof nextValue.groupId === 'string' ? nextValue.groupId : '',
+        campaignId: typeof nextValue.campaignId === 'string' ? nextValue.campaignId : null,
+        campaignName: typeof nextValue.campaignName === 'string' ? nextValue.campaignName : null,
         details: {
             name: normalizeString(details.name),
             kind: isOneOf(details.kind, MONSTER_KINDS) ? details.kind : 'monster',
@@ -537,6 +539,8 @@ function createMonsterSheetPayload(
         ...(id ? { id } : {}),
         data: normalizedData,
         name_lower: normalizeSearchName(normalizedData.details.name),
+        campaignId: normalizedData.campaignId || null,
+        campaignName: normalizedData.campaignName || null,
         createdAt,
         updatedAt: timestamp,
     }
@@ -638,6 +642,23 @@ export async function createMonsterSheet(uid: string): Promise<StoredMonsterShee
     const payload = createMonsterSheetPayload(data, timestamp)
     const ref = await addDoc(getCollectionRef(uid), payload)
     return { id: ref.id, ...payload }
+}
+
+/** Busca uma ficha específica para operações explícitas de vínculo com mesa. */
+export async function getMonsterSheet(
+    uid: string,
+    id: string,
+): Promise<StoredMonsterSheet | null> {
+    const snapshot = await getDoc(getDocRef(uid, normalizeId(id)))
+    if (!snapshot.exists()) return null
+
+    const raw = snapshot.data()
+    return {
+        id: snapshot.id,
+        data: normalizeMonsterSheet(raw.data ?? {}),
+        createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
+        updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
+    }
 }
 
 /**

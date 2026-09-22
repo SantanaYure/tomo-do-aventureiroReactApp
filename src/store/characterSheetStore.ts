@@ -487,6 +487,8 @@ export function normalizeCharacterSheet<T extends CharacterSheet>(value: T): T {
         ? nextValue.isEditMode
         : defaultSheet.isEditMode,
     groupId: typeof nextValue.groupId === 'string' ? nextValue.groupId : '',
+    campaignId: typeof nextValue.campaignId === 'string' ? nextValue.campaignId : null,
+    campaignName: typeof nextValue.campaignName === 'string' ? nextValue.campaignName : null,
   }
 }
 
@@ -514,6 +516,8 @@ function createCharacterSheetPayload(
     ...(id ? { id } : {}),
     data: normalizedData,
     name_lower: normalizeSearchName(normalizedData.character.name),
+    campaignId: normalizedData.campaignId || null,
+    campaignName: normalizedData.campaignName || null,
     createdAt,
     updatedAt: timestamp,
   }
