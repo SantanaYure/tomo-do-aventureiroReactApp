@@ -97,6 +97,30 @@
   color: var(--danger-solid);
 }
 
+.iconBtn {
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--text-muted);
+  border-radius: var(--radius-btn);
+  padding: var(--space-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.iconBtn:hover {
+  border-color: var(--chip-violet-border);
+  color: var(--chip-violet-text);
+}
+
+.iconBtn:focus-visible,
+.removeBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .statsRow {
   display: grid;
   grid-template-columns: 1fr 1fr;

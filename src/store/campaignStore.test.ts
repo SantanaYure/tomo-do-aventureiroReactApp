@@ -13,6 +13,8 @@ const batchSet = vi.fn()
 const batchUpdate = vi.fn()
 const batchDelete = vi.fn()
 const batchCommit = vi.fn().mockResolvedValue(undefined)
+const txGet = vi.fn()
+const txUpdate = vi.fn()
 
 vi.mock('firebase/firestore', () => ({
   collection: (...path: unknown[]) => ({ type: 'collection', path }),
@@ -30,6 +32,11 @@ vi.mock('firebase/firestore', () => ({
   }),
   arrayUnion: (...values: unknown[]) => ({ type: 'arrayUnion', values }),
   arrayRemove: (...values: unknown[]) => ({ type: 'arrayRemove', values }),
+  runTransaction: (_db: unknown, fn: (tx: unknown) => Promise<unknown>) =>
+    fn({
+      get: (...args: unknown[]) => txGet(...args),
+      update: (...args: unknown[]) => txUpdate(...args),
+    }),
   query: (...args: unknown[]) => ({ type: 'query', args }),
   where: (...args: unknown[]) => ({ type: 'where', args }),
 }))
@@ -42,6 +49,12 @@ const {
   joinCampaignByCode,
   linkCharacterSheetToCampaign,
   unlinkCharacterSheetFromCampaign,
+  removeMember,
+  duplicateCreatureInCampaign,
+  addCreatureToCampaign,
+  releaseCharacterSheetFromCampaign,
+  releaseMonsterSheetFromCampaign,
+  rollCreaturesInitiative,
 } = await import('./campaignStore')
 
 beforeEach(() => {
@@ -53,7 +66,10 @@ beforeEach(() => {
   batchSet.mockClear()
   batchUpdate.mockClear()
   batchDelete.mockClear()
-  batchCommit.mockClear()
+  batchCommit.mockReset()
+  batchCommit.mockResolvedValue(undefined)
+  txGet.mockReset()
+  txUpdate.mockClear()
 })
 
 describe('normalizeCampaign', () => {
@@ -209,5 +225,148 @@ describe('vínculo com a ficha real', () => {
       expect.objectContaining({ campaignId: null, 'data.campaignId': null }),
     )
     expect(batchCommit).toHaveBeenCalledOnce()
+  })
+})
+
+function campaignSnap(creatures: unknown[]) {
+  return {
+    id: 'camp-1',
+    exists: () => true,
+    data: () => ({ dmId: 'dm-1', memberIds: ['dm-1', 'p-1'], creatures }),
+  }
+}
+
+function lastTxCreatures() {
+  const call = txUpdate.mock.calls[txUpdate.mock.calls.length - 1]
+  return (call?.[1] as { creatures: Array<Record<string, unknown>> }).creatures
+}
+
+describe('removeMember', () => {
+  it('remove o jogador mesmo quando a ficha dele não pode ser lida (ex.: excluída)', async () => {
+    getDoc
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ dmId: 'dm-1' }) })
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ characterSheetId: 'sheet-x' }) })
+      .mockRejectedValueOnce(Object.assign(new Error('denied'), { code: 'permission-denied' }))
+
+    await removeMember('camp-1', 'p-1')
+
+    expect(batchDelete).toHaveBeenCalledOnce()
+    expect(batchUpdate).toHaveBeenCalledTimes(1)
+    expect(batchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'doc' }),
+      expect.objectContaining({ memberIds: { type: 'arrayRemove', values: ['p-1'] } }),
+    )
+    expect(batchCommit).toHaveBeenCalledOnce()
+  })
+
+  it('se a limpeza da ficha for recusada no commit, grava só o essencial', async () => {
+    getDoc
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ dmId: 'dm-1' }) })
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ characterSheetId: 'sheet-1' }) })
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({}) })
+    batchCommit
+      .mockRejectedValueOnce(Object.assign(new Error('denied'), { code: 'permission-denied' }))
+      .mockResolvedValueOnce(undefined)
+
+    await removeMember('camp-1', 'p-1')
+
+    expect(batchCommit).toHaveBeenCalledTimes(2)
+    // 1ª tentativa: membro + memberIds + ficha; 2ª: só membro + memberIds.
+    expect(batchDelete).toHaveBeenCalledTimes(2)
+    expect(batchUpdate).toHaveBeenCalledTimes(3)
+  })
+
+  it('não deixa remover o mestre', async () => {
+    getDoc.mockResolvedValueOnce({ exists: () => true, data: () => ({ dmId: 'dm-1' }) })
+    await expect(removeMember('camp-1', 'dm-1')).rejects.toThrow(/mestre/)
+    expect(batchCommit).not.toHaveBeenCalled()
+  })
+})
+
+describe('réplica de criaturas', () => {
+  it('duplica com PV cheio, sem condições e com o próximo número', async () => {
+    txGet.mockResolvedValueOnce(
+      campaignSnap([
+        { id: 'g1', name: 'Goblin', hpCurrent: 2, hpMax: 7, hpTemp: 3, armorClass: 15, conditions: ['Caído'], initiative: 14, initiativeBonus: 2, addedAt: 1 },
+        { id: 'w1', name: 'Lobo', hpCurrent: 11, hpMax: 11, hpTemp: 0, armorClass: 13, conditions: [], addedAt: 2 },
+      ]),
+    )
+
+    const created = await duplicateCreatureInCampaign('camp-1', 'g1', 2)
+
+    expect(created.map((c) => c.name)).toEqual(['Goblin 2', 'Goblin 3'])
+    expect(created[0]).toMatchObject({ hpCurrent: 7, hpTemp: 0, conditions: [], initiative: null, initiativeBonus: 2 })
+    expect(new Set(created.map((c) => c.id)).size).toBe(2)
+    // As cópias ficam logo depois da original.
+    expect(lastTxCreatures().map((c) => c.name)).toEqual(['Goblin', 'Goblin 2', 'Goblin 3', 'Lobo'])
+  })
+
+  it('adiciona várias criaturas avulsas de uma vez, numeradas', async () => {
+    txGet.mockResolvedValueOnce(campaignSnap([]))
+
+    await addCreatureToCampaign(
+      'camp-1',
+      { name: 'Bandido', hpCurrent: 11, hpMax: 11, hpTemp: 0, armorClass: 12, conditions: [] },
+      3,
+    )
+
+    expect(lastTxCreatures().map((c) => c.name)).toEqual(['Bandido 1', 'Bandido 2', 'Bandido 3'])
+  })
+})
+
+describe('iniciativa das criaturas', () => {
+  it('com onlyMissing, mantém quem já rolou', async () => {
+    txGet.mockResolvedValueOnce(
+      campaignSnap([
+        { id: 'a', name: 'A', initiative: 17, initiativeBonus: 0 },
+        { id: 'b', name: 'B', initiativeBonus: 3 },
+      ]),
+    )
+
+    await rollCreaturesInitiative('camp-1', { onlyMissing: true, random: () => 0 })
+
+    const list = lastTxCreatures()
+    expect(list[0].initiative).toBe(17)
+    expect(list[1].initiative).toBe(4)
+  })
+})
+
+describe('exclusão de fichas vinculadas', () => {
+  it('libera o herói na mesa quando a ficha excluída é a vinculada', async () => {
+    getDoc.mockResolvedValueOnce({ exists: () => true, data: () => ({ characterSheetId: 'sheet-1' }) })
+
+    await releaseCharacterSheetFromCampaign('camp-1', 'p-1', 'sheet-1')
+
+    expect(updateDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'doc' }),
+      expect.objectContaining({ characterSheetId: null, vitals: null, initiative: null }),
+    )
+  })
+
+  it('não mexe no membro se ele usa outra ficha', async () => {
+    getDoc.mockResolvedValueOnce({ exists: () => true, data: () => ({ characterSheetId: 'outra' }) })
+    await releaseCharacterSheetFromCampaign('camp-1', 'p-1', 'sheet-1')
+    expect(updateDoc).not.toHaveBeenCalled()
+  })
+
+  it('mantém as instâncias do monstro em cena, sem o link para a ficha', async () => {
+    txGet.mockResolvedValueOnce(
+      campaignSnap([
+        { id: 'g1', name: 'Goblin', monsterSheetId: 'm-1', ownerId: 'dm-1' },
+        { id: 'o1', name: 'Orc', monsterSheetId: 'm-2', ownerId: 'dm-1' },
+      ]),
+    )
+
+    await releaseMonsterSheetFromCampaign('camp-1', 'dm-1', 'm-1')
+
+    const list = lastTxCreatures()
+    expect(list).toHaveLength(2)
+    expect(list[0].monsterSheetId).toBeNull()
+    expect(list[1].monsterSheetId).toBe('m-2')
+  })
+
+  it('nunca lança, mesmo se a mesa recusar a escrita', async () => {
+    txGet.mockRejectedValueOnce(new Error('offline'))
+    await expect(releaseMonsterSheetFromCampaign('camp-1', 'dm-1', 'm-1')).resolves.toBeUndefined()
   })
 })

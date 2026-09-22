@@ -144,15 +144,16 @@ service cloud.firestore {
             request.auth.uid == memberId &&
             request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'displayName', 'photoURL', 'characterSheetId', 'characterName',
-              'characterClass', 'characterAvatarUrl', 'vitals'
+              'characterClass', 'characterAvatarUrl', 'vitals', 'initiative'
             ])
           ) || (
             request.auth.uid != memberId &&
             canManageHeroes(campaignId) &&
             request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'characterSheetId', 'characterName', 'characterClass',
-              'characterAvatarUrl', 'vitals'
+              'characterAvatarUrl', 'vitals', 'initiative'
             ]) &&
+            request.resource.data.get('initiative', null) == null &&
             request.resource.data.characterSheetId == null &&
             request.resource.data.characterName == null &&
             request.resource.data.characterClass == null &&

@@ -10,11 +10,16 @@ import {
   arrayUnion,
   arrayRemove,
   writeBatch,
+  runTransaction,
+  type DocumentReference,
+  type DocumentSnapshot,
+  type WriteBatch,
 } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import type {
   Campaign,
   CampaignMember,
+  CampaignCombat,
   CampaignCreature,
   CharacterVitals,
   CreateCampaignDTO,
@@ -23,6 +28,12 @@ import type {
 import type { CharacterSheet } from '../types/system/dnd/CharacterSheet'
 import type { MonsterSheet } from '../types/system/dnd/monsterSheet'
 import { generateInviteCode, normalizeInviteCode } from '../utils/inviteCode'
+import {
+  abilityModifier,
+  namesForNewInstances,
+  nextInstanceNames,
+  rollInitiative,
+} from '../utils/initiative'
 
 export const DND_CONDITIONS = [
   'Abalado',
@@ -48,8 +59,10 @@ export function normalizeCampaign(id: string, data: Record<string, unknown>): Ca
   const memberIds = Array.from(new Set([dmId, ...memberIdsRaw])).filter(Boolean) as string[]
 
   const rawCreatures = Array.isArray(data.creatures) ? data.creatures : []
-  const creatures: CampaignCreature[] = rawCreatures.map((c: any) => ({
-    id: typeof c.id === 'string' ? c.id : Math.random().toString(36).substring(2, 9),
+  const creatures: CampaignCreature[] = rawCreatures.map((c: any, index: number) => ({
+    // Id estável para dados antigos sem id: um id aleatório a cada snapshot
+    // quebrava as keys do React e as atualizações por id.
+    id: typeof c.id === 'string' && c.id ? c.id : `legacy-${index}`,
     name: typeof c.name === 'string' ? c.name : 'Criatura',
     monsterSheetId: typeof c.monsterSheetId === 'string' ? c.monsterSheetId : null,
     ownerId:
@@ -65,8 +78,19 @@ export function normalizeCampaign(id: string, data: Record<string, unknown>): Ca
     armorClass: typeof c.armorClass === 'number' ? c.armorClass : 10,
     passivePerception: typeof c.passivePerception === 'number' ? c.passivePerception : 10,
     conditions: Array.isArray(c.conditions) ? c.conditions : [],
+    initiativeBonus: typeof c.initiativeBonus === 'number' ? c.initiativeBonus : 0,
+    initiative: typeof c.initiative === 'number' ? c.initiative : null,
     addedAt: typeof c.addedAt === 'number' ? c.addedAt : Date.now(),
   }))
+
+  const rawCombat = data.combat as Record<string, unknown> | null | undefined
+  const combat: CampaignCombat | null =
+    rawCombat && typeof rawCombat === 'object'
+      ? {
+          round: typeof rawCombat.round === 'number' && rawCombat.round > 0 ? rawCombat.round : 1,
+          activeId: typeof rawCombat.activeId === 'string' ? rawCombat.activeId : null,
+        }
+      : null
 
   return {
     id,
@@ -79,6 +103,7 @@ export function normalizeCampaign(id: string, data: Record<string, unknown>): Ca
     memberIds,
     bannerUrl: typeof data.bannerUrl === 'string' ? data.bannerUrl : null,
     creatures,
+    combat,
     createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(),
     updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : Date.now(),
     archived: Boolean(data.archived),
@@ -109,6 +134,7 @@ export function normalizeCampaignMember(
         v.spellSlots && typeof v.spellSlots === 'object'
           ? (v.spellSlots as Record<string, { current: number; max: number }>)
           : undefined,
+      initiativeBonus: typeof v.initiativeBonus === 'number' ? v.initiativeBonus : 0,
     }
   }
 
@@ -125,6 +151,7 @@ export function normalizeCampaignMember(
     characterAvatarUrl:
       typeof data.characterAvatarUrl === 'string' ? data.characterAvatarUrl : null,
     vitals,
+    initiative: typeof data.initiative === 'number' ? data.initiative : null,
   }
 }
 
@@ -145,6 +172,76 @@ export function getMembersCollection(campaignId: string) {
 
 export function getMemberDoc(campaignId: string, userId: string) {
   return doc(db, 'campaigns', campaignId, 'members', userId)
+}
+
+/**
+ * Lê um documento sem deixar a falha derrubar a operação principal. As regras
+ * negam a leitura da ficha de outro usuário quando ela foi excluída ou já não
+ * aponta para a mesa; nesses casos a limpeza da ficha é opcional.
+ */
+async function safeGetDoc(ref: DocumentReference): Promise<DocumentSnapshot | null> {
+  try {
+    return await getDoc(ref)
+  } catch (err) {
+    console.warn('Leitura opcional negada ou indisponível:', err)
+    return null
+  }
+}
+
+/**
+ * Confirma as escritas essenciais e, no mesmo batch, as opcionais (limpeza de
+ * vínculo em fichas). Se o batch completo for recusado, repete só com as
+ * essenciais, para que remover um jogador ou uma criatura nunca dependa de
+ * conseguir escrever na ficha de outra pessoa.
+ */
+async function commitWithOptionalWrites(
+  essential: (batch: WriteBatch) => void,
+  optional?: ((batch: WriteBatch) => void) | null,
+): Promise<void> {
+  const full = writeBatch(db)
+  essential(full)
+  if (!optional) {
+    await full.commit()
+    return
+  }
+  optional(full)
+  try {
+    await full.commit()
+  } catch (err) {
+    console.warn('Limpeza opcional recusada; gravando apenas o essencial:', err)
+    const minimal = writeBatch(db)
+    essential(minimal)
+    await minimal.commit()
+  }
+}
+
+function newCreatureId(): string {
+  return Math.random().toString(36).substring(2, 9) + Date.now().toString(36)
+}
+
+/**
+ * Aplica uma alteração na lista de criaturas a partir do estado mais recente
+ * do servidor, dentro de uma transação. Evita que duas ações rápidas (dano,
+ * réplica, iniciativa) sobrescrevam uma à outra.
+ */
+async function mutateCreatures(
+  campaignId: string,
+  mutate: (creatures: CampaignCreature[]) => CampaignCreature[],
+  extraUpdates: Record<string, unknown> = {},
+): Promise<CampaignCreature[]> {
+  const campaignRef = getCampaignDoc(campaignId)
+  return runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(campaignRef)
+    if (!snap.exists()) throw new Error('Mesa não encontrada.')
+    const current = normalizeCampaign(snap.id, snap.data()).creatures || []
+    const next = mutate(current)
+    transaction.update(campaignRef, {
+      creatures: next,
+      ...extraUpdates,
+      updatedAt: Date.now(),
+    })
+    return next
+  })
 }
 
 // ── CRUD Operations ──────────────────────────────────────────────────────────
@@ -423,8 +520,8 @@ export async function linkCharacterSheetToCampaign(
   const previousCampaignId = sheetData.campaignId
   if (previousCampaignId && previousCampaignId !== campaignId) {
     const previousMemberRef = getMemberDoc(previousCampaignId, userId)
-    const previousMember = await getDoc(previousMemberRef)
-    if (previousMember.exists() && previousMember.data().characterSheetId === sheetId) {
+    const previousMember = await safeGetDoc(previousMemberRef)
+    if (previousMember?.exists() && previousMember.data()?.characterSheetId === sheetId) {
       batch.update(previousMemberRef, emptyCharacterLink())
     }
   }
@@ -433,7 +530,9 @@ export async function linkCharacterSheetToCampaign(
 }
 
 /**
- * Desvincula a ficha de personagem da campanha, limpando os dados no membro e na ficha.
+ * Desvincula a ficha de personagem da campanha. Limpar o membro é essencial;
+ * limpar o vínculo na ficha é opcional (a ficha pode ter sido excluída ou
+ * pertencer a outra pessoa sem permissão de leitura).
  */
 export async function unlinkCharacterSheetFromCampaign(
   campaignId: string,
@@ -446,25 +545,26 @@ export async function unlinkCharacterSheetFromCampaign(
 
   const linkedSheetId = sheetId || (
     typeof member.data().characterSheetId === 'string'
-      ? member.data().characterSheetId
+      ? member.data().characterSheetId as string
       : null
   )
-  const batch = writeBatch(db)
-  batch.update(memberRef, emptyCharacterLink())
 
+  let sheetRef: DocumentReference | null = null
   if (linkedSheetId) {
-    const sheetRef = doc(db, 'users', userId, 'characterSheets', linkedSheetId)
-    const sheet = await getDoc(sheetRef)
-    if (sheet.exists()) {
-      batch.update(sheetRef, characterCampaignFields(null, null))
-    }
+    const ref = doc(db, 'users', userId, 'characterSheets', linkedSheetId)
+    const sheet = await safeGetDoc(ref)
+    if (sheet?.exists()) sheetRef = ref
   }
 
-  await batch.commit()
+  await commitWithOptionalWrites(
+    (batch) => batch.update(memberRef, { ...emptyCharacterLink(), initiative: null }),
+    sheetRef ? (batch) => batch.update(sheetRef!, characterCampaignFields(null, null)) : null,
+  )
 }
 
 /**
- * Vincula uma ficha de monstro/NPC à campanha como criatura ativa na sessão.
+ * Vincula uma ficha de monstro/NPC à campanha, criando uma ou mais instâncias
+ * em cena. Com `quantity` > 1 os nomes recebem numeração ("Goblin 1", "Goblin 2").
  */
 export async function linkMonsterSheetToCampaign(
   campaignId: string,
@@ -472,51 +572,52 @@ export async function linkMonsterSheetToCampaign(
   userId: string,
   monsterSheetId: string,
   monsterData: MonsterSheet,
-  existingCreatures: CampaignCreature[] = [],
-  instanceName?: string,
-): Promise<CampaignCreature> {
+  options: { instanceName?: string; quantity?: number } = {},
+): Promise<CampaignCreature[]> {
   const vitals = extractVitalsFromMonsterSheet(monsterData, monsterSheetId)
-  const newCreature: CampaignCreature = {
-    id: Math.random().toString(36).substring(2, 9),
-    ...vitals,
-    ownerId: userId,
-    name: instanceName?.trim() || vitals.name,
-    addedAt: Date.now(),
-  }
+  const quantity = Math.max(1, Math.min(20, Math.trunc(options.quantity ?? 1)))
+  const baseName = options.instanceName?.trim() || vitals.name
+  const campaignRef = getCampaignDoc(campaignId)
+  const monsterRef = doc(db, 'users', userId, 'monsterSheets', monsterSheetId)
+  const now = Date.now()
 
-  const batch = writeBatch(db)
-  const updatedCreatures = [...existingCreatures, newCreature]
-  batch.update(getCampaignDoc(campaignId), {
-    creatures: updatedCreatures,
-    updatedAt: Date.now(),
+  const added = await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(campaignRef)
+    if (!snap.exists()) throw new Error('Mesa não encontrada.')
+    const current = normalizeCampaign(snap.id, snap.data()).creatures || []
+    const names = namesForNewInstances(baseName, current.map((c) => c.name), quantity)
+    const created: CampaignCreature[] = names.map((name, index) => ({
+      ...vitals,
+      id: newCreatureId(),
+      ownerId: userId,
+      name,
+      initiative: null,
+      addedAt: now + index,
+    }))
+    transaction.update(campaignRef, {
+      creatures: [...current, ...created],
+      updatedAt: Date.now(),
+    })
+    transaction.update(monsterRef, characterCampaignFields(campaignId, campaignName))
+    return created
   })
 
-  const monsterRef = doc(db, 'users', userId, 'monsterSheets', monsterSheetId)
-  batch.update(monsterRef, characterCampaignFields(campaignId, campaignName))
-
+  // Uma ficha de monstro vive em uma mesa por vez. Tirar as instâncias da mesa
+  // anterior é limpeza opcional: pode falhar se o usuário já não for o mestre dela.
   const previousCampaignId = monsterData.campaignId
   if (previousCampaignId && previousCampaignId !== campaignId) {
-    const previousCampaignRef = getCampaignDoc(previousCampaignId)
-    const previousCampaign = await getDoc(previousCampaignRef)
-    if (previousCampaign.exists()) {
-      const previousCreatures = normalizeCampaign(
-        previousCampaign.id,
-        previousCampaign.data(),
-      ).creatures || []
-      batch.update(previousCampaignRef, {
-        creatures: previousCreatures.filter(
-          (creature) => !(
-            creature.monsterSheetId === monsterSheetId && creature.ownerId === userId
-          ),
+    try {
+      await mutateCreatures(previousCampaignId, (list) =>
+        list.filter(
+          (creature) => !(creature.monsterSheetId === monsterSheetId && creature.ownerId === userId),
         ),
-        updatedAt: Date.now(),
-      })
+      )
+    } catch (err) {
+      console.warn('Não foi possível limpar a mesa anterior do monstro:', err)
     }
   }
 
-  await batch.commit()
-
-  return newCreature
+  return added
 }
 
 /** Remove todas as instâncias de uma ficha de monstro/NPC e limpa o vínculo nela. */
@@ -525,29 +626,24 @@ export async function unlinkMonsterSheetFromCampaign(
   userId: string,
   monsterSheetId: string,
 ): Promise<void> {
-  const campaignRef = getCampaignDoc(campaignId)
-  const campaign = await getDoc(campaignRef)
-  const batch = writeBatch(db)
+  await mutateCreatures(campaignId, (creatures) =>
+    creatures.filter(
+      (creature) => !(creature.monsterSheetId === monsterSheetId && creature.ownerId === userId),
+    ),
+  )
+  await clearMonsterSheetLink(userId, monsterSheetId)
+}
 
-  if (campaign.exists()) {
-    const creatures = normalizeCampaign(campaign.id, campaign.data()).creatures || []
-    batch.update(campaignRef, {
-      creatures: creatures.filter(
-        (creature) => !(
-          creature.monsterSheetId === monsterSheetId && creature.ownerId === userId
-        ),
-      ),
-      updatedAt: Date.now(),
-    })
+/** Limpeza opcional do vínculo de campanha numa ficha de monstro/NPC. */
+async function clearMonsterSheetLink(ownerId: string, monsterSheetId: string): Promise<void> {
+  const monsterRef = doc(db, 'users', ownerId, 'monsterSheets', monsterSheetId)
+  const monster = await safeGetDoc(monsterRef)
+  if (!monster?.exists()) return
+  try {
+    await updateDoc(monsterRef, characterCampaignFields(null, null))
+  } catch (err) {
+    console.warn('Não foi possível limpar o vínculo da ficha de monstro:', err)
   }
-
-  const monsterRef = doc(db, 'users', userId, 'monsterSheets', monsterSheetId)
-  const monster = await getDoc(monsterRef)
-  if (monster.exists()) {
-    batch.update(monsterRef, characterCampaignFields(null, null))
-  }
-
-  await batch.commit()
 }
 
 /**
@@ -613,31 +709,40 @@ export async function syncSheetToCampaignMember(
 }
 
 /**
- * Remove um membro da campanha (ou quando o jogador sai por conta própria).
+ * Remove um membro da campanha (pelo mestre, ou o próprio jogador saindo).
+ * Apagar o membro e tirar o id de `memberIds` é essencial; limpar o vínculo
+ * na ficha do jogador é opcional, porque a ficha pode ter sido excluída.
  */
 export async function removeMember(campaignId: string, userId: string): Promise<void> {
-  const memberRef = getMemberDoc(campaignId, userId)
-  const member = await getDoc(memberRef)
-  const sheetId = member.exists() && typeof member.data().characterSheetId === 'string'
-    ? member.data().characterSheetId as string
-    : null
-  const batch = writeBatch(db)
-
-  batch.delete(memberRef)
-  batch.update(getCampaignDoc(campaignId), {
-    memberIds: arrayRemove(userId),
-    updatedAt: Date.now(),
-  })
-
-  if (sheetId) {
-    const sheetRef = doc(db, 'users', userId, 'characterSheets', sheetId)
-    const sheet = await getDoc(sheetRef)
-    if (sheet.exists()) {
-      batch.update(sheetRef, characterCampaignFields(null, null))
-    }
+  const campaignRef = getCampaignDoc(campaignId)
+  const campaign = await getDoc(campaignRef)
+  if (campaign.exists() && campaign.data().dmId === userId) {
+    throw new Error('O mestre não pode ser removido da própria mesa.')
   }
 
-  await batch.commit()
+  const memberRef = getMemberDoc(campaignId, userId)
+  const member = await safeGetDoc(memberRef)
+  const sheetId = member?.exists() && typeof member.data()?.characterSheetId === 'string'
+    ? member.data()!.characterSheetId as string
+    : null
+
+  let sheetRef: DocumentReference | null = null
+  if (sheetId) {
+    const ref = doc(db, 'users', userId, 'characterSheets', sheetId)
+    const sheet = await safeGetDoc(ref)
+    if (sheet?.exists()) sheetRef = ref
+  }
+
+  await commitWithOptionalWrites(
+    (batch) => {
+      batch.delete(memberRef)
+      batch.update(campaignRef, {
+        memberIds: arrayRemove(userId),
+        updatedAt: Date.now(),
+      })
+    },
+    sheetRef ? (batch) => batch.update(sheetRef!, characterCampaignFields(null, null)) : null,
+  )
 }
 
 /**
@@ -733,7 +838,17 @@ export function extractVitalsFromCharacterSheet(sheet: CharacterSheet): Characte
       failures: char.deathSaves?.failure ?? 0,
     },
     spellSlots: Object.keys(spellSlots).length > 0 ? spellSlots : undefined,
+    initiativeBonus: initiativeBonusFromCharacter(sheet),
   }
+}
+
+/** Mesma conta do CharacterCombatSummary: mod. de Destreza + bônus extra. */
+function initiativeBonusFromCharacter(sheet: CharacterSheet): number {
+  const char = sheet.character
+  const dex = char.attributes?.find((a) => a.name === 'Destreza')
+  const dexMod = dex && typeof dex.value === 'number' ? abilityModifier(dex.value) : 0
+  const extra = typeof char.initiativeBonusExtra === 'number' ? char.initiativeBonusExtra : 0
+  return dexMod + extra
 }
 
 /**
@@ -756,11 +871,13 @@ export function extractVitalsFromMonsterSheet(
     armorClass: sheet.stats?.ac ?? 10,
     passivePerception: 10 + wisMod,
     conditions: [],
+    initiativeBonus: abilityModifier(sheet.stats?.dexterity ?? 10),
   }
 }
 
 /**
- * Atualiza os vitais de um membro da campanha.
+ * Atualiza os vitais de um membro da campanha. Espelhar PV e afins na ficha é
+ * opcional: se a ficha não puder ser lida ou escrita, a mesa ainda atualiza.
  */
 export async function updateMemberVitals(
   campaignId: string,
@@ -771,104 +888,252 @@ export async function updateMemberVitals(
   const member = await getDoc(memberRef)
   if (!member.exists()) return
 
-  const batch = writeBatch(db)
-  batch.update(memberRef, {
-    vitals,
-  })
-
   const sheetId = member.data().characterSheetId
+  let sheetRef: DocumentReference | null = null
   if (typeof sheetId === 'string' && sheetId) {
-    const sheetRef = doc(db, 'users', userId, 'characterSheets', sheetId)
-    const sheet = await getDoc(sheetRef)
-    if (sheet.exists()) {
-      batch.update(sheetRef, {
-        'data.character.hpCurrent': vitals.hpCurrent,
-        'data.character.hpTemp': vitals.hpTemp,
-        'data.character.heroicInspiration': vitals.heroicInspiration ? 1 : 0,
-        'data.character.deathSaves.success': vitals.deathSaves?.successes ?? 0,
-        'data.character.deathSaves.failure': vitals.deathSaves?.failures ?? 0,
-        updatedAt: new Date().toISOString(),
-      })
-    }
+    const ref = doc(db, 'users', userId, 'characterSheets', sheetId)
+    const sheet = await safeGetDoc(ref)
+    if (sheet?.exists()) sheetRef = ref
   }
 
-  await batch.commit()
+  await commitWithOptionalWrites(
+    (batch) => batch.update(memberRef, { vitals }),
+    sheetRef
+      ? (batch) => batch.update(sheetRef!, {
+          'data.character.hpCurrent': vitals.hpCurrent,
+          'data.character.hpTemp': vitals.hpTemp,
+          'data.character.heroicInspiration': vitals.heroicInspiration ? 1 : 0,
+          'data.character.deathSaves.success': vitals.deathSaves?.successes ?? 0,
+          'data.character.deathSaves.failure': vitals.deathSaves?.failures ?? 0,
+          updatedAt: new Date().toISOString(),
+        })
+      : null,
+  )
 }
 
 /**
- * Instancia uma nova criatura na mesa ativa.
+ * Instancia uma ou mais criaturas avulsas (sem ficha) na mesa ativa.
  */
 export async function addCreatureToCampaign(
   campaignId: string,
-  currentCreatures: CampaignCreature[] | undefined,
   creatureData: Omit<CampaignCreature, 'id' | 'addedAt'>,
-): Promise<CampaignCreature> {
-  const newCreature: CampaignCreature = {
-    id: Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
-    ...creatureData,
-    addedAt: Date.now(),
-  }
-
-  const list = [...(currentCreatures || []), newCreature]
-  const campaignRef = getCampaignDoc(campaignId)
-  await updateDoc(campaignRef, {
-    creatures: list,
-    updatedAt: Date.now(),
+  quantity = 1,
+): Promise<CampaignCreature[]> {
+  const count = Math.max(1, Math.min(20, Math.trunc(quantity)))
+  const now = Date.now()
+  let created: CampaignCreature[] = []
+  await mutateCreatures(campaignId, (current) => {
+    const names = namesForNewInstances(creatureData.name, current.map((c) => c.name), count)
+    created = names.map((name, index) => ({
+      ...creatureData,
+      id: newCreatureId(),
+      name,
+      initiative: null,
+      addedAt: now + index,
+    }))
+    return [...current, ...created]
   })
-
-  return newCreature
+  return created
 }
 
 /**
- * Atualiza propriedades de uma criatura na mesa (ex: PV, condições).
+ * Atualiza propriedades de uma criatura na mesa (ex: PV, condições, iniciativa).
  */
 export async function updateCreatureInCampaign(
   campaignId: string,
-  currentCreatures: CampaignCreature[],
   creatureId: string,
-  updates: Partial<CampaignCreature>,
+  updates: Partial<Omit<CampaignCreature, 'id'>>,
 ): Promise<void> {
-  const updated = currentCreatures.map((c) =>
-    c.id === creatureId ? { ...c, ...updates } : c,
+  await mutateCreatures(campaignId, (current) =>
+    current.map((c) => (c.id === creatureId ? { ...c, ...updates, id: c.id } : c)),
   )
-  const campaignRef = getCampaignDoc(campaignId)
-  await updateDoc(campaignRef, {
-    creatures: updated,
-    updatedAt: Date.now(),
+}
+
+/**
+ * Replica uma criatura em cena (monstro ou NPC, com ou sem ficha). As cópias
+ * nascem com PV cheio, sem condições e sem iniciativa, e continuam a
+ * numeração do nome ("Goblin" → "Goblin 2", "Goblin 3").
+ */
+export async function duplicateCreatureInCampaign(
+  campaignId: string,
+  creatureId: string,
+  count = 1,
+): Promise<CampaignCreature[]> {
+  const copies = Math.max(1, Math.min(20, Math.trunc(count)))
+  const now = Date.now()
+  let created: CampaignCreature[] = []
+  await mutateCreatures(campaignId, (current) => {
+    const source = current.find((c) => c.id === creatureId)
+    if (!source) throw new Error('Criatura não encontrada na mesa.')
+    const names = nextInstanceNames(source.name, current.map((c) => c.name), copies)
+    created = names.map((name, index) => ({
+      ...source,
+      id: newCreatureId(),
+      name,
+      hpCurrent: source.hpMax,
+      hpTemp: 0,
+      conditions: [],
+      initiative: null,
+      addedAt: now + index,
+    }))
+    const sourceIndex = current.findIndex((c) => c.id === creatureId)
+    // As cópias entram logo depois da original, para ficarem agrupadas.
+    return [...current.slice(0, sourceIndex + 1), ...created, ...current.slice(sourceIndex + 1)]
+  })
+  return created
+}
+
+/**
+ * Remove uma criatura derrotada ou encerrada da sessão. Quando era a última
+ * instância de uma ficha, limpa o vínculo da ficha (opcional).
+ */
+export async function removeCreatureFromCampaign(
+  campaignId: string,
+  creatureId: string,
+): Promise<void> {
+  let removed: CampaignCreature | undefined
+  let remaining: CampaignCreature[] = []
+  await mutateCreatures(campaignId, (current) => {
+    removed = current.find((c) => c.id === creatureId)
+    remaining = current.filter((c) => c.id !== creatureId)
+    return remaining
+  })
+
+  const gone = removed as CampaignCreature | undefined
+  if (
+    gone?.monsterSheetId &&
+    gone.ownerId &&
+    !remaining.some(
+      (creature) => creature.monsterSheetId === gone.monsterSheetId &&
+        creature.ownerId === gone.ownerId,
+    )
+  ) {
+    await clearMonsterSheetLink(gone.ownerId, gone.monsterSheetId)
+  }
+}
+
+// ── Iniciativa e turnos ──────────────────────────────────────────────────────
+
+/**
+ * Rola iniciativa (d20 + bônus) para as criaturas em cena. Com `onlyMissing`,
+ * mantém quem já tem valor.
+ */
+export async function rollCreaturesInitiative(
+  campaignId: string,
+  options: { onlyMissing?: boolean; random?: () => number } = {},
+): Promise<void> {
+  await mutateCreatures(campaignId, (current) =>
+    current.map((creature) =>
+      options.onlyMissing && typeof creature.initiative === 'number'
+        ? creature
+        : { ...creature, initiative: rollInitiative(creature.initiativeBonus ?? 0, options.random) },
+    ),
+  )
+}
+
+/** Define (ou limpa, com null) a iniciativa de um herói. */
+export async function setMemberInitiative(
+  campaignId: string,
+  userId: string,
+  initiative: number | null,
+): Promise<void> {
+  await updateDoc(getMemberDoc(campaignId, userId), {
+    initiative: typeof initiative === 'number' ? Math.trunc(initiative) : null,
   })
 }
 
 /**
- * Remove uma criatura derrotada ou encerrada da sessão.
+ * Rola para os heróis indicados (uso do mestre, que pode escrever em qualquer
+ * membro). Heróis já com valor são mantidos quando `onlyMissing` é true.
  */
-export async function removeCreatureFromCampaign(
+export async function rollMembersInitiative(
   campaignId: string,
-  currentCreatures: CampaignCreature[],
-  creatureId: string,
+  members: CampaignMember[],
+  options: { onlyMissing?: boolean; random?: () => number } = {},
 ): Promise<void> {
-  const removed = currentCreatures.find((c) => c.id === creatureId)
-  const filtered = currentCreatures.filter((c) => c.id !== creatureId)
-  const campaignRef = getCampaignDoc(campaignId)
+  const targets = members.filter(
+    (m) => !(options.onlyMissing && typeof m.initiative === 'number'),
+  )
+  if (targets.length === 0) return
   const batch = writeBatch(db)
-  batch.update(campaignRef, {
-    creatures: filtered,
+  for (const member of targets) {
+    batch.update(getMemberDoc(campaignId, member.userId), {
+      initiative: rollInitiative(member.vitals?.initiativeBonus ?? 0, options.random),
+    })
+  }
+  await batch.commit()
+}
+
+/** Grava rodada e turno ativo do rastreador de combate. */
+export async function updateCampaignCombat(
+  campaignId: string,
+  combat: CampaignCombat | null,
+): Promise<void> {
+  await updateDoc(getCampaignDoc(campaignId), {
+    combat,
     updatedAt: Date.now(),
   })
+}
 
-  if (
-    removed?.monsterSheetId &&
-    removed.ownerId &&
-    !filtered.some(
-      (creature) => creature.monsterSheetId === removed.monsterSheetId &&
-        creature.ownerId === removed.ownerId,
-    )
-  ) {
-    const monsterRef = doc(db, 'users', removed.ownerId, 'monsterSheets', removed.monsterSheetId)
-    const monster = await getDoc(monsterRef)
-    if (monster.exists()) {
-      batch.update(monsterRef, characterCampaignFields(null, null))
-    }
+/** Encerra o combate: zera turno, rodada e a iniciativa de todos. */
+export async function endCampaignCombat(
+  campaignId: string,
+  memberIds: string[],
+): Promise<void> {
+  await mutateCreatures(
+    campaignId,
+    (current) => current.map((creature) => ({ ...creature, initiative: null })),
+    { combat: null },
+  )
+  if (memberIds.length === 0) return
+  const batch = writeBatch(db)
+  for (const userId of memberIds) {
+    batch.update(getMemberDoc(campaignId, userId), { initiative: null })
   }
-
   await batch.commit()
+}
+
+// ── Exclusão de fichas vinculadas ────────────────────────────────────────────
+
+/**
+ * Antes de excluir uma ficha de PJ vinculada, libera o herói na mesa, para não
+ * deixar um personagem fantasma que ninguém consegue remover. Nunca lança:
+ * a exclusão da ficha segue mesmo que a mesa não possa ser atualizada.
+ */
+export async function releaseCharacterSheetFromCampaign(
+  campaignId: string,
+  userId: string,
+  sheetId: string,
+): Promise<void> {
+  try {
+    const memberRef = getMemberDoc(campaignId, userId)
+    const member = await safeGetDoc(memberRef)
+    if (!member?.exists() || member.data()?.characterSheetId !== sheetId) return
+    await updateDoc(memberRef, { ...emptyCharacterLink(), initiative: null })
+  } catch (err) {
+    console.warn('Não foi possível liberar o herói da mesa antes de excluir a ficha:', err)
+  }
+}
+
+/**
+ * Antes de excluir uma ficha de monstro/NPC vinculada, mantém as instâncias em
+ * cena (o combate não perde PV e condições), mas sem link para a ficha que
+ * deixará de existir. Nunca lança.
+ */
+export async function releaseMonsterSheetFromCampaign(
+  campaignId: string,
+  userId: string,
+  monsterSheetId: string,
+): Promise<void> {
+  try {
+    await mutateCreatures(campaignId, (current) =>
+      current.map((creature) =>
+        creature.monsterSheetId === monsterSheetId && creature.ownerId === userId
+          ? { ...creature, monsterSheetId: null }
+          : creature,
+      ),
+    )
+  } catch (err) {
+    console.warn('Não foi possível desvincular as criaturas antes de excluir a ficha:', err)
+  }
 }

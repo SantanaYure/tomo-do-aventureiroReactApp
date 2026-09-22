@@ -461,12 +461,24 @@ export function CharactersPage() {
 
   async function confirmDelete() {
     if (!pendingDelete || !uid) return
-    if (pendingDelete.type === 'character') {
-      await deleteCharacterSheet(uid, pendingDelete.id)
-    } else {
-      await deleteMonster(uid, pendingDelete.id)
+    const { releaseCharacterSheetFromCampaign, releaseMonsterSheetFromCampaign } =
+      await import('../../store/campaignStore')
+    try {
+      if (pendingDelete.type === 'character') {
+        // Libera o herói na mesa antes, para não sobrar um personagem fantasma.
+        const campaignId = sheets.find((s) => s.id === pendingDelete.id)?.data.campaignId
+        if (campaignId) await releaseCharacterSheetFromCampaign(campaignId, uid, pendingDelete.id)
+        await deleteCharacterSheet(uid, pendingDelete.id)
+      } else {
+        const campaignId = monsters.find((m) => m.id === pendingDelete.id)?.data.campaignId
+        if (campaignId) await releaseMonsterSheetFromCampaign(campaignId, uid, pendingDelete.id)
+        await deleteMonster(uid, pendingDelete.id)
+      }
+      setPendingDelete(null)
+    } catch (err) {
+      console.error('Erro ao excluir ficha:', err)
+      setPendingDelete(null)
     }
-    setPendingDelete(null)
   }
 
   function handleExportSheet(sheet: StoredCharacterSheet) {

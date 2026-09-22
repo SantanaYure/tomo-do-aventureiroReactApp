@@ -280,6 +280,11 @@ export function MonsterSheetPage() {
     setIsDeleting(true)
     discardPending()
     try {
+      // Mantém as instâncias em cena, mas sem link para a ficha excluída.
+      if (sheet?.campaignId) {
+        const { releaseMonsterSheetFromCampaign } = await import('../../store/campaignStore')
+        await releaseMonsterSheetFromCampaign(sheet.campaignId, uid, id)
+      }
       await deleteMonsterSheet(uid, id)
       setShowDeleteDialog(false)
       navigate('/')

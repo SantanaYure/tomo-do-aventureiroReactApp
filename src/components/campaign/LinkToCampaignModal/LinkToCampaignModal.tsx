@@ -84,8 +84,7 @@ export function LinkToCampaignModal({
           userId,
           sheetId,
           sheetData as MonsterSheet,
-          target.creatures || [],
-          sheetName,
+          { instanceName: sheetName },
         )
       }
 

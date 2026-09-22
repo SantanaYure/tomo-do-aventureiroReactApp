@@ -7,7 +7,11 @@ import styles from './AddCreatureModal.module.css'
 
 interface AddCreatureModalProps {
   userId: string
-  onAdd: (creatureData: Omit<CampaignCreature, 'id' | 'addedAt'>) => Promise<void> | void
+  /** `quantity` cópias da mesma criatura; com mais de uma, os nomes são numerados. */
+  onAdd: (
+    creatureData: Omit<CampaignCreature, 'id' | 'addedAt'>,
+    quantity: number,
+  ) => Promise<void> | void
   onClose: () => void
 }
 
@@ -27,6 +31,8 @@ export function AddCreatureModal({
   const [customName, setCustomName] = useState('')
   const [customHp, setCustomHp] = useState('10')
   const [customAc, setCustomAc] = useState('10')
+  const [customInit, setCustomInit] = useState('0')
+  const [quantity, setQuantity] = useState('1')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -43,6 +49,8 @@ export function AddCreatureModal({
     setInstanceName(name)
   }
 
+  const safeQuantity = Math.max(1, Math.min(20, parseInt(quantity, 10) || 1))
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
@@ -54,28 +62,36 @@ export function AddCreatureModal({
         if (!monster) return
 
         const vitals = extractVitalsFromMonsterSheet(monster.data, monster.id)
-        await onAdd({
-          ...vitals,
-          ownerId: userId,
-          name: instanceName.trim() || vitals.name,
-        })
+        await onAdd(
+          {
+            ...vitals,
+            ownerId: userId,
+            name: instanceName.trim() || vitals.name,
+          },
+          safeQuantity,
+        )
       } else {
         if (!customName.trim()) return
 
         const hp = Math.max(1, parseInt(customHp, 10) || 10)
         const ac = Math.max(1, parseInt(customAc, 10) || 10)
+        const initBonus = parseInt(customInit, 10) || 0
 
-        await onAdd({
-          name: customName.trim(),
-          monsterSheetId: null,
-          avatar: null,
-          hpCurrent: hp,
-          hpMax: hp,
-          hpTemp: 0,
-          armorClass: ac,
-          passivePerception: 10,
-          conditions: [],
-        })
+        await onAdd(
+          {
+            name: customName.trim(),
+            monsterSheetId: null,
+            avatar: null,
+            hpCurrent: hp,
+            hpMax: hp,
+            hpTemp: 0,
+            armorClass: ac,
+            passivePerception: 10,
+            conditions: [],
+            initiativeBonus: initBonus,
+          },
+          safeQuantity,
+        )
       }
       onClose()
     } catch (submitError) {
@@ -181,7 +197,7 @@ export function AddCreatureModal({
                           <div className={styles.monsterInfo}>
                             <p className={styles.monsterName}>{name}</p>
                             <p className={styles.monsterMeta}>
-                              ND {cr} • PV {hp} • CA {ac}
+                              {m.data.details?.kind === 'npc' ? 'NPC • ' : ''}ND {cr} • PV {hp} • CA {ac}
                             </p>
                           </div>
                         </div>
@@ -201,6 +217,23 @@ export function AddCreatureModal({
                         value={instanceName}
                         onChange={(e) => setInstanceName(e.target.value)}
                         placeholder="Ex.: Goblin Arqueiro 1"
+                      />
+                    </div>
+                  )}
+
+                  {selectedMonsterId && (
+                    <div className={styles.field}>
+                      <label htmlFor="library-quantity" className={styles.label}>
+                        Quantidade (1 a 20)
+                      </label>
+                      <input
+                        id="library-quantity"
+                        type="number"
+                        min="1"
+                        max="20"
+                        className={styles.input}
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
                       />
                     </div>
                   )}
@@ -255,6 +288,36 @@ export function AddCreatureModal({
                   />
                 </div>
               </div>
+
+              <div className={styles.row}>
+                <div className={styles.field}>
+                  <label htmlFor="custom-init" className={styles.label}>
+                    Bônus de Iniciativa
+                  </label>
+                  <input
+                    id="custom-init"
+                    type="number"
+                    className={styles.input}
+                    value={customInit}
+                    onChange={(e) => setCustomInit(e.target.value)}
+                  />
+                </div>
+
+                <div className={styles.field}>
+                  <label htmlFor="custom-quantity" className={styles.label}>
+                    Quantidade (1 a 20)
+                  </label>
+                  <input
+                    id="custom-quantity"
+                    type="number"
+                    min="1"
+                    max="20"
+                    className={styles.input}
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -272,7 +335,11 @@ export function AddCreatureModal({
                   : !customName.trim())
               }
             >
-              {isSubmitting ? 'Vinculando...' : 'Adicionar à Sessão'}
+              {isSubmitting
+                ? 'Vinculando...'
+                : safeQuantity > 1
+                  ? `Adicionar ${safeQuantity} à Sessão`
+                  : 'Adicionar à Sessão'}
             </button>
           </div>
         </form>

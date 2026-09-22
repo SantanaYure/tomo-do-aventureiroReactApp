@@ -325,3 +325,29 @@
   font-size: var(--text-sm);
 }
 
+.errorBanner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--danger-solid);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--danger-solid) 10%, transparent);
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+
+.errorDismiss {
+  flex-shrink: 0;
+  padding: 0 var(--space-1);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.errorDismiss:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

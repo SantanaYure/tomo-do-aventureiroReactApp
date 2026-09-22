@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Eye, Shield, Skull, Trash2, Plus, X, ExternalLink } from 'lucide-react'
+import { CopyPlus, Dices, Eye, Shield, Skull, Trash2, Plus, X, ExternalLink } from 'lucide-react'
 import type { CampaignCreature } from '../../../types/campaign/campaign'
 import { ConditionsModal } from '../ConditionsModal/ConditionsModal'
 import { HpAdjustModal } from '../HpAdjustModal/HpAdjustModal'
@@ -12,6 +12,8 @@ interface CreatureVitalCardProps {
   isDm: boolean
   onUpdate: (creatureId: string, updates: Partial<CampaignCreature>) => void
   onRemove: (creatureId: string) => void
+  /** Replica a criatura em cena (mestre). */
+  onDuplicate?: (creatureId: string) => void
 }
 
 export function CreatureVitalCard({
@@ -20,6 +22,7 @@ export function CreatureVitalCard({
   isDm,
   onUpdate,
   onRemove,
+  onDuplicate,
 }: CreatureVitalCardProps) {
   const [isHpModalOpen, setIsHpModalOpen] = useState(false)
   const [hpModalMode, setHpModalMode] = useState<'damage' | 'heal' | 'temp'>('damage')
@@ -108,6 +111,18 @@ export function CreatureVitalCard({
           </p>
         </div>
 
+        {isDm && onDuplicate && (
+          <button
+            type="button"
+            className={styles.iconBtn}
+            onClick={() => onDuplicate(creature.id)}
+            title="Replicar criatura"
+            aria-label={`Replicar ${creature.name}`}
+          >
+            <CopyPlus size={14} strokeWidth={1.75} />
+          </button>
+        )}
+
         {isDm && (
           <button
             type="button"
@@ -132,6 +147,13 @@ export function CreatureVitalCard({
           <span>Percepção</span>
           <span className={styles.statVal}>{creature.passivePerception ?? 10}</span>
         </div>
+        {typeof creature.initiative === 'number' && (
+          <div className={styles.statBadge}>
+            <Dices size={14} strokeWidth={1.75} />
+            <span>Iniciativa</span>
+            <span className={styles.statVal}>{creature.initiative}</span>
+          </div>
+        )}
       </div>
 
       <div className={styles.hpSection}>

@@ -21,6 +21,12 @@ import {
   addCreatureToCampaign,
   updateCreatureInCampaign,
   removeCreatureFromCampaign,
+  duplicateCreatureInCampaign,
+  rollCreaturesInitiative,
+  rollMembersInitiative,
+  setMemberInitiative,
+  updateCampaignCombat,
+  endCampaignCombat,
   linkCharacterSheetToCampaign,
   unlinkCharacterSheetFromCampaign,
   linkMonsterSheetToCampaign,
@@ -32,12 +38,30 @@ import { SelectCharacterModal } from '../../components/campaign/SelectCharacterM
 import { HeroVitalCard } from '../../components/campaign/HeroVitalCard/HeroVitalCard'
 import { CreatureVitalCard } from '../../components/campaign/CreatureVitalCard/CreatureVitalCard'
 import { AddCreatureModal } from '../../components/campaign/AddCreatureModal/AddCreatureModal'
+import { InitiativeTracker } from '../../components/campaign/InitiativeTracker/InitiativeTracker'
 import { formatInviteCode } from '../../utils/inviteCode'
+import {
+  advanceTurn,
+  isHeroInCombat,
+  rollInitiative,
+  type Combatant,
+} from '../../utils/initiative'
 import type { CampaignCreature, CharacterVitals } from '../../types/campaign/campaign'
 import type { CharacterSheet } from '../../types/system/dnd/CharacterSheet'
 import styles from './CampaignDetailPage.module.css'
 
 type TabType = 'session' | 'members'
+
+function describeError(err: unknown, fallback: string): string {
+  const code = (err as { code?: string } | null)?.code
+  if (code === 'permission-denied') {
+    return `${fallback} Permissão negada pelo servidor (confira se as regras do Firestore estão publicadas).`
+  }
+  if (err instanceof Error && err.message && !err.message.startsWith('FirebaseError')) {
+    return `${fallback} ${err.message}`
+  }
+  return fallback
+}
 
 export function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -54,6 +78,21 @@ export function CampaignDetailPage() {
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [isSelectCharOpen, setIsSelectCharOpen] = useState(false)
   const [isAddCreatureOpen, setIsAddCreatureOpen] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [isCombatBusy, setIsCombatBusy] = useState(false)
+
+  /** Executa uma ação da mesa e mostra a falha na tela, em vez de só no console. */
+  async function runAction(fallbackMessage: string, action: () => Promise<unknown>): Promise<boolean> {
+    try {
+      setActionError(null)
+      await action()
+      return true
+    } catch (err) {
+      console.error(fallbackMessage, err)
+      setActionError(describeError(err, fallbackMessage))
+      return false
+    }
+  }
 
   async function handleCopyCode() {
     if (!campaign) return
@@ -92,11 +131,9 @@ export function CampaignDetailPage() {
     )
     if (!confirm) return
 
-    try {
-      await removeMember(campaign.id, memberId)
-    } catch (err) {
-      console.error('Erro ao remover membro:', err)
-    }
+    await runAction('Não foi possível remover o jogador.', () =>
+      removeMember(campaign.id, memberId),
+    )
   }
 
   async function handleLeaveCampaign() {
@@ -104,12 +141,10 @@ export function CampaignDetailPage() {
     const confirm = window.confirm('Deseja realmente sair desta mesa?')
     if (!confirm) return
 
-    try {
-      await removeMember(campaign.id, user.uid)
-      navigate('/mesas')
-    } catch (err) {
-      console.error('Erro ao sair da mesa:', err)
-    }
+    const ok = await runAction('Não foi possível sair da mesa.', () =>
+      removeMember(campaign.id, user.uid),
+    )
+    if (ok) navigate('/mesas')
   }
 
   async function handleUpdateCharacter(data: {
@@ -145,11 +180,9 @@ export function CampaignDetailPage() {
 
   async function handleRemoveHero(targetUserId: string, sheetId?: string | null) {
     if (!campaign) return
-    try {
-      await removeHeroFromCampaign(campaign.id, targetUserId, sheetId)
-    } catch (err) {
-      console.error('Erro ao desvincular herói da mesa:', err)
-    }
+    await runAction('Não foi possível desvincular o herói.', () =>
+      removeHeroFromCampaign(campaign.id, targetUserId, sheetId),
+    )
   }
 
   async function handleToggleAuthorization(targetUserId: string, canManage: boolean) {
@@ -163,53 +196,133 @@ export function CampaignDetailPage() {
 
   async function handleUpdateVitals(userId: string, newVitals: CharacterVitals) {
     if (!campaign) return
-    try {
-      await updateMemberVitals(campaign.id, userId, newVitals)
-    } catch (err) {
-      console.error('Erro ao atualizar vitais:', err)
-    }
+    await runAction('Não foi possível atualizar os vitais.', () =>
+      updateMemberVitals(campaign.id, userId, newVitals),
+    )
   }
 
-  async function handleAddCreature(creatureData: Omit<CampaignCreature, 'id' | 'addedAt'>) {
+  /** Erros sobem para o AddCreatureModal, que os mostra sem fechar. */
+  async function handleAddCreature(
+    creatureData: Omit<CampaignCreature, 'id' | 'addedAt'>,
+    quantity: number,
+  ) {
     if (!campaign || !user) return
-    try {
-      if (creatureData.monsterSheetId) {
-        const { getMonsterSheet } = await import('../../store/monsterSheetStore')
-        const monster = await getMonsterSheet(user.uid, creatureData.monsterSheetId)
-        if (!monster) throw new Error('A ficha de monstro/NPC não foi encontrada.')
-        await linkMonsterSheetToCampaign(
-          campaign.id,
-          campaign.name,
-          user.uid,
-          creatureData.monsterSheetId,
-          monster.data,
-          campaign.creatures || [],
-          creatureData.name,
-        )
-      } else {
-        await addCreatureToCampaign(campaign.id, campaign.creatures, creatureData)
-      }
-    } catch (err) {
-      console.error('Erro ao adicionar criatura:', err)
+    if (creatureData.monsterSheetId) {
+      const { getMonsterSheet } = await import('../../store/monsterSheetStore')
+      const monster = await getMonsterSheet(user.uid, creatureData.monsterSheetId)
+      if (!monster) throw new Error('A ficha de monstro/NPC não foi encontrada.')
+      await linkMonsterSheetToCampaign(
+        campaign.id,
+        campaign.name,
+        user.uid,
+        creatureData.monsterSheetId,
+        monster.data,
+        { instanceName: creatureData.name, quantity },
+      )
+    } else {
+      await addCreatureToCampaign(campaign.id, creatureData, quantity)
     }
   }
 
   async function handleUpdateCreature(creatureId: string, updates: Partial<CampaignCreature>) {
     if (!campaign) return
-    try {
-      await updateCreatureInCampaign(campaign.id, campaign.creatures || [], creatureId, updates)
-    } catch (err) {
-      console.error('Erro ao atualizar criatura:', err)
-    }
+    await runAction('Não foi possível atualizar a criatura.', () =>
+      updateCreatureInCampaign(campaign.id, creatureId, updates),
+    )
   }
 
   async function handleRemoveCreature(creatureId: string) {
     if (!campaign) return
+    await runAction('Não foi possível remover a criatura.', () =>
+      removeCreatureFromCampaign(campaign.id, creatureId),
+    )
+  }
+
+  async function handleDuplicateCreature(creatureId: string) {
+    if (!campaign) return
+    await runAction('Não foi possível replicar a criatura.', () =>
+      duplicateCreatureInCampaign(campaign.id, creatureId, 1),
+    )
+  }
+
+  // ── Iniciativa ──
+
+  async function runCombatAction(fallbackMessage: string, action: () => Promise<unknown>) {
+    setIsCombatBusy(true)
     try {
-      await removeCreatureFromCampaign(campaign.id, campaign.creatures || [], creatureId)
-    } catch (err) {
-      console.error('Erro ao remover criatura:', err)
+      await runAction(fallbackMessage, action)
+    } finally {
+      setIsCombatBusy(false)
     }
+  }
+
+  function heroesInCombat() {
+    return members.filter(isHeroInCombat)
+  }
+
+  async function handleRollMissingInitiative() {
+    if (!campaign || !isDm) return
+    await runCombatAction('Não foi possível rolar a iniciativa.', async () => {
+      await rollCreaturesInitiative(campaign.id, { onlyMissing: true })
+      await rollMembersInitiative(campaign.id, heroesInCombat(), { onlyMissing: true })
+    })
+  }
+
+  async function handleRerollAllInitiative() {
+    if (!campaign || !isDm) return
+    if (!window.confirm('Rolar a iniciativa de novo para todos? A ordem atual será substituída.')) return
+    await runCombatAction('Não foi possível rolar a iniciativa.', async () => {
+      await rollCreaturesInitiative(campaign.id)
+      await rollMembersInitiative(campaign.id, heroesInCombat())
+      await updateCampaignCombat(campaign.id, null)
+    })
+  }
+
+  async function handleRollHeroInitiative(userId: string) {
+    if (!campaign) return
+    const member = members.find((m) => m.userId === userId)
+    if (!member) return
+    await runCombatAction('Não foi possível rolar a iniciativa.', () =>
+      setMemberInitiative(campaign.id, userId, rollInitiative(member.vitals?.initiativeBonus ?? 0)),
+    )
+  }
+
+  async function handleRollCreatureInitiative(creatureId: string) {
+    if (!campaign || !isDm) return
+    const creature = (campaign.creatures || []).find((c) => c.id === creatureId)
+    if (!creature) return
+    await runCombatAction('Não foi possível rolar a iniciativa.', () =>
+      updateCreatureInCampaign(campaign.id, creatureId, {
+        initiative: rollInitiative(creature.initiativeBonus ?? 0),
+      }),
+    )
+  }
+
+  async function handleSetInitiative(combatant: Combatant, value: number | null) {
+    if (!campaign) return
+    await runCombatAction('Não foi possível gravar a iniciativa.', () =>
+      combatant.kind === 'hero'
+        ? setMemberInitiative(campaign.id, combatant.refId, value)
+        : updateCreatureInCampaign(campaign.id, combatant.refId, { initiative: value }),
+    )
+  }
+
+  async function handleNextTurn(order: Combatant[]) {
+    if (!campaign || !isDm) return
+    await runCombatAction('Não foi possível avançar o turno.', () =>
+      updateCampaignCombat(campaign.id, advanceTurn(order, campaign.combat)),
+    )
+  }
+
+  async function handleEndCombat() {
+    if (!campaign || !isDm) return
+    if (!window.confirm('Encerrar o combate e limpar a iniciativa de todos?')) return
+    const withInitiative = members
+      .filter((m) => typeof m.initiative === 'number')
+      .map((m) => m.userId)
+    await runCombatAction('Não foi possível encerrar o combate.', () =>
+      endCampaignCombat(campaign.id, withInitiative),
+    )
   }
 
   if (isLoading) {
@@ -329,8 +442,38 @@ export function CampaignDetailPage() {
         </button>
       </nav>
 
+      {actionError && (
+        <div className={styles.errorBanner} role="alert">
+          <span>{actionError}</span>
+          <button
+            type="button"
+            className={styles.errorDismiss}
+            onClick={() => setActionError(null)}
+            aria-label="Fechar aviso"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {activeTab === 'session' ? (
         <div className={styles.sessionDashboard}>
+          <InitiativeTracker
+            members={members}
+            creatures={creatures}
+            combat={campaign.combat}
+            isDm={isDm}
+            currentUserId={user?.uid}
+            busy={isCombatBusy}
+            onRollMissing={handleRollMissingInitiative}
+            onRerollAll={handleRerollAllInitiative}
+            onRollHero={handleRollHeroInitiative}
+            onRollCreature={handleRollCreatureInitiative}
+            onSetInitiative={handleSetInitiative}
+            onNextTurn={handleNextTurn}
+            onEndCombat={handleEndCombat}
+          />
+
           <div>
             <div className={styles.sectionHeader}>
               <h2 className={styles.sectionTitle}>
@@ -393,6 +536,7 @@ export function CampaignDetailPage() {
                     isDm={isDm}
                     onUpdate={handleUpdateCreature}
                     onRemove={handleRemoveCreature}
+                    onDuplicate={handleDuplicateCreature}
                   />
                 ))}
               </div>

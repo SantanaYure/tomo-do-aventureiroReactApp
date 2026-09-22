@@ -11,7 +11,10 @@ import {
   parseUntrustedCharacterSheet,
   type StoredCharacterSheet,
 } from '../../store/characterSheetStore'
-import { syncSheetToCampaignMember } from '../../store/campaignStore'
+import {
+  releaseCharacterSheetFromCampaign,
+  syncSheetToCampaignMember,
+} from '../../store/campaignStore'
 import { LinkToCampaignModal } from '../../components/campaign/LinkToCampaignModal/LinkToCampaignModal'
 import { normalizeFileName, downloadJsonFile } from '../../utils/exportSheet'
 import { recordOpened } from '../../utils/recentlyOpened'
@@ -329,6 +332,8 @@ export function CharacterSheetPage() {
     setIsDeleting(true)
     discardPending()
     try {
+      // Libera o herói na mesa antes, para não sobrar um personagem fantasma.
+      if (sheet?.campaignId) await releaseCharacterSheetFromCampaign(sheet.campaignId, uid, id)
       await deleteCharacterSheet(uid, id)
       setShowDeleteDialog(false)
       navigate('/')
