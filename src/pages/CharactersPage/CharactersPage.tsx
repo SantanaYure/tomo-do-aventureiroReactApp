@@ -24,6 +24,8 @@ import { useSheetGroups } from '../../hooks/useSheetGroups'
 import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
 import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
 import { LinkToCampaignModal } from '../../components/campaign/LinkToCampaignModal/LinkToCampaignModal'
+import { SrdMonsterPicker } from '../../components/SrdMonsterPicker/SrdMonsterPicker'
+import type { SrdMonsterTemplate } from '../../data/srd/monsters'
 import styles from './CharactersPage.module.css'
 
 const NO_GROUP_KEY = '__no_group__'
@@ -289,6 +291,7 @@ export function CharactersPage() {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [showGroupManager, setShowGroupManager] = useState(false)
+  const [showSrdPicker, setShowSrdPicker] = useState(false)
   const [typeFilter, setTypeFilter] = useState<SheetTypeFilter>('all')
   const [groupFilter, setGroupFilter] = useState<string>('all')
 
@@ -448,6 +451,19 @@ export function CharactersPage() {
     } catch (err) {
       console.error('Erro ao criar monstro/NPC:', err)
       setIsCreatingMonster(false)
+    }
+  }
+
+  async function handleCreateMonsterFromSrd(template: SrdMonsterTemplate) {
+    if (!uid) return
+    try {
+      const stored = await createMonsterSheet(uid, template.data)
+      setShowSrdPicker(false)
+      navigate(`/monstro/${stored.id}`, {
+        state: { startEditing: true },
+      })
+    } catch (err) {
+      console.error('Erro ao criar monstro/NPC a partir do SRD:', err)
     }
   }
 
@@ -664,6 +680,13 @@ export function CharactersPage() {
             </button>
             <button
               type="button"
+              className={styles.tertiaryAction}
+              onClick={() => setShowSrdPicker(true)}
+            >
+              Monstro do SRD
+            </button>
+            <button
+              type="button"
               className={styles.createSecondary}
               onClick={handleCreateMonster}
               disabled={isCreatingMonster}
@@ -778,6 +801,13 @@ export function CharactersPage() {
         >
           {feedbackMessage(importFeedback)}
         </p>
+      )}
+
+      {showSrdPicker && uid && (
+        <SrdMonsterPicker
+          onSelect={handleCreateMonsterFromSrd}
+          onClose={() => setShowSrdPicker(false)}
+        />
       )}
 
       {showGroupManager && uid && (

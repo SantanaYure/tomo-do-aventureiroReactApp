@@ -636,8 +636,11 @@ async function resolveGroupReferenceOnImport(
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export async function createMonsterSheet(uid: string): Promise<StoredMonsterSheet> {
-    const data = normalizeMonsterSheet(createDefaultMonsterSheet())
+export async function createMonsterSheet(
+    uid: string,
+    initialData?: unknown,
+): Promise<StoredMonsterSheet> {
+    const data = normalizeMonsterSheet(initialData ?? createDefaultMonsterSheet())
     const timestamp = new Date().toISOString()
     const payload = createMonsterSheetPayload(data, timestamp)
     const ref = await addDoc(getCollectionRef(uid), payload)
