@@ -370,3 +370,11 @@ describe('exclusão de fichas vinculadas', () => {
     await expect(releaseMonsterSheetFromCampaign('camp-1', 'dm-1', 'm-1')).resolves.toBeUndefined()
   })
 })
+
+describe('mestre que também joga', () => {
+  it('participatesAsPlayer só vale para o mestre', () => {
+    expect(normalizeCampaignMember('dm-1', { role: 'dm', participatesAsPlayer: true }).participatesAsPlayer).toBe(true)
+    expect(normalizeCampaignMember('dm-1', { role: 'dm' }).participatesAsPlayer).toBe(false)
+    expect(normalizeCampaignMember('p-1', { role: 'player', participatesAsPlayer: true }).participatesAsPlayer).toBe(false)
+  })
+})

@@ -64,7 +64,15 @@ describe('rollInitiative', () => {
 })
 
 describe('buildCombatants', () => {
-  it('inclui jogadores e criaturas, e o mestre só com ficha vinculada', () => {
+  it('deixa o mestre de fora mesmo com ficha vinculada, a menos que ele também jogue', () => {
+    const dmWithSheet = member({ userId: 'dm', role: 'dm', characterSheetId: 's-1', characterName: 'Aria' })
+    expect(buildCombatants([dmWithSheet], [])).toHaveLength(0)
+    expect(buildCombatants([{ ...dmWithSheet, participatesAsPlayer: true }], [])).toEqual([
+      expect.objectContaining({ id: combatantId('hero', 'dm'), name: 'Aria' }),
+    ])
+  })
+
+  it('inclui jogadores e criaturas, e não o mestre que só narra', () => {
     const list = buildCombatants(
       [
         member({ userId: 'dm', role: 'dm', displayName: 'Mestre' }),

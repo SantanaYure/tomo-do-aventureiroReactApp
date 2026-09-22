@@ -144,6 +144,7 @@ export function normalizeCampaignMember(
     photoURL: typeof data.photoURL === 'string' ? data.photoURL : null,
     role: data.role === 'dm' ? 'dm' : 'player',
     canManageHeroes: Boolean(data.canManageHeroes),
+    participatesAsPlayer: data.role === 'dm' && data.participatesAsPlayer === true,
     joinedAt: typeof data.joinedAt === 'number' ? data.joinedAt : Date.now(),
     characterSheetId: typeof data.characterSheetId === 'string' ? data.characterSheetId : null,
     characterName: typeof data.characterName === 'string' ? data.characterName : null,
@@ -644,6 +645,21 @@ async function clearMonsterSheetLink(ownerId: string, monsterSheetId: string): P
   } catch (err) {
     console.warn('Não foi possível limpar o vínculo da ficha de monstro:', err)
   }
+}
+
+/**
+ * Mestre escolhe se também joga com um PJ (entra no painel de heróis e na
+ * iniciativa). Ao sair, a iniciativa dele é limpa.
+ */
+export async function setDmParticipatesAsPlayer(
+  campaignId: string,
+  dmUserId: string,
+  participates: boolean,
+): Promise<void> {
+  await updateDoc(getMemberDoc(campaignId, dmUserId), {
+    participatesAsPlayer: participates,
+    ...(participates ? {} : { initiative: null }),
+  })
 }
 
 /**

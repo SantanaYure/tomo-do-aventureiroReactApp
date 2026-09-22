@@ -34,11 +34,12 @@ export function combatantId(kind: CombatantKind, refId: string): string {
 }
 
 /**
- * Heróis que entram no combate: todo jogador, mais o mestre apenas se ele
- * tiver uma ficha vinculada (senão é só o narrador).
+ * Heróis que entram no combate e no painel de heróis: todo jogador, e o
+ * mestre só quando marcou que também joga com um PJ. Ter uma ficha vinculada
+ * não basta, porque o mestre controla os monstros e NPCs, não um herói.
  */
 export function isHeroInCombat(member: CampaignMember): boolean {
-  return member.role !== 'dm' || Boolean(member.characterSheetId)
+  return member.role !== 'dm' || member.participatesAsPlayer === true
 }
 
 export function buildCombatants(

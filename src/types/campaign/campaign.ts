@@ -43,6 +43,11 @@ export interface CampaignMember {
   displayName: string
   photoURL?: string | null
   role: CampaignRole
+  /**
+   * Só para o mestre: ele também joga com um PJ nesta mesa. Desligado por
+   * padrão, porque o mestre normalmente controla só monstros e NPCs.
+   */
+  participatesAsPlayer?: boolean
   canManageHeroes?: boolean
   joinedAt: number
   characterSheetId?: string | null

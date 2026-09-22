@@ -14,6 +14,8 @@ interface MemberCardProps {
   onChangeCharacter?: (member: CampaignMember) => void
   onUnlinkCharacter?: (memberId: string, sheetId?: string | null) => void
   onToggleAuthorization?: (memberId: string, canManage: boolean) => void
+  /** Só no card do próprio mestre: liga/desliga "também jogo com um PJ". */
+  onToggleParticipation?: (participates: boolean) => void
 }
 
 export function MemberCard({
@@ -26,6 +28,7 @@ export function MemberCard({
   onChangeCharacter,
   onUnlinkCharacter,
   onToggleAuthorization,
+  onToggleParticipation,
 }: MemberCardProps) {
   const isSelf = member.userId === currentUserId
   const isMemberDm = member.role === 'dm'
@@ -72,12 +75,30 @@ export function MemberCard({
                 )}
               </span>
 
+              {isMemberDm && member.participatesAsPlayer && (
+                <span className={styles.authBadge} title="O mestre também joga com um PJ nesta mesa">
+                  <User size={11} strokeWidth={2} /> Também joga
+                </span>
+              )}
+
               {member.canManageHeroes && (
                 <span className={styles.authBadge} title="Autorizado pelo Mestre a gerenciar heróis">
                   <ShieldCheck size={11} strokeWidth={2} /> Ajudante
                 </span>
               )}
             </div>
+
+            {isSelf && isMemberDm && onToggleParticipation && (
+              <button
+                type="button"
+                className={styles.authToggleBtn}
+                aria-pressed={Boolean(member.participatesAsPlayer)}
+                onClick={() => onToggleParticipation(!member.participatesAsPlayer)}
+                title="Entra no painel de heróis e na iniciativa como jogador"
+              >
+                {member.participatesAsPlayer ? 'Parar de jogar com PJ' : 'Também jogo com um PJ'}
+              </button>
+            )}
 
             {isDm && !isMemberDm && onToggleAuthorization && (
               <button

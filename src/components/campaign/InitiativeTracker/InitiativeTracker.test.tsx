@@ -5,7 +5,8 @@ import type { CampaignCreature, CampaignMember } from '../../../types/campaign/c
 import { InitiativeTracker } from './InitiativeTracker'
 
 const members: CampaignMember[] = [
-  { userId: 'dm', displayName: 'Mestre', role: 'dm', joinedAt: 0 },
+  // Mestre com ficha vinculada, mas sem marcar que joga: não entra na iniciativa.
+  { userId: 'dm', displayName: 'Mestre', role: 'dm', joinedAt: 0, characterSheetId: 's-dm', characterName: 'Aria' },
   { userId: 'p1', displayName: 'Ana', role: 'player', joinedAt: 1, characterName: 'Lia', initiative: 12 },
   { userId: 'p2', displayName: 'Bruno', role: 'player', joinedAt: 2, characterName: 'Torvin' },
 ]
@@ -35,7 +36,7 @@ function setup(overrides: Partial<Parameters<typeof InitiativeTracker>[0]> = {})
 }
 
 describe('InitiativeTracker', () => {
-  it('ordena pela iniciativa e deixa o mestre sem ficha de fora', () => {
+  it('ordena pela iniciativa e deixa de fora o mestre que não joga', () => {
     setup()
     const rows = screen.getAllByRole('listitem').map((li) => li.textContent)
     expect(rows).toHaveLength(3)

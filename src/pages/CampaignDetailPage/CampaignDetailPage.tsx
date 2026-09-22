@@ -32,6 +32,7 @@ import {
   linkMonsterSheetToCampaign,
   removeHeroFromCampaign,
   toggleMemberAuthorization,
+  setDmParticipatesAsPlayer,
 } from '../../store/campaignStore'
 import { MemberCard } from '../../components/campaign/MemberCard/MemberCard'
 import { SelectCharacterModal } from '../../components/campaign/SelectCharacterModal/SelectCharacterModal'
@@ -192,6 +193,13 @@ export function CampaignDetailPage() {
     } catch (err) {
       console.error('Erro ao alternar autorização:', err)
     }
+  }
+
+  async function handleToggleDmParticipation(participates: boolean) {
+    if (!campaign || !isDm || !user) return
+    await runAction('Não foi possível atualizar a participação do mestre.', () =>
+      setDmParticipatesAsPlayer(campaign.id, user.uid, participates),
+    )
   }
 
   async function handleUpdateVitals(userId: string, newVitals: CharacterVitals) {
@@ -356,6 +364,8 @@ export function CampaignDetailPage() {
   }
 
   const creatures = campaign.creatures || []
+  // O mestre só aparece como herói se marcou que também joga com um PJ.
+  const heroes = members.filter(isHeroInCombat)
 
   return (
     <div className={styles.page}>
@@ -477,12 +487,23 @@ export function CampaignDetailPage() {
           <div>
             <div className={styles.sectionHeader}>
               <h2 className={styles.sectionTitle}>
-                Heróis na Sessão ({members.length})
+                Heróis na Sessão ({heroes.length})
               </h2>
             </div>
 
+            {heroes.length === 0 && (
+              <div className={styles.emptyCreatures} style={{ marginTop: 'var(--space-3)' }}>
+                <p>Nenhum jogador na mesa ainda.</p>
+                {isDm && (
+                  <p style={{ marginTop: 'var(--space-1)', fontSize: 'var(--text-xs)' }}>
+                    Compartilhe o código de convite. Se você também joga com um PJ, marque isso na aba Integrantes.
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className={styles.vitalsGrid} style={{ marginTop: 'var(--space-3)' }}>
-              {members.map((member) => (
+              {heroes.map((member) => (
                 <HeroVitalCard
                   key={member.userId}
                   member={member}
@@ -574,6 +595,7 @@ export function CampaignDetailPage() {
                 onChangeCharacter={() => setIsSelectCharOpen(true)}
                 onUnlinkCharacter={handleRemoveHero}
                 onToggleAuthorization={handleToggleAuthorization}
+                onToggleParticipation={handleToggleDmParticipation}
               />
             ))}
           </div>
