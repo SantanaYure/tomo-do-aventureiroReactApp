@@ -15,6 +15,10 @@ const creatures: CampaignCreature[] = [
   { id: 'g1', name: 'Goblin', hpCurrent: 7, hpMax: 7, hpTemp: 0, armorClass: 15, conditions: [], addedAt: 0, initiative: 18, initiativeBonus: 2 },
 ]
 
+const benchedWolf: CampaignCreature = {
+  id: 'w1', name: 'Lobo', hpCurrent: 11, hpMax: 11, hpTemp: 0, armorClass: 13, conditions: [], addedAt: 1, initiative: 9, outOfCombat: true,
+}
+
 function setup(overrides: Partial<Parameters<typeof InitiativeTracker>[0]> = {}) {
   const props = {
     members,
@@ -29,6 +33,7 @@ function setup(overrides: Partial<Parameters<typeof InitiativeTracker>[0]> = {})
     onSetInitiative: vi.fn(),
     onNextTurn: vi.fn(),
     onEndCombat: vi.fn(),
+    onToggleOutOfCombat: vi.fn(),
     ...overrides,
   }
   render(<InitiativeTracker {...props} />)
@@ -82,5 +87,36 @@ describe('InitiativeTracker', () => {
     await user.click(screen.getByRole('button', { name: /Iniciar combate/ }))
     const order = (props.onNextTurn as ReturnType<typeof vi.fn>).mock.calls[0][0]
     expect(order.map((c: { id: string }) => c.id)).toEqual(['creature:g1', 'hero:p1', 'hero:p2'])
+  })
+
+  it('mestre tira alguém da ordem, que vai para "Fora do combate"', async () => {
+    const user = userEvent.setup()
+    const props = setup()
+    await user.click(screen.getByRole('button', { name: 'Tirar Goblin da iniciativa' }))
+    expect(props.onToggleOutOfCombat).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'creature:g1' }),
+      true,
+      expect.any(Array),
+    )
+  })
+
+  it('quem está fora do combate sai da ordem e pode voltar', async () => {
+    const user = userEvent.setup()
+    const props = setup({ creatures: [...creatures, benchedWolf] })
+    const rows = screen.getAllByRole('listitem').filter((li) => li.closest('ol'))
+    expect(rows.map((r) => r.textContent).join()).not.toContain('Lobo')
+    expect(screen.getByText('Fora do combate (1)')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Devolver Lobo à iniciativa' }))
+    expect(props.onToggleOutOfCombat).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'creature:w1' }),
+      false,
+      expect.any(Array),
+    )
+  })
+
+  it('jogador não vê o botão de tirar da iniciativa', () => {
+    setup({ isDm: false, currentUserId: 'p2' })
+    expect(screen.queryByRole('button', { name: /Tirar .* da iniciativa/ })).not.toBeInTheDocument()
   })
 })

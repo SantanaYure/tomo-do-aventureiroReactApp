@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronRight, Dices, Flag, RotateCcw, Skull, User } from 'lucide-react'
+import { ChevronRight, Dices, Flag, RotateCcw, Skull, Undo2, User, X } from 'lucide-react'
 import type {
   CampaignCombat,
   CampaignCreature,
@@ -29,6 +29,8 @@ interface InitiativeTrackerProps {
   onSetInitiative: (combatant: Combatant, value: number | null) => void
   onNextTurn: (order: Combatant[]) => void
   onEndCombat: () => void
+  /** Mestre: tira (true) ou devolve (false) alguém da ordem, sem tirar da cena. */
+  onToggleOutOfCombat: (combatant: Combatant, outOfCombat: boolean, order: Combatant[]) => void
 }
 
 function formatBonus(bonus: number): string {
@@ -96,11 +98,14 @@ export function InitiativeTracker({
   onSetInitiative,
   onNextTurn,
   onEndCombat,
+  onToggleOutOfCombat,
 }: InitiativeTrackerProps) {
-  const order = useMemo(
+  const allCombatants = useMemo(
     () => sortByInitiative(buildCombatants(members, creatures)),
     [members, creatures],
   )
+  const order = allCombatants.filter((c) => !c.outOfCombat)
+  const benched = allCombatants.filter((c) => c.outOfCombat)
   const rolledCount = order.filter((c) => c.initiative !== null).length
   const hasCombat = Boolean(combat) || rolledCount > 0
 
@@ -163,7 +168,11 @@ export function InitiativeTracker({
       </div>
 
       {order.length === 0 ? (
-        <p className={styles.empty}>Adicione heróis ou criaturas para montar a ordem de turnos.</p>
+        <p className={styles.empty}>
+          {allCombatants.length === 0
+            ? 'Adicione heróis ou criaturas para montar a ordem de turnos.'
+            : 'Todos estão fora do combate.'}
+        </p>
       ) : (
         <ol className={styles.list}>
           {order.map((combatant) => {
@@ -197,22 +206,68 @@ export function InitiativeTracker({
                   <span className={styles.value}>{combatant.initiative ?? '—'}</span>
                 )}
 
-                {editable && (
-                  <button
-                    type="button"
-                    className={styles.rollBtn}
-                    onClick={() => handleRoll(combatant)}
-                    disabled={busy}
-                    aria-label={`Rolar iniciativa de ${combatant.name}`}
-                    title="Rolar d20 + bônus"
-                  >
-                    <Dices size={14} strokeWidth={1.75} />
-                  </button>
-                )}
+                <div className={styles.rowActions}>
+                  {editable && (
+                    <button
+                      type="button"
+                      className={styles.rollBtn}
+                      onClick={() => handleRoll(combatant)}
+                      disabled={busy}
+                      aria-label={`Rolar iniciativa de ${combatant.name}`}
+                      title="Rolar d20 + bônus"
+                    >
+                      <Dices size={14} strokeWidth={1.75} />
+                    </button>
+                  )}
+                  {isDm && (
+                    <button
+                      type="button"
+                      className={styles.rollBtn}
+                      onClick={() => onToggleOutOfCombat(combatant, true, order)}
+                      disabled={busy}
+                      aria-label={`Tirar ${combatant.name} da iniciativa`}
+                      title="Tirar da iniciativa (continua em cena)"
+                    >
+                      <X size={14} strokeWidth={1.75} />
+                    </button>
+                  )}
+                </div>
               </li>
             )
           })}
         </ol>
+      )}
+
+      {benched.length > 0 && (
+        <div className={styles.benched}>
+          <p className={styles.benchedTitle}>Fora do combate ({benched.length})</p>
+          <ul className={styles.benchedList}>
+            {benched.map((combatant) => (
+              <li key={combatant.id} className={styles.benchedItem}>
+                <span className={styles.kindIcon} aria-hidden="true">
+                  {combatant.kind === 'hero' ? (
+                    <User size={12} strokeWidth={1.75} />
+                  ) : (
+                    <Skull size={12} strokeWidth={1.75} />
+                  )}
+                </span>
+                <span>{combatant.name}</span>
+                {isDm && (
+                  <button
+                    type="button"
+                    className={styles.returnBtn}
+                    onClick={() => onToggleOutOfCombat(combatant, false, order)}
+                    disabled={busy}
+                    aria-label={`Devolver ${combatant.name} à iniciativa`}
+                  >
+                    <Undo2 size={12} strokeWidth={1.75} aria-hidden="true" />
+                    Voltar
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </section>
   )

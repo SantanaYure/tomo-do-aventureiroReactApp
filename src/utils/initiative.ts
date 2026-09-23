@@ -17,6 +17,8 @@ export interface Combatant {
   name: string
   initiative: number | null
   initiativeBonus: number
+  /** Tirado da ordem pelo mestre; continua em cena. */
+  outOfCombat: boolean
 }
 
 export function abilityModifier(score: number): number {
@@ -53,6 +55,7 @@ export function buildCombatants(
     name: member.characterName || member.displayName,
     initiative: typeof member.initiative === 'number' ? member.initiative : null,
     initiativeBonus: member.vitals?.initiativeBonus ?? 0,
+    outOfCombat: member.outOfCombat === true,
   }))
 
   const monsters: Combatant[] = creatures.map((creature) => ({
@@ -62,6 +65,7 @@ export function buildCombatants(
     name: creature.name,
     initiative: typeof creature.initiative === 'number' ? creature.initiative : null,
     initiativeBonus: creature.initiativeBonus ?? 0,
+    outOfCombat: creature.outOfCombat === true,
   }))
 
   return [...heroes, ...monsters]
@@ -84,12 +88,32 @@ export function sortByInitiative(combatants: Combatant[]): Combatant[] {
   return [...rolled, ...pending]
 }
 
+/**
+ * Turno depois de tirar `removedId` da ordem: se ele estava com a vez, ela
+ * passa para o próximo (somando rodada se ele era o último); senão nada muda.
+ */
+export function turnAfterRemoval(
+  order: Combatant[],
+  combat: CampaignCombat | null | undefined,
+  removedId: string,
+): CampaignCombat | null | undefined {
+  if (!combat || combat.activeId !== removedId) return combat
+  const rolled = order.filter((c) => c.initiative !== null && !c.outOfCombat)
+  const index = rolled.findIndex((c) => c.id === removedId)
+  const remaining = rolled.filter((c) => c.id !== removedId)
+  if (remaining.length === 0) return { round: combat.round, activeId: null }
+  if (index === -1 || index >= remaining.length) {
+    return { round: combat.round + 1, activeId: remaining[0].id }
+  }
+  return { round: combat.round, activeId: remaining[index].id }
+}
+
 /** Avança para o próximo participante que já rolou; ao passar do último, soma uma rodada. */
 export function advanceTurn(
   order: Combatant[],
   combat: CampaignCombat | null | undefined,
 ): CampaignCombat {
-  const active = order.filter((c) => c.initiative !== null)
+  const active = order.filter((c) => c.initiative !== null && !c.outOfCombat)
   if (active.length === 0) return { round: combat?.round ?? 1, activeId: null }
 
   const round = combat?.round ?? 1

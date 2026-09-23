@@ -27,6 +27,7 @@ import {
   setMemberInitiative,
   updateCampaignCombat,
   endCampaignCombat,
+  setCombatantOutOfCombat,
   linkCharacterSheetToCampaign,
   unlinkCharacterSheetFromCampaign,
   linkMonsterSheetToCampaign,
@@ -44,6 +45,7 @@ import { formatInviteCode } from '../../utils/inviteCode'
 import {
   advanceTurn,
   isHeroInCombat,
+  turnAfterRemoval,
   rollInitiative,
   type Combatant,
 } from '../../utils/initiative'
@@ -322,11 +324,36 @@ export function CampaignDetailPage() {
     )
   }
 
+  async function handleToggleOutOfCombat(
+    combatant: Combatant,
+    outOfCombat: boolean,
+    order: Combatant[],
+  ) {
+    if (!campaign || !isDm) return
+    // Se quem sai estava com a vez, ela passa para o próximo.
+    const nextCombat = outOfCombat
+      ? turnAfterRemoval(order, campaign.combat, combatant.id)
+      : undefined
+    const combatChanged = outOfCombat && nextCombat !== campaign.combat
+    await runCombatAction(
+      outOfCombat
+        ? 'Não foi possível tirar da iniciativa.'
+        : 'Não foi possível devolver à iniciativa.',
+      () =>
+        setCombatantOutOfCombat(
+          campaign.id,
+          { kind: combatant.kind, refId: combatant.refId },
+          outOfCombat,
+          combatChanged ? nextCombat ?? null : undefined,
+        ),
+    )
+  }
+
   async function handleEndCombat() {
     if (!campaign || !isDm) return
     if (!window.confirm('Encerrar o combate e limpar a iniciativa de todos?')) return
     const withInitiative = members
-      .filter((m) => typeof m.initiative === 'number')
+      .filter((m) => typeof m.initiative === 'number' || m.outOfCombat)
       .map((m) => m.userId)
     await runCombatAction('Não foi possível encerrar o combate.', () =>
       endCampaignCombat(campaign.id, withInitiative),
@@ -482,6 +509,7 @@ export function CampaignDetailPage() {
             onSetInitiative={handleSetInitiative}
             onNextTurn={handleNextTurn}
             onEndCombat={handleEndCombat}
+            onToggleOutOfCombat={handleToggleOutOfCombat}
           />
 
           <div>

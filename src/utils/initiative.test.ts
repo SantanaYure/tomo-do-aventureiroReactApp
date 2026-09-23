@@ -9,6 +9,7 @@ import {
   nextInstanceNames,
   rollInitiative,
   sortByInitiative,
+  turnAfterRemoval,
   type Combatant,
 } from './initiative'
 
@@ -44,6 +45,7 @@ function combatant(partial: Partial<Combatant>): Combatant {
     name: 'X',
     initiative: null,
     initiativeBonus: 0,
+    outOfCombat: false,
     ...partial,
   }
 }
@@ -157,5 +159,35 @@ describe('numeração de réplicas', () => {
 
   it('não confunde nomes que só começam igual', () => {
     expect(nextInstanceNames('Lobo', ['Lobo Atroz 5'], 1)).toEqual(['Lobo 1'])
+  })
+})
+
+describe('tirar da iniciativa', () => {
+  const order = sortByInitiative([
+    combatant({ id: 'a', initiative: 20 }),
+    combatant({ id: 'b', initiative: 15 }),
+    combatant({ id: 'c', initiative: 10 }),
+  ])
+
+  it('quem sai com a vez passa o turno para o próximo', () => {
+    expect(turnAfterRemoval(order, { round: 2, activeId: 'b' }, 'b')).toEqual({ round: 2, activeId: 'c' })
+  })
+
+  it('se era o último, a vez volta ao topo na rodada seguinte', () => {
+    expect(turnAfterRemoval(order, { round: 2, activeId: 'c' }, 'c')).toEqual({ round: 3, activeId: 'a' })
+  })
+
+  it('tirar quem não está com a vez não muda o turno', () => {
+    const combat = { round: 1, activeId: 'a' }
+    expect(turnAfterRemoval(order, combat, 'c')).toBe(combat)
+  })
+
+  it('advanceTurn pula quem está fora do combate', () => {
+    const withBench = sortByInitiative([
+      combatant({ id: 'a', initiative: 20 }),
+      combatant({ id: 'b', initiative: 15, outOfCombat: true }),
+      combatant({ id: 'c', initiative: 10 }),
+    ])
+    expect(advanceTurn(withBench, { round: 1, activeId: 'a' })).toEqual({ round: 1, activeId: 'c' })
   })
 })

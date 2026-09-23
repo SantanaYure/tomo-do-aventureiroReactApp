@@ -35,6 +35,8 @@ export interface CampaignCreature {
   initiativeBonus?: number
   /** Resultado da iniciativa no combate atual; null = ainda não rolou. */
   initiative?: number | null
+  /** Tirado da ordem de iniciativa pelo mestre, mas ainda em cena. */
+  outOfCombat?: boolean
   addedAt: number
 }
 
@@ -60,6 +62,8 @@ export interface CampaignMember {
    * sincronização com a ficha reescreve `vitals` inteiro.
    */
   initiative?: number | null
+  /** Tirado da ordem de iniciativa pelo mestre, mas ainda na mesa. */
+  outOfCombat?: boolean
 }
 
 /** Estado do rastreador de combate da mesa. */

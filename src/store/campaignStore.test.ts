@@ -55,6 +55,8 @@ const {
   releaseCharacterSheetFromCampaign,
   releaseMonsterSheetFromCampaign,
   rollCreaturesInitiative,
+  setCombatantOutOfCombat,
+  endCampaignCombat,
 } = await import('./campaignStore')
 
 beforeEach(() => {
@@ -376,5 +378,42 @@ describe('mestre que também joga', () => {
     expect(normalizeCampaignMember('dm-1', { role: 'dm', participatesAsPlayer: true }).participatesAsPlayer).toBe(true)
     expect(normalizeCampaignMember('dm-1', { role: 'dm' }).participatesAsPlayer).toBe(false)
     expect(normalizeCampaignMember('p-1', { role: 'player', participatesAsPlayer: true }).participatesAsPlayer).toBe(false)
+  })
+})
+
+describe('tirar da iniciativa', () => {
+  it('marca a criatura como fora do combate mantendo a iniciativa e grava o novo turno', async () => {
+    txGet.mockResolvedValueOnce(campaignSnap([{ id: 'g1', name: 'Goblin', initiative: 14 }]))
+
+    await setCombatantOutOfCombat('camp-1', { kind: 'creature', refId: 'g1' }, true, { round: 2, activeId: 'hero:p-1' })
+
+    const call = txUpdate.mock.calls[txUpdate.mock.calls.length - 1][1] as Record<string, unknown>
+    expect((call.creatures as Array<Record<string, unknown>>)[0]).toMatchObject({ outOfCombat: true, initiative: 14 })
+    expect(call.combat).toEqual({ round: 2, activeId: 'hero:p-1' })
+  })
+
+  it('herói fora do combate não é rolado de novo e volta ao encerrar', async () => {
+    txGet.mockResolvedValueOnce(campaignSnap([{ id: 'g1', name: 'Goblin', outOfCombat: true, initiative: 5 }]))
+
+    await endCampaignCombat('camp-1', ['p-1'])
+
+    expect(lastTxCreatures()[0]).toMatchObject({ outOfCombat: false, initiative: null })
+    expect(batchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'doc' }),
+      { initiative: null, outOfCombat: false },
+    )
+  })
+
+  it('rolagem das criaturas ignora quem está fora do combate', async () => {
+    txGet.mockResolvedValueOnce(campaignSnap([
+      { id: 'a', name: 'A', outOfCombat: true },
+      { id: 'b', name: 'B', initiativeBonus: 1 },
+    ]))
+
+    await rollCreaturesInitiative('camp-1', { random: () => 0 })
+
+    const list = lastTxCreatures()
+    expect(list[0].initiative).toBeNull()
+    expect(list[1].initiative).toBe(2)
   })
 })

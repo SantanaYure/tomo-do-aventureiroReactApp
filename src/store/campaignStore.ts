@@ -80,6 +80,7 @@ export function normalizeCampaign(id: string, data: Record<string, unknown>): Ca
     conditions: Array.isArray(c.conditions) ? c.conditions : [],
     initiativeBonus: typeof c.initiativeBonus === 'number' ? c.initiativeBonus : 0,
     initiative: typeof c.initiative === 'number' ? c.initiative : null,
+    outOfCombat: c.outOfCombat === true,
     addedAt: typeof c.addedAt === 'number' ? c.addedAt : Date.now(),
   }))
 
@@ -153,6 +154,7 @@ export function normalizeCampaignMember(
       typeof data.characterAvatarUrl === 'string' ? data.characterAvatarUrl : null,
     vitals,
     initiative: typeof data.initiative === 'number' ? data.initiative : null,
+    outOfCombat: data.outOfCombat === true,
   }
 }
 
@@ -1040,7 +1042,7 @@ export async function rollCreaturesInitiative(
 ): Promise<void> {
   await mutateCreatures(campaignId, (current) =>
     current.map((creature) =>
-      options.onlyMissing && typeof creature.initiative === 'number'
+      creature.outOfCombat || (options.onlyMissing && typeof creature.initiative === 'number')
         ? creature
         : { ...creature, initiative: rollInitiative(creature.initiativeBonus ?? 0, options.random) },
     ),
@@ -1068,7 +1070,7 @@ export async function rollMembersInitiative(
   options: { onlyMissing?: boolean; random?: () => number } = {},
 ): Promise<void> {
   const targets = members.filter(
-    (m) => !(options.onlyMissing && typeof m.initiative === 'number'),
+    (m) => !m.outOfCombat && !(options.onlyMissing && typeof m.initiative === 'number'),
   )
   if (targets.length === 0) return
   const batch = writeBatch(db)
@@ -1091,20 +1093,51 @@ export async function updateCampaignCombat(
   })
 }
 
-/** Encerra o combate: zera turno, rodada e a iniciativa de todos. */
+/**
+ * Encerra o combate: zera turno, rodada e a iniciativa de todos, e devolve à
+ * ordem quem tinha sido tirado dela (o próximo combate começa com todos).
+ */
 export async function endCampaignCombat(
   campaignId: string,
   memberIds: string[],
 ): Promise<void> {
   await mutateCreatures(
     campaignId,
-    (current) => current.map((creature) => ({ ...creature, initiative: null })),
+    (current) => current.map((creature) => ({ ...creature, initiative: null, outOfCombat: false })),
     { combat: null },
   )
   if (memberIds.length === 0) return
   const batch = writeBatch(db)
   for (const userId of memberIds) {
-    batch.update(getMemberDoc(campaignId, userId), { initiative: null })
+    batch.update(getMemberDoc(campaignId, userId), { initiative: null, outOfCombat: false })
+  }
+  await batch.commit()
+}
+
+/**
+ * Tira (ou devolve) um participante da ordem de iniciativa sem tirá-lo da
+ * cena. O valor rolado é mantido, para ele voltar na mesma posição. Uso do
+ * mestre. Se `combat` vier, grava junto o novo turno ativo.
+ */
+export async function setCombatantOutOfCombat(
+  campaignId: string,
+  target: { kind: 'hero' | 'creature'; refId: string },
+  outOfCombat: boolean,
+  combat?: CampaignCombat | null,
+): Promise<void> {
+  const combatUpdate = combat === undefined ? {} : { combat }
+  if (target.kind === 'creature') {
+    await mutateCreatures(
+      campaignId,
+      (current) => current.map((c) => (c.id === target.refId ? { ...c, outOfCombat } : c)),
+      combatUpdate,
+    )
+    return
+  }
+  const batch = writeBatch(db)
+  batch.update(getMemberDoc(campaignId, target.refId), { outOfCombat })
+  if (combat !== undefined) {
+    batch.update(getCampaignDoc(campaignId), { combat, updatedAt: Date.now() })
   }
   await batch.commit()
 }
