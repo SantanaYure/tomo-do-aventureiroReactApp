@@ -16,6 +16,7 @@ import { SheetNotices } from '../../components/SheetNotices/SheetNotices'
 import { SheetTabs } from '../../components/SheetTabs/SheetTabs'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
 import { useSheetAutosave } from '../../hooks/useSheetAutosave'
+import { useStaleCampaignLinkCleanup } from '../../hooks/useStaleCampaignLinkCleanup'
 import type { DeepPartial } from '../../components/monster/shared'
 import {
   saveMonsterSheet,
@@ -163,6 +164,16 @@ export function MonsterSheetPage() {
     scope: 'monstro',
     save: saveMonsterSheet,
     parseDraft: parseUntrustedMonsterSheet,
+  })
+
+  // Vínculo órfão com a mesa (mesa excluída, jogador removido): limpa ao abrir.
+  useStaleCampaignLinkCleanup({
+    kind: 'monster',
+    sheet,
+    sheetId: id,
+    ownerId: uid,
+    enabled: !isSpectator,
+    commit,
   })
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isEditing, setIsEditing] = useState(false)

@@ -58,6 +58,7 @@ const {
   setCombatantOutOfCombat,
   endCampaignCombat,
   deleteCampaign,
+  isCampaignLinkStale,
 } = await import('./campaignStore')
 
 beforeEach(() => {
@@ -468,5 +469,47 @@ describe('deleteCampaign', () => {
     getDoc.mockResolvedValueOnce({ exists: () => false, data: () => undefined })
     await deleteCampaign('camp-1')
     expect(batchCommit).not.toHaveBeenCalled()
+  })
+})
+
+describe('isCampaignLinkStale', () => {
+  const base = { campaignId: 'camp-1', ownerId: 'p-1', sheetId: 'sheet-1' }
+
+  it('órfão quando a mesa foi excluída', async () => {
+    getDoc.mockResolvedValueOnce({ exists: () => false, data: () => undefined })
+    expect(await isCampaignLinkStale({ kind: 'character', ...base })).toBe(true)
+  })
+
+  it('órfão quando o jogador não é mais membro', async () => {
+    getDoc
+      .mockResolvedValueOnce(campaignSnap([]))
+      .mockResolvedValueOnce({ exists: () => false, data: () => undefined })
+    expect(await isCampaignLinkStale({ kind: 'character', ...base })).toBe(true)
+  })
+
+  it('órfão quando o membro usa outra ficha', async () => {
+    getDoc
+      .mockResolvedValueOnce(campaignSnap([]))
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ characterSheetId: 'outra' }) })
+    expect(await isCampaignLinkStale({ kind: 'character', ...base })).toBe(true)
+  })
+
+  it('vínculo válido continua', async () => {
+    getDoc
+      .mockResolvedValueOnce(campaignSnap([]))
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ characterSheetId: 'sheet-1' }) })
+    expect(await isCampaignLinkStale({ kind: 'character', ...base })).toBe(false)
+  })
+
+  it('erro de rede nunca conta como órfão', async () => {
+    getDoc.mockRejectedValueOnce(Object.assign(new Error('offline'), { code: 'unavailable' }))
+    expect(await isCampaignLinkStale({ kind: 'character', ...base })).toBe(false)
+  })
+
+  it('monstro sem nenhuma instância em cena é órfão; com instância, não', async () => {
+    getDoc.mockResolvedValueOnce(campaignSnap([{ id: 'g1', name: 'Goblin', monsterSheetId: 'outro', ownerId: 'dm-1' }]))
+    expect(await isCampaignLinkStale({ kind: 'monster', campaignId: 'camp-1', ownerId: 'dm-1', sheetId: 'm-1' })).toBe(true)
+    getDoc.mockResolvedValueOnce(campaignSnap([{ id: 'g1', name: 'Goblin', monsterSheetId: 'm-1', ownerId: 'dm-1' }]))
+    expect(await isCampaignLinkStale({ kind: 'monster', campaignId: 'camp-1', ownerId: 'dm-1', sheetId: 'm-1' })).toBe(false)
   })
 })

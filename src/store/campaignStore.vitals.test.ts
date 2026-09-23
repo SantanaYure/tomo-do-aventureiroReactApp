@@ -143,3 +143,26 @@ describe('campaignStore — Vitais e Criaturas (Fase 2)', () => {
     })
   })
 })
+
+describe('limite de 1 MB da mesa: sem base64 nas criaturas', () => {
+  it('normalizeCampaign descarta avatar em data URL e mantém URL comum', () => {
+    const campaign = normalizeCampaign('c1', {
+      dmId: 'dm',
+      creatures: [
+        { id: 'a', name: 'A', avatar: 'data:image/jpeg;base64,/9j/AAAA' },
+        { id: 'b', name: 'B', avatar: 'https://exemplo.com/lobo.png' },
+      ],
+    })
+    expect(campaign.creatures?.[0].avatar).toBeNull()
+    expect(campaign.creatures?.[1].avatar).toBe('https://exemplo.com/lobo.png')
+  })
+
+  it('extractVitalsFromMonsterSheet não copia o base64 da ficha', () => {
+    const vitals = extractVitalsFromMonsterSheet(
+      { details: { name: 'Goblin', avatar: 'data:image/png;base64,AAAA' }, stats: { maxHp: 7, ac: 15 } } as unknown as MonsterSheet,
+      'm-1',
+    )
+    expect(vitals.avatar).toBeNull()
+    expect(vitals.monsterSheetId).toBe('m-1')
+  })
+})

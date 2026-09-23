@@ -14,6 +14,8 @@ interface CreatureVitalCardProps {
   onRemove: (creatureId: string) => void
   /** Replica a criatura em cena (mestre). */
   onDuplicate?: (creatureId: string) => void
+  /** Avatar lido da ficha (criaturas da mesa não guardam imagem base64). */
+  avatarUrl?: string | null
 }
 
 export function CreatureVitalCard({
@@ -23,7 +25,9 @@ export function CreatureVitalCard({
   onUpdate,
   onRemove,
   onDuplicate,
+  avatarUrl,
 }: CreatureVitalCardProps) {
+  const avatar = avatarUrl || creature.avatar
   const [isHpModalOpen, setIsHpModalOpen] = useState(false)
   const [hpModalMode, setHpModalMode] = useState<'damage' | 'heal' | 'temp'>('damage')
   const [isCondModalOpen, setIsCondModalOpen] = useState(false)
@@ -79,16 +83,16 @@ export function CreatureVitalCard({
       <div className={styles.header}>
         {sheetUrl ? (
           <Link to={sheetUrl} title="Abrir ficha da criatura">
-            {creature.avatar ? (
-              <img src={creature.avatar} alt={creature.name} className={styles.avatar} />
+            {avatar ? (
+              <img src={avatar} alt={creature.name} className={styles.avatar} />
             ) : (
               <div className={styles.avatarPlaceholder} aria-hidden="true">
                 <Skull size={20} strokeWidth={1.5} />
               </div>
             )}
           </Link>
-        ) : creature.avatar ? (
-          <img src={creature.avatar} alt={creature.name} className={styles.avatar} />
+        ) : avatar ? (
+          <img src={avatar} alt={creature.name} className={styles.avatar} />
         ) : (
           <div className={styles.avatarPlaceholder} aria-hidden="true">
             <Skull size={20} strokeWidth={1.5} />

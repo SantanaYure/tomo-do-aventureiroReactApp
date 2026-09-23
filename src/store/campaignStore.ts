@@ -53,6 +53,17 @@ export const DND_CONDITIONS = [
   'Surdo',
 ] as const
 
+/**
+ * Avatares em data URL (base64) não são guardados nas criaturas da mesa: a
+ * lista inteira vive num único documento, limitado a 1 MB pelo Firestore, e
+ * cada réplica copiaria a imagem. O avatar de criatura com ficha é lido da
+ * própria ficha na hora de exibir (useCreatureAvatars). URLs comuns ficam.
+ */
+export function creatureAvatarForStorage(avatar: unknown): string | null {
+  if (typeof avatar !== 'string' || !avatar) return null
+  return avatar.startsWith('data:') ? null : avatar
+}
+
 export function normalizeCampaign(id: string, data: Record<string, unknown>): Campaign {
   const memberIdsRaw = Array.isArray(data.memberIds) ? data.memberIds : []
   const dmId = typeof data.dmId === 'string' ? data.dmId : ''
@@ -71,7 +82,8 @@ export function normalizeCampaign(id: string, data: Record<string, unknown>): Ca
         : typeof c.monsterSheetId === 'string'
           ? dmId
           : null,
-    avatar: typeof c.avatar === 'string' ? c.avatar : null,
+    // Descarta base64 legado: a próxima gravação da lista já sai sem ele.
+    avatar: creatureAvatarForStorage(c.avatar),
     hpCurrent: typeof c.hpCurrent === 'number' ? c.hpCurrent : 10,
     hpMax: typeof c.hpMax === 'number' ? c.hpMax : 10,
     hpTemp: typeof c.hpTemp === 'number' ? c.hpTemp : 0,
@@ -939,7 +951,7 @@ export function extractVitalsFromMonsterSheet(
   return {
     name: sheet.details?.name?.trim() || 'Monstro',
     monsterSheetId: sheetId || null,
-    avatar: sheet.details?.avatar || null,
+    avatar: creatureAvatarForStorage(sheet.details?.avatar),
     hpCurrent: typeof sheet.stats?.hpCurrent === 'number' ? sheet.stats.hpCurrent : (sheet.stats?.maxHp ?? 10),
     hpMax: sheet.stats?.maxHp ?? 10,
     hpTemp: sheet.stats?.hpTemp ?? 0,
@@ -1241,5 +1253,45 @@ export async function releaseMonsterSheetFromCampaign(
     )
   } catch (err) {
     console.warn('Não foi possível desvincular as criaturas antes de excluir a ficha:', err)
+  }
+}
+
+// ── Vínculo órfão ────────────────────────────────────────────────────────────
+
+/**
+ * Diz se o vínculo de uma ficha com a mesa ficou órfão: a mesa foi excluída,
+ * o dono já não é membro, o membro usa outra ficha, ou (monstro/NPC) não há
+ * mais nenhuma instância dela em cena. Isso acontece quando o mestre remove
+ * um jogador ou exclui a mesa sem conseguir escrever na ficha dele.
+ *
+ * Só responde true com evidência: erro de rede ou leitura incerta conta como
+ * "não órfão", para nunca desfazer um vínculo válido por engano.
+ */
+export async function isCampaignLinkStale(params: {
+  kind: 'character' | 'monster'
+  campaignId: string
+  ownerId: string
+  sheetId: string
+}): Promise<boolean> {
+  const { kind, campaignId, ownerId, sheetId } = params
+  let campaign: DocumentSnapshot
+  try {
+    campaign = await getDoc(getCampaignDoc(campaignId))
+  } catch {
+    return false
+  }
+  if (!campaign.exists()) return true
+
+  if (kind === 'monster') {
+    const creatures = normalizeCampaign(campaign.id, campaign.data()).creatures || []
+    return !creatures.some((c) => c.monsterSheetId === sheetId && c.ownerId === ownerId)
+  }
+
+  try {
+    const member = await getDoc(getMemberDoc(campaignId, ownerId))
+    if (!member.exists()) return true
+    return member.data().characterSheetId !== sheetId
+  } catch {
+    return false
   }
 }

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useCampaign } from '../../hooks/useCampaign'
+import { creatureAvatarKey, useCreatureAvatars } from '../../hooks/useCreatureAvatars'
 import {
   removeMember,
   updateMemberVitals,
@@ -87,6 +88,7 @@ export function CampaignDetailPage() {
   const [isSelectCharOpen, setIsSelectCharOpen] = useState(false)
   const [isAddCreatureOpen, setIsAddCreatureOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const creatureAvatars = useCreatureAvatars(campaign?.creatures ?? [])
   const [isCombatBusy, setIsCombatBusy] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -615,6 +617,10 @@ export function CampaignDetailPage() {
                     onUpdate={handleUpdateCreature}
                     onRemove={handleRemoveCreature}
                     onDuplicate={handleDuplicateCreature}
+                    avatarUrl={(() => {
+                      const key = creatureAvatarKey(creature)
+                      return key ? creatureAvatars[key] : null
+                    })()}
                   />
                 ))}
               </div>

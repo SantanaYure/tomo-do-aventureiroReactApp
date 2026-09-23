@@ -39,6 +39,7 @@ import { SheetNotices } from '../../components/SheetNotices/SheetNotices'
 import { SheetTabs } from '../../components/SheetTabs/SheetTabs'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
 import { useSheetAutosave } from '../../hooks/useSheetAutosave'
+import { useStaleCampaignLinkCleanup } from '../../hooks/useStaleCampaignLinkCleanup'
 import { SAVING_STATUS_LABELS } from '../../types/savingStatus'
 import styles from './CharacterSheetPage.module.css'
 
@@ -135,6 +136,16 @@ export function CharacterSheetPage() {
       return res
     },
     parseDraft: parseUntrustedCharacterSheet,
+  })
+
+  // Vínculo órfão com a mesa (mesa excluída, jogador removido): limpa ao abrir.
+  useStaleCampaignLinkCleanup({
+    kind: 'character',
+    sheet,
+    sheetId: id,
+    ownerId: uid,
+    enabled: !isSpectator,
+    commit,
   })
   const [activeTab, setActiveTab] = useState<Tab>(() => readStoredTab(id))
   const [isAtBottom, setIsAtBottom] = useState(false)
