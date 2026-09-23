@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { createCampaign } from '../../../store/campaignStore'
+import { createCampaign, updateCampaign } from '../../../store/campaignStore'
 import type { Campaign } from '../../../types/campaign/campaign'
 import styles from './CreateCampaignModal.module.css'
 
@@ -7,7 +7,10 @@ interface CreateCampaignModalProps {
   dmId: string
   dmName: string
   dmPhotoURL?: string | null
-  onCreated: (campaign: Campaign) => void
+  /** Com uma mesa, o modal edita nome e descrição dela em vez de criar outra. */
+  campaign?: Campaign | null
+  onCreated?: (campaign: Campaign) => void
+  onSaved?: () => void
   onClose: () => void
 }
 
@@ -15,11 +18,14 @@ export function CreateCampaignModal({
   dmId,
   dmName,
   dmPhotoURL,
+  campaign,
   onCreated,
+  onSaved,
   onClose,
 }: CreateCampaignModalProps) {
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
+  const isEditing = Boolean(campaign)
+  const [name, setName] = useState(campaign?.name ?? '')
+  const [description, setDescription] = useState(campaign?.description ?? '')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -57,7 +63,16 @@ export function CreateCampaignModal({
     try {
       setIsSubmitting(true)
       setError(null)
-      const campaign = await createCampaign(
+      if (campaign) {
+        await updateCampaign(campaign.id, {
+          name: name.trim(),
+          description: description.trim(),
+        })
+        onSaved?.()
+        onClose()
+        return
+      }
+      const created = await createCampaign(
         dmId,
         dmName,
         {
@@ -66,14 +81,19 @@ export function CreateCampaignModal({
         },
         dmPhotoURL,
       )
-      onCreated(campaign)
+      onCreated?.(created)
     } catch (err) {
-      console.error('Erro ao criar mesa:', err)
+      console.error(isEditing ? 'Erro ao editar mesa:' : 'Erro ao criar mesa:', err)
       const message = err instanceof Error ? err.message : ''
       if (message.toLowerCase().includes('permission') || message.toLowerCase().includes('permissão')) {
         setError('Permissão negada no Firestore: você precisa publicar as novas regras de segurança (firestore.rules) no Firebase.')
       } else {
-        setError(message || 'Não foi possível criar a mesa. Tente novamente.')
+        setError(
+          message ||
+            (isEditing
+              ? 'Não foi possível salvar a mesa. Tente novamente.'
+              : 'Não foi possível criar a mesa. Tente novamente.'),
+        )
       }
       setIsSubmitting(false)
     }
@@ -95,7 +115,7 @@ export function CreateCampaignModal({
           <div>
             <p className={styles.eyebrow}>Mestre da Mesa</p>
             <h2 id="create-campaign-title" className={styles.title}>
-              Nova Mesa
+              {isEditing ? 'Editar Mesa' : 'Nova Mesa'}
             </h2>
           </div>
           <button
@@ -162,7 +182,9 @@ export function CreateCampaignModal({
               className={styles.submitBtn}
               disabled={isSubmitting || !name.trim()}
             >
-              {isSubmitting ? 'Criando...' : 'Criar Mesa'}
+              {isSubmitting
+                ? isEditing ? 'Salvando...' : 'Criando...'
+                : isEditing ? 'Salvar' : 'Criar Mesa'}
             </button>
           </div>
         </form>

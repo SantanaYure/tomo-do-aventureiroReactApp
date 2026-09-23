@@ -764,6 +764,63 @@ export async function removeMember(campaignId: string, userId: string): Promise<
 }
 
 /**
+ * Exclui a mesa (só o mestre). O Firestore não apaga subcoleções junto com o
+ * documento, então os membros são apagados no mesmo batch da mesa.
+ *
+ * Antes, enquanto a mesa ainda existe (as regras dependem dela para autorizar
+ * o mestre), desfaz o vínculo das fichas: PJs dos membros e fichas de
+ * monstro/NPC em cena. Essa limpeza é opcional; se uma ficha não puder ser
+ * atualizada, a exclusão da mesa segue.
+ */
+export async function deleteCampaign(campaignId: string): Promise<void> {
+  const campaignRef = getCampaignDoc(campaignId)
+  const campaignSnap = await getDoc(campaignRef)
+  if (!campaignSnap.exists()) return
+  const campaign = normalizeCampaign(campaignSnap.id, campaignSnap.data())
+  const membersSnap = await getDocs(getMembersCollection(campaignId))
+
+  const sheetCleanups: Promise<void>[] = []
+  for (const memberDoc of membersSnap.docs) {
+    const sheetId = memberDoc.data().characterSheetId
+    if (typeof sheetId === 'string' && sheetId) {
+      sheetCleanups.push(clearCharacterSheetLink(memberDoc.id, sheetId, campaignId))
+    }
+  }
+  const monsterSheets = new Set<string>()
+  for (const creature of campaign.creatures || []) {
+    if (!creature.monsterSheetId || !creature.ownerId) continue
+    const key = `${creature.ownerId}/${creature.monsterSheetId}`
+    if (monsterSheets.has(key)) continue
+    monsterSheets.add(key)
+    sheetCleanups.push(clearMonsterSheetLink(creature.ownerId, creature.monsterSheetId))
+  }
+  await Promise.allSettled(sheetCleanups)
+
+  const batch = writeBatch(db)
+  for (const memberDoc of membersSnap.docs) {
+    batch.delete(getMemberDoc(campaignId, memberDoc.id))
+  }
+  batch.delete(campaignRef)
+  await batch.commit()
+}
+
+/** Limpeza opcional do vínculo numa ficha de PJ, só se ela ainda aponta para esta mesa. */
+async function clearCharacterSheetLink(
+  ownerId: string,
+  sheetId: string,
+  campaignId: string,
+): Promise<void> {
+  const sheetRef = doc(db, 'users', ownerId, 'characterSheets', sheetId)
+  const sheet = await safeGetDoc(sheetRef)
+  if (!sheet?.exists() || sheet.data()?.campaignId !== campaignId) return
+  try {
+    await updateDoc(sheetRef, characterCampaignFields(null, null))
+  } catch (err) {
+    console.warn('Não foi possível limpar o vínculo da ficha com a mesa excluída:', err)
+  }
+}
+
+/**
  * Regenera o código de convite de uma campanha.
  */
 export async function regenerateInviteCode(campaignId: string): Promise<string> {
