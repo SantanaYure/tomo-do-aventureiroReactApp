@@ -57,6 +57,7 @@ const {
   rollCreaturesInitiative,
   setCombatantOutOfCombat,
   endCampaignCombat,
+  deleteCampaign,
 } = await import('./campaignStore')
 
 beforeEach(() => {
@@ -415,5 +416,57 @@ describe('tirar da iniciativa', () => {
     const list = lastTxCreatures()
     expect(list[0].initiative).toBeNull()
     expect(list[1].initiative).toBe(2)
+  })
+})
+
+describe('deleteCampaign', () => {
+  function membersSnap() {
+    return {
+      docs: [
+        { id: 'dm-1', data: () => ({ role: 'dm', characterSheetId: null }) },
+        { id: 'p-1', data: () => ({ role: 'player', characterSheetId: 'sheet-1' }) },
+      ],
+    }
+  }
+
+  it('limpa o vínculo das fichas antes e apaga membros e mesa no mesmo batch', async () => {
+    getDoc
+      .mockResolvedValueOnce(campaignSnap([{ id: 'g1', name: 'Goblin', monsterSheetId: 'm-1', ownerId: 'dm-1' }]))
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ campaignId: 'camp-1' }) })
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ campaignId: 'camp-1' }) })
+    getDocs.mockResolvedValueOnce(membersSnap())
+
+    await deleteCampaign('camp-1')
+
+    // Ficha de PJ do jogador e ficha de monstro do mestre desvinculadas.
+    expect(updateDoc).toHaveBeenCalledTimes(2)
+    expect(updateDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: [expect.anything(), 'users', 'p-1', 'characterSheets', 'sheet-1'] }),
+      expect.objectContaining({ campaignId: null }),
+    )
+    // 2 membros + a mesa.
+    expect(batchDelete).toHaveBeenCalledTimes(3)
+    expect(batchCommit).toHaveBeenCalledOnce()
+    // A limpeza das fichas acontece antes de apagar a mesa.
+    expect(updateDoc.mock.invocationCallOrder[1]).toBeLessThan(batchCommit.mock.invocationCallOrder[0])
+  })
+
+  it('apaga a mesa mesmo se a ficha de um jogador não puder ser lida', async () => {
+    getDoc
+      .mockResolvedValueOnce(campaignSnap([]))
+      .mockRejectedValueOnce(Object.assign(new Error('denied'), { code: 'permission-denied' }))
+    getDocs.mockResolvedValueOnce(membersSnap())
+
+    await deleteCampaign('camp-1')
+
+    expect(updateDoc).not.toHaveBeenCalled()
+    expect(batchDelete).toHaveBeenCalledTimes(3)
+    expect(batchCommit).toHaveBeenCalledOnce()
+  })
+
+  it('não faz nada se a mesa já não existe', async () => {
+    getDoc.mockResolvedValueOnce({ exists: () => false, data: () => undefined })
+    await deleteCampaign('camp-1')
+    expect(batchCommit).not.toHaveBeenCalled()
   })
 })

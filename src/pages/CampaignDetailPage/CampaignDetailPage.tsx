@@ -6,10 +6,12 @@ import {
   Copy,
   Crown,
   LogOut,
+  Pencil,
   Plus,
   RefreshCw,
   Skull,
   Swords,
+  Trash2,
   Users,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -34,6 +36,7 @@ import {
   removeHeroFromCampaign,
   toggleMemberAuthorization,
   setDmParticipatesAsPlayer,
+  deleteCampaign,
 } from '../../store/campaignStore'
 import { MemberCard } from '../../components/campaign/MemberCard/MemberCard'
 import { SelectCharacterModal } from '../../components/campaign/SelectCharacterModal/SelectCharacterModal'
@@ -41,6 +44,8 @@ import { HeroVitalCard } from '../../components/campaign/HeroVitalCard/HeroVital
 import { CreatureVitalCard } from '../../components/campaign/CreatureVitalCard/CreatureVitalCard'
 import { AddCreatureModal } from '../../components/campaign/AddCreatureModal/AddCreatureModal'
 import { InitiativeTracker } from '../../components/campaign/InitiativeTracker/InitiativeTracker'
+import { CreateCampaignModal } from '../../components/campaign/CreateCampaignModal/CreateCampaignModal'
+import { DeleteCampaignModal } from '../../components/campaign/DeleteCampaignModal/DeleteCampaignModal'
 import { formatInviteCode } from '../../utils/inviteCode'
 import {
   advanceTurn,
@@ -83,6 +88,8 @@ export function CampaignDetailPage() {
   const [isAddCreatureOpen, setIsAddCreatureOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [isCombatBusy, setIsCombatBusy] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
   /** Executa uma ação da mesa e mostra a falha na tela, em vez de só no console. */
   async function runAction(fallbackMessage: string, action: () => Promise<unknown>): Promise<boolean> {
@@ -195,6 +202,13 @@ export function CampaignDetailPage() {
     } catch (err) {
       console.error('Erro ao alternar autorização:', err)
     }
+  }
+
+  /** Erros sobem para o DeleteCampaignModal, que os mostra sem fechar. */
+  async function handleDeleteCampaign() {
+    if (!campaign || !isDm) return
+    await deleteCampaign(campaign.id)
+    navigate('/mesas', { replace: true })
   }
 
   async function handleToggleDmParticipation(participates: boolean) {
@@ -412,6 +426,21 @@ export function CampaignDetailPage() {
           </div>
 
           <h1 className={styles.title}>{campaign.name}</h1>
+
+          {isDm && (
+            <div className={styles.manageRow}>
+              <button type="button" className={styles.copyBtn} onClick={() => setIsEditOpen(true)}>
+                <Pencil size={12} strokeWidth={1.75} aria-hidden="true" /> Editar mesa
+              </button>
+              <button
+                type="button"
+                className={`${styles.copyBtn} ${styles.deleteCampaignBtn}`}
+                onClick={() => setIsDeleteOpen(true)}
+              >
+                <Trash2 size={12} strokeWidth={1.75} aria-hidden="true" /> Excluir mesa
+              </button>
+            </div>
+          )}
 
           {campaign.description && (
             <p className={styles.description}>{campaign.description}</p>
@@ -636,6 +665,25 @@ export function CampaignDetailPage() {
           currentSheetId={currentMember?.characterSheetId}
           onSelect={handleUpdateCharacter}
           onClose={() => setIsSelectCharOpen(false)}
+        />
+      )}
+
+      {isEditOpen && user && (
+        <CreateCampaignModal
+          dmId={user.uid}
+          dmName={campaign.dmName}
+          campaign={campaign}
+          onClose={() => setIsEditOpen(false)}
+        />
+      )}
+
+      {isDeleteOpen && (
+        <DeleteCampaignModal
+          campaignName={campaign.name}
+          memberCount={members.length}
+          creatureCount={creatures.length}
+          onConfirm={handleDeleteCampaign}
+          onClose={() => setIsDeleteOpen(false)}
         />
       )}
 

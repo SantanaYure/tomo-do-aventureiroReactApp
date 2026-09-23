@@ -5,9 +5,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { CreateCampaignModal } from './CreateCampaignModal/CreateCampaignModal'
 import { JoinCampaignModal } from './JoinCampaignModal/JoinCampaignModal'
 import { CampaignCard } from './CampaignCard/CampaignCard'
+import { DeleteCampaignModal } from './DeleteCampaignModal/DeleteCampaignModal'
 import type { Campaign } from '../../types/campaign/campaign'
 
+const updateCampaignMock = vi.fn().mockResolvedValue(undefined)
+
 vi.mock('../../store/campaignStore', () => ({
+  updateCampaign: (...args: unknown[]) => updateCampaignMock(...args),
   createCampaign: vi.fn().mockResolvedValue({
     id: 'camp-100',
     name: 'Mesa do Dragão',
@@ -103,6 +107,73 @@ describe('CreateCampaignModal', () => {
 
     await user.click(submitBtn)
     expect(onCreated).toHaveBeenCalledOnce()
+  })
+})
+
+describe('CreateCampaignModal em modo de edição', () => {
+  it('vem preenchido e salva nome e descrição', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    updateCampaignMock.mockClear()
+
+    render(
+      <CreateCampaignModal
+        dmId="user-dm"
+        dmName="Mestre"
+        campaign={{ id: 'camp-1', name: 'Strahd', description: 'Baróvia', dmId: 'user-dm', dmName: 'Mestre', inviteCode: 'X', memberIds: ['user-dm'], system: 'dnd5e_2024', createdAt: 0, updatedAt: 0 }}
+        onClose={onClose}
+      />,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Editar Mesa' })).toBeInTheDocument()
+    const input = screen.getByLabelText(/nome da mesa/i)
+    expect(input).toHaveValue('Strahd')
+
+    await user.clear(input)
+    await user.type(input, 'A Maldição de Strahd')
+    await user.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    expect(updateCampaignMock).toHaveBeenCalledWith('camp-1', {
+      name: 'A Maldição de Strahd',
+      description: 'Baróvia',
+    })
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+})
+
+describe('DeleteCampaignModal', () => {
+  it('só libera a exclusão depois de digitar o nome da mesa', async () => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn().mockResolvedValue(undefined)
+
+    render(
+      <DeleteCampaignModal campaignName="Strahd" memberCount={3} creatureCount={1} onConfirm={onConfirm} onClose={vi.fn()} />,
+    )
+
+    const button = screen.getByRole('button', { name: 'Excluir definitivamente' })
+    expect(button).toBeDisabled()
+    expect(screen.getByText(/3 integrantes/)).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/digite o nome da mesa/i), 'strahd')
+    expect(button).toBeEnabled()
+    await user.click(button)
+    expect(onConfirm).toHaveBeenCalledOnce()
+  })
+
+  it('mostra o erro e não fecha quando a exclusão falha', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    const onConfirm = vi.fn().mockRejectedValue(Object.assign(new Error('x'), { code: 'permission-denied' }))
+
+    render(
+      <DeleteCampaignModal campaignName="Strahd" memberCount={1} creatureCount={0} onConfirm={onConfirm} onClose={onClose} />,
+    )
+
+    await user.type(screen.getByLabelText(/digite o nome da mesa/i), 'Strahd')
+    await user.click(screen.getByRole('button', { name: 'Excluir definitivamente' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Permissão negada/)
+    expect(onClose).not.toHaveBeenCalled()
   })
 })
 
