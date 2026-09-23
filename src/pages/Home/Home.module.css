@@ -1,6 +1,8 @@
 /* ── Layout ── */
 .page {
   display: grid;
+  /* minmax(0, 1fr): sem isso, nomes longos (nowrap) alargam a coluna além da tela */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-8);
   padding: var(--space-8) var(--space-6);
   max-width: 52rem;
@@ -131,6 +133,7 @@
 /* ── Fichas recentes ── */
 .recentSection {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
 }
 
@@ -146,6 +149,7 @@
 
 .recentList {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2);
   list-style: none;
 }
