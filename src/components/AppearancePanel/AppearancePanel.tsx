@@ -1,7 +1,9 @@
 import { useEffect, useId, useState, type CSSProperties } from 'react'
 import { Moon, ScrollText, Sun } from 'lucide-react'
 import { useTheme, type ThemeMode } from '../../context/ThemeContext'
+import { useRuleset } from '../../context/RulesetContext'
 import { BRAND_PRESETS, isValidColor, toHex } from '../../utils/appearance'
+import { RULESET_LABELS, RULESET_ORDER } from '../../utils/ruleset'
 import styles from './AppearancePanel.module.css'
 
 const THEME_META: Record<ThemeMode, { label: string; Icon: typeof Sun }> = {
@@ -14,6 +16,7 @@ const THEME_BUTTONS: ThemeMode[] = ['light', 'parchment', 'dark']
 
 export function AppearancePanel() {
   const { mode, setMode, brandColor, setBrandColor, fontChoice, setFontChoice } = useTheme()
+  const { ruleset, setRuleset } = useRuleset()
   const colorInputId = useId()
   const [draft, setDraft] = useState(brandColor ?? '')
   const draftInvalid = draft.trim() !== '' && !isValidColor(draft)
@@ -57,6 +60,27 @@ export function AppearancePanel() {
               >
                 <Icon size={15} strokeWidth={1.75} aria-hidden="true" />
                 <span>{label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── Regras de D&D ── */}
+      <div className={styles.group} role="group" aria-label="Conjunto de regras">
+        <span className={styles.groupLabel}>Conjunto de regras (SRD)</span>
+        <div className={styles.themeRow}>
+          {RULESET_ORDER.map((option) => {
+            const selected = ruleset === option
+            return (
+              <button
+                key={option}
+                type="button"
+                className={`${styles.themeBtn} ${selected ? styles.selected : ''}`}
+                aria-pressed={selected}
+                onClick={() => setRuleset(option)}
+              >
+                <span>{RULESET_LABELS[option]}</span>
               </button>
             )
           })}

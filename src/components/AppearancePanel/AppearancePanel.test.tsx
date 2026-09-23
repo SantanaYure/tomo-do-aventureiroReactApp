@@ -3,10 +3,15 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ThemeProvider } from '../../context/ThemeContext'
+import { RulesetProvider } from '../../context/RulesetContext'
 import { AppearancePanel } from './AppearancePanel'
 
 function wrap(node: ReactNode) {
-  return render(<ThemeProvider>{node}</ThemeProvider>)
+  return render(
+    <ThemeProvider>
+      <RulesetProvider>{node}</RulesetProvider>
+    </ThemeProvider>,
+  )
 }
 
 beforeEach(() => {
@@ -93,5 +98,25 @@ describe('AppearancePanel — tipografia', () => {
     await user.click(screen.getByRole('button', { name: /Literária/ }))
     expect(document.documentElement.style.getPropertyValue('--font-display')).toBe('')
     expect(localStorage.getItem('tomo:font')).toBe('literary')
+  })
+})
+
+describe('AppearancePanel — conjunto de regras', () => {
+  it('troca a preferência de regras e persiste', async () => {
+    const user = userEvent.setup()
+    wrap(<AppearancePanel />)
+
+    // "Ambos" é o padrão.
+    expect(screen.getByRole('button', { name: 'Ambos' })).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'D&D 5E (2014)' }))
+    expect(screen.getByRole('button', { name: 'D&D 5E (2014)' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(localStorage.getItem('tomo:ruleset')).toBe('2014')
+
+    await user.click(screen.getByRole('button', { name: 'D&D 5.5 (2024)' }))
+    expect(localStorage.getItem('tomo:ruleset')).toBe('2024')
   })
 })
