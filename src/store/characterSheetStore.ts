@@ -28,6 +28,7 @@ import {
 } from './defaultCharacterSheet'
 import { db } from '../services/firebase'
 import { readImportedDocId } from '../utils/firestoreId'
+import { stripUnsupportedFirestoreValues } from '../utils/firestoreSafe'
 
 export interface StoredCharacterSheet {
   id: string
@@ -40,6 +41,8 @@ export interface ImportResult {
   imported: number
   skipped: number
   errors: number
+  /** Por que a importação falhou, para a tela dar uma mensagem útil. */
+  reason?: 'invalid-json' | 'not-a-sheet' | 'save-failed' | 'too-large'
 }
 
 type LegacyCharacter = Character & {
@@ -549,7 +552,7 @@ function extractImportedCharacterSheetPayload(
   }
 
   // Ficha crua, sem o envelope { id, data }.
-  if (isValidCharacterSheetPayload(entry)) {
+  if (isImportableCharacterSheet(entry)) {
     return { id: null, data: entry as unknown as CharacterSheet }
   }
 
@@ -568,6 +571,18 @@ function extractImportedCharacterSheetPayload(
     createdAt:
       typeof nestedEntry.createdAt === 'string' ? nestedEntry.createdAt : undefined,
   }
+}
+
+/**
+ * Mínimo para aceitar um arquivo importado como PJ: um objeto com `character`.
+ * O resto (atributos, inventário, magias…) é preenchido pela normalização, que
+ * aguenta campos ausentes ou fora de forma. A checagem completa abaixo continua
+ * valendo para o rascunho local, que o próprio app escreve.
+ */
+function isImportableCharacterSheet(data: unknown): boolean {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false
+  const character = (data as Record<string, unknown>).character
+  return !!character && typeof character === 'object' && !Array.isArray(character)
 }
 
 function isValidCharacterSheetPayload(data: unknown): boolean {
@@ -703,20 +718,13 @@ export async function importCharacterSheetFromJSON(
   try {
     parsed = JSON.parse(json)
   } catch {
-    result.errors = 1
-    return result
+    return { ...result, errors: 1, reason: 'invalid-json' }
   }
 
   const payload = extractImportedCharacterSheetPayload(parsed)
 
-  if (!payload) {
-    result.errors = 1
-    return result
-  }
-
-  if (!isValidCharacterSheetPayload(payload.data)) {
-    result.errors = 1
-    return result
+  if (!payload || !isImportableCharacterSheet(payload.data)) {
+    return { ...result, errors: 1, reason: 'not-a-sheet' }
   }
 
   try {
@@ -744,17 +752,19 @@ export async function importCharacterSheetFromJSON(
     const timestamp = new Date().toISOString()
     await setDoc(
       docRef,
-      createCharacterSheetPayload(
+      stripUnsupportedFirestoreValues(createCharacterSheetPayload(
         dataWithResolvedGroup,
         timestamp,
         payload.createdAt ?? timestamp,
         normalizedId,
-      ),
+      )),
     )
 
     result.imported = 1
-  } catch {
+  } catch (error) {
+    console.error('Erro ao importar ficha de PJ:', error)
     result.errors = 1
+    result.reason = 'save-failed'
   }
 
   return result

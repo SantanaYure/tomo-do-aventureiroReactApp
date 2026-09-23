@@ -167,6 +167,9 @@ tests/rules/            → testes das regras do Firestore no emulador (npm run 
 - Fichas são exportadas como JSON via download no browser
 - Importação lê um arquivo JSON, detecta o tipo (PJ/monstro/NPC) e chama a função de import correspondente
 - Fichas com ID já existente são ignoradas (sem sobrescrita)
+- Id ausente ou inválido para o Firestore (`utils/firestoreId.ts`) vira id automático; a ficha crua, sem `{ id, data }`, também é aceita
+- A validação da importação só exige `character` (PJ) ou `details` (monstro/NPC); o resto vem da normalização. `kind` é lido sem diferenciar maiúsculas
+- Antes de gravar, `utils/firestoreSafe.ts` descarta lista dentro de lista (o Firestore recusa). A falha traz `reason` (`invalid-json`, `not-a-sheet`, `save-failed`, `too-large`) e a tela mostra a mensagem correspondente
 - Limite de 2MB por arquivo de importação
 - Nomes dos arquivos exportados: `pj-{nome}.json`, `monstro-{nome}.json`, `npc-{nome}.json`
 

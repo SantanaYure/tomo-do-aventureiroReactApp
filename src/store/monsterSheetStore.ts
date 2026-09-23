@@ -24,6 +24,7 @@ import type {
 } from '../types/system/dnd/monsterSheet'
 import { db } from '../services/firebase'
 import { readImportedDocId } from '../utils/firestoreId'
+import { stripUnsupportedFirestoreValues } from '../utils/firestoreSafe'
 
 export type { StoredMonsterSheet } from '../types/system/dnd/monsterSheet'
 
@@ -31,6 +32,8 @@ export interface MonsterImportResult {
     imported: number
     skipped: number
     errors: number
+    /** Por que a importação falhou, para a tela dar uma mensagem útil. */
+    reason?: 'invalid-json' | 'not-a-sheet' | 'save-failed' | 'too-large'
 }
 
 // ── Firestore helpers ────────────────────────────────────────────────────────
@@ -574,7 +577,7 @@ function extractImportedMonsterSheetPayload(
     }
 
     // Ficha crua, sem o envelope { id, data }.
-    if (isValidMonsterSheetPayload(entry)) {
+    if (isImportableMonsterSheet(entry)) {
         return { id: null, data: entry as unknown as MonsterSheet }
     }
 
@@ -602,6 +605,24 @@ function extractImportedMonsterSheetPayload(
         createdAt:
             typeof nestedEntry.createdAt === 'string' ? nestedEntry.createdAt : undefined,
     }
+}
+
+/**
+ * Mínimo para aceitar um arquivo importado como monstro/NPC: um objeto com
+ * `details`. Stats, traços e ações ausentes são preenchidos pela normalização.
+ * A checagem completa abaixo continua valendo para o rascunho local.
+ */
+function isImportableMonsterSheet(data: unknown): boolean {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return false
+    const details = (data as Record<string, unknown>).details
+    return !!details && typeof details === 'object' && !Array.isArray(details)
+}
+
+/** `kind` escrito à mão costuma vir como "NPC" ou "Monstro"; só "npc" vira NPC. */
+function normalizeImportedKind(data: MonsterSheet): MonsterSheet {
+    const rawKind = (data.details as { kind?: unknown }).kind
+    const kind = typeof rawKind === 'string' && rawKind.trim().toLowerCase() === 'npc' ? 'npc' : 'monster'
+    return { ...data, details: { ...data.details, kind } }
 }
 
 function isValidMonsterSheetPayload(data: unknown): boolean {
@@ -755,20 +776,13 @@ export async function importMonsterSheetFromJSON(
     try {
         parsed = JSON.parse(json)
     } catch {
-        result.errors = 1
-        return result
+        return { ...result, errors: 1, reason: 'invalid-json' }
     }
 
     const payload = extractImportedMonsterSheetPayload(parsed)
 
-    if (!payload) {
-        result.errors = 1
-        return result
-    }
-
-    if (!isValidMonsterSheetPayload(payload.data)) {
-        result.errors = 1
-        return result
+    if (!payload || !isImportableMonsterSheet(payload.data)) {
+        return { ...result, errors: 1, reason: 'not-a-sheet' }
     }
 
     try {
@@ -789,24 +803,26 @@ export async function importMonsterSheetFromJSON(
 
         const resolvedGroupId = await resolveGroupReferenceOnImport(uid, payload.data.groupId)
         const dataWithResolvedGroup: MonsterSheet = {
-            ...payload.data,
+            ...normalizeImportedKind(payload.data),
             groupId: resolvedGroupId,
         }
 
         const timestamp = new Date().toISOString()
         await setDoc(
             docRef,
-            createMonsterSheetPayload(
+            stripUnsupportedFirestoreValues(createMonsterSheetPayload(
                 dataWithResolvedGroup,
                 timestamp,
                 payload.createdAt ?? timestamp,
                 normalizedId,
-            ),
+            )),
         )
 
         result.imported = 1
-    } catch {
+    } catch (error) {
+        console.error('Erro ao importar ficha de monstro/NPC:', error)
         result.errors = 1
+        result.reason = 'save-failed'
     }
 
     return result

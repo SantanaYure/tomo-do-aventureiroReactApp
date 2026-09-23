@@ -274,13 +274,9 @@ function detectImportedSheetType(parsed: unknown): ImportFeedback['scope'] {
   if (data.details && typeof data.details === 'object') {
     const details = data.details as Record<string, unknown>
 
-    if (details.kind === 'npc') {
-      return 'npc'
-    }
-
-    if (details.kind === 'monster') {
-      return 'monster'
-    }
+    // Sem `kind` reconhecível, trata como monstro (o mesmo padrão da importação).
+    const kind = typeof details.kind === 'string' ? details.kind.trim().toLowerCase() : ''
+    return kind === 'npc' ? 'npc' : 'monster'
   }
 
   return 'unknown'
@@ -530,7 +526,10 @@ export function CharactersPage() {
     if (!file) return
 
     if (file.size > MAX_JSON_BYTES) {
-      setImportFeedback({ scope: 'unknown', result: { imported: 0, skipped: 0, errors: 1 } })
+      setImportFeedback({
+        scope: 'unknown',
+        result: { imported: 0, skipped: 0, errors: 1, reason: 'too-large' },
+      })
       event.target.value = ''
       return
     }
@@ -546,7 +545,10 @@ export function CharactersPage() {
       try {
         parsed = JSON.parse(rawJson)
       } catch {
-        setImportFeedback({ scope: 'unknown', result: { imported: 0, skipped: 0, errors: 1 } })
+        setImportFeedback({
+          scope: 'unknown',
+          result: { imported: 0, skipped: 0, errors: 1, reason: 'invalid-json' },
+        })
         return
       }
 
@@ -564,7 +566,10 @@ export function CharactersPage() {
         return
       }
 
-      setImportFeedback({ scope: 'unknown', result: { imported: 0, skipped: 0, errors: 1 } })
+      setImportFeedback({
+        scope: 'unknown',
+        result: { imported: 0, skipped: 0, errors: 1, reason: 'not-a-sheet' },
+      })
     }
     reader.readAsText(file)
     event.target.value = ''
@@ -587,7 +592,18 @@ export function CharactersPage() {
 
     if (feedback.result.imported > 0) return `${label} importado com sucesso.`
     if (feedback.result.skipped > 0) return `Esse ${labelLow} já existe e não foi sobrescrito.`
-    if (feedback.result.errors > 0) return 'Não foi possível importar o arquivo selecionado.'
+    if (feedback.result.errors > 0) {
+      switch (feedback.result.reason) {
+        case 'invalid-json':
+          return 'O arquivo não é um JSON válido. Confira se ele não foi cortado ou editado com erro de sintaxe.'
+        case 'too-large':
+          return 'O arquivo passa de 2 MB. Reduza o avatar da ficha e tente de novo.'
+        case 'save-failed':
+          return 'A ficha foi lida, mas não foi possível salvá-la. Verifique sua conexão e tente de novo.'
+        default:
+          return 'O arquivo não parece ser uma ficha do Tomo. Ele precisa ter "character" (PJ) ou "details" (monstro ou NPC).'
+      }
+    }
     return `Nenhum ${labelLow} foi importado.`
   }
 

@@ -93,9 +93,44 @@ describe('importCharacterSheetFromJSON', () => {
     expect(setDoc).not.toHaveBeenCalled()
   })
 
-  it('continua recusando conteúdo que não é ficha', async () => {
-    expect((await importCharacterSheetFromJSON('uid-1', '{"data":{"foo":1}}')).errors).toBe(1)
-    expect((await importCharacterSheetFromJSON('uid-1', 'não é json')).errors).toBe(1)
+  it('continua recusando conteúdo que não é ficha, dizendo o motivo', async () => {
+    expect(await importCharacterSheetFromJSON('uid-1', '{"data":{"foo":1}}')).toMatchObject({
+      errors: 1,
+      reason: 'not-a-sheet',
+    })
+    expect(await importCharacterSheetFromJSON('uid-1', 'não é json')).toMatchObject({
+      errors: 1,
+      reason: 'invalid-json',
+    })
+  })
+
+  it('aceita ficha incompleta e completa o resto com os valores padrão', async () => {
+    const result = await importCharacterSheetFromJSON(
+      'uid-1',
+      JSON.stringify({ character: { name: 'Mira' } }),
+    )
+    expect(result.imported).toBe(1)
+    const saved = savedPayload() as unknown as { data: { character: { name: string }; inventory: unknown[] } }
+    expect(saved.data.character.name).toBe('Mira')
+    expect(Array.isArray(saved.data.inventory)).toBe(true)
+  })
+
+  it('descarta lista dentro de lista, que o Firestore recusa gravar', async () => {
+    await importCharacterSheetFromJSON(
+      'uid-1',
+      JSON.stringify({ data: { ...character(), extra: [[1, 2], 3] } }),
+    )
+    const saved = savedPayload() as unknown as { data: { extra: unknown } }
+    expect(saved.data.extra).toEqual([3])
+  })
+
+  it('informa falha ao salvar quando o Firestore recusa a escrita', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    setDoc.mockRejectedValueOnce(new Error('permission-denied'))
+    const result = await importCharacterSheetFromJSON('uid-1', JSON.stringify({ data: character() }))
+    expect(result).toMatchObject({ imported: 0, errors: 1, reason: 'save-failed' })
+    expect(error).toHaveBeenCalled()
+    error.mockRestore()
   })
 })
 
@@ -111,6 +146,17 @@ describe('importMonsterSheetFromJSON', () => {
 
     expect((await importMonsterSheetFromJSON('uid-1', JSON.stringify(monster()))).imported).toBe(1)
     expect(savedPayload().id).toBe('AUTO_ID')
+  })
+
+  it('aceita monstro incompleto e entende "NPC" escrito em maiúsculas', async () => {
+    const result = await importMonsterSheetFromJSON(
+      'uid-1',
+      JSON.stringify({ details: { name: 'Guarda', kind: 'NPC' } }),
+    )
+    expect(result.imported).toBe(1)
+    const saved = savedPayload() as unknown as { data: { details: { kind: string }; actions: unknown[] } }
+    expect(saved.data.details.kind).toBe('npc')
+    expect(Array.isArray(saved.data.actions)).toBe(true)
   })
 
   it('mantém um id válido', async () => {
