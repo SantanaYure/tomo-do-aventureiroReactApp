@@ -537,6 +537,86 @@
   color: var(--text);
 }
 
+/* ── Seleção múltipla ───────────────────────────────────────────────────── */
+
+.selectionBar {
+  width: min(100%, 60rem);
+  position: sticky;
+  top: var(--space-2);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--chip-violet-border);
+  border-radius: var(--radius-lg);
+  background: var(--panel-bg);
+  backdrop-filter: var(--blur-panel);
+  -webkit-backdrop-filter: var(--blur-panel);
+  box-shadow: var(--shadow-lg);
+}
+
+.selectionCount {
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.selectionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.selectionActions .confirmDangerBtn {
+  min-width: 0;
+}
+
+.confirmDangerBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.selectCheckbox {
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* O `label` global de index.css é coluna; aqui o card precisa manter a linha. */
+label.sheetCardLink {
+  flex-direction: row;
+  gap: var(--space-3);
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.sheetItemSelected {
+  border-color: var(--accent);
+  background: var(--chip-violet-bg);
+}
+
+.dialogList {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.dialogNote {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
 /* ── Importação em andamento ─────────────────────────────────────────────── */
 
 .importOverlay {

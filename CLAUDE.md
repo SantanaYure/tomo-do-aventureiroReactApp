@@ -162,6 +162,8 @@ tests/rules/            → testes das regras do Firestore no emulador (npm run 
 - Busca por nome usa `useFirestoreSearch`, que consulta o campo `name_lower` no Firestore com prefixo
 - O campo `name_lower` é gerado automaticamente ao salvar (normalizado para lowercase pt-BR)
 - Ordenação customizada é persistida no `localStorage` por uid
+- **Seleção múltipla**: o botão "Selecionar" põe a lista em modo de seleção (caixa de marcar em cada card; clicar no card marca, não abre a ficha; o menu de ações some). A barra fixa mostra quantas estão marcadas, "Selecionar todas" (só as visíveis após busca e filtros) e "Excluir selecionadas". A confirmação lista os nomes e avisa quando alguma está numa mesa.
+- **Exclusão** (individual e em lote) passa por `utils/deleteSheets.ts`: libera a ficha da mesa antes (`releaseCharacterSheetFromCampaign`/`releaseMonsterSheetFromCampaign`) e exclui, uma de cada vez; uma falha não interrompe as outras. Em lote, o `DiceRollLoader` mostra "Excluindo N de M" e, no fim, um resumo lista o que não saiu. Excluir uma ficha só com sucesso não mostra aviso
 
 ### Importação/exportação
 - Fichas são exportadas como JSON via download no browser

@@ -8,14 +8,18 @@ import {
 } from '../../utils/importSheetFiles'
 import { DiceRollLoader } from '../../components/DiceRollLoader/DiceRollLoader'
 import {
+  deleteSheets,
+  sheetKey,
+  summarizeDelete,
+  type SheetDeleteTarget,
+} from '../../utils/deleteSheets'
+import {
   createCharacterSheet,
-  deleteCharacterSheet,
   exportCharacterSheetAsJSON,
   type StoredCharacterSheet,
 } from '../../store/characterSheetStore'
 import {
   createMonsterSheet,
-  deleteMonsterSheet as deleteMonster,
   exportMonsterSheetAsJSON,
   type StoredMonsterSheet,
 } from '../../store/monsterSheetStore'
@@ -35,11 +39,8 @@ const NO_GROUP_LABEL = 'Personagem Independente'
 
 type SheetTypeFilter = 'all' | 'character' | 'monster' | 'npc'
 
-type PendingDelete = {
-  type: 'character' | 'monster'
-  id: string
-  name: string
-}
+/** Resumo mostrado depois de importar ou excluir em lote. */
+type FeedbackSummary = Pick<ImportSummary, 'message' | 'problems' | 'tone'>
 
 function matchesText(text: string, term: string): boolean {
   if (!term) return false
@@ -127,14 +128,60 @@ function SheetThumbnail({
   )
 }
 
-interface CharacterSheetItemProps {
+/** Estado de seleção de um card no modo "Selecionar". */
+interface SelectionProps {
+  selectable?: boolean
+  selected?: boolean
+  onToggleSelect?: () => void
+}
+
+/**
+ * Corpo do card. No modo de seleção vira um rótulo com caixa de marcar (clicar
+ * em qualquer parte do card marca ou desmarca); fora dele, é o link da ficha.
+ */
+function SheetCardBody({
+  href,
+  name,
+  children,
+  selectable,
+  selected,
+  onToggleSelect,
+}: SelectionProps & { href: string; name: string; children: React.ReactNode }) {
+  if (selectable) {
+    return (
+      <label className={styles.sheetCardLink}>
+        <input
+          type="checkbox"
+          className={styles.selectCheckbox}
+          checked={selected ?? false}
+          onChange={onToggleSelect}
+          aria-label={`Selecionar ${name}`}
+        />
+        {children}
+      </label>
+    )
+  }
+  return (
+    <Link to={href} className={styles.sheetCardLink}>
+      {children}
+    </Link>
+  )
+}
+
+interface CharacterSheetItemProps extends SelectionProps {
   sheet: StoredCharacterSheet
   onExport: () => void
   onDelete: () => void
   onLink?: () => void
 }
 
-function CharacterSheetItem({ sheet, onExport, onDelete, onLink }: CharacterSheetItemProps) {
+function CharacterSheetItem({
+  sheet,
+  onExport,
+  onDelete,
+  onLink,
+  ...selection
+}: CharacterSheetItemProps) {
   const name = sheet.data.character.name || '(sem nome)'
   const race = sheet.data.character.race
   const avatar = sheet.data.character.avatar
@@ -148,8 +195,8 @@ function CharacterSheetItem({ sheet, onExport, onDelete, onLink }: CharacterShee
   const campaignId = sheet.data.campaignId
 
   return (
-    <li className={styles.sheetItem}>
-      <Link to={`/ficha/${sheet.id}`} className={styles.sheetCardLink}>
+    <li className={`${styles.sheetItem} ${selection.selected ? styles.sheetItemSelected : ''}`}>
+      <SheetCardBody href={`/ficha/${sheet.id}`} name={name} {...selection}>
         <SheetThumbnail avatar={avatar} alt={`Avatar de ${name}`} fallbackLabel="PJ" />
         <span className={styles.sheetText}>
           <span className={styles.sheetName}>{name}</span>
@@ -160,27 +207,35 @@ function CharacterSheetItem({ sheet, onExport, onDelete, onLink }: CharacterShee
             </span>
           )}
         </span>
-      </Link>
-      <div className={styles.sheetActions}>
-        <SheetActionsMenu
-          onExport={onExport}
-          onDelete={onDelete}
-          onLinkToCampaign={onLink}
-          linkToCampaignLabel={campaignId ? 'Gerenciar Vínculo com Mesa' : 'Vincular à Mesa'}
-        />
-      </div>
+      </SheetCardBody>
+      {!selection.selectable && (
+        <div className={styles.sheetActions}>
+          <SheetActionsMenu
+            onExport={onExport}
+            onDelete={onDelete}
+            onLinkToCampaign={onLink}
+            linkToCampaignLabel={campaignId ? 'Gerenciar Vínculo com Mesa' : 'Vincular à Mesa'}
+          />
+        </div>
+      )}
     </li>
   )
 }
 
-interface MonsterSheetItemProps {
+interface MonsterSheetItemProps extends SelectionProps {
   sheet: StoredMonsterSheet
   onExport: () => void
   onDelete: () => void
   onLink?: () => void
 }
 
-function MonsterSheetItem({ sheet, onExport, onDelete, onLink }: MonsterSheetItemProps) {
+function MonsterSheetItem({
+  sheet,
+  onExport,
+  onDelete,
+  onLink,
+  ...selection
+}: MonsterSheetItemProps) {
   const name = sheet.data.details.name || '(sem nome)'
   const avatar = sheet.data.details.avatar
   const fallbackLabel = sheet.data.details.kind === 'npc' ? 'NPC' : 'MON'
@@ -190,8 +245,8 @@ function MonsterSheetItem({ sheet, onExport, onDelete, onLink }: MonsterSheetIte
   const campaignId = sheet.data.campaignId
 
   return (
-    <li className={styles.sheetItem}>
-      <Link to={`/monstro/${sheet.id}`} className={styles.sheetCardLink}>
+    <li className={`${styles.sheetItem} ${selection.selected ? styles.sheetItemSelected : ''}`}>
+      <SheetCardBody href={`/monstro/${sheet.id}`} name={name} {...selection}>
         <SheetThumbnail avatar={avatar} alt={`Avatar de ${name}`} fallbackLabel={fallbackLabel} />
         <span className={styles.sheetText}>
           <span className={styles.sheetName}>{name}</span>
@@ -202,15 +257,17 @@ function MonsterSheetItem({ sheet, onExport, onDelete, onLink }: MonsterSheetIte
             </span>
           )}
         </span>
-      </Link>
-      <div className={styles.sheetActions}>
-        <SheetActionsMenu
-          onExport={onExport}
-          onDelete={onDelete}
-          onLinkToCampaign={onLink}
-          linkToCampaignLabel={campaignId ? 'Gerenciar Vínculo com Mesa' : 'Vincular à Mesa'}
-        />
-      </div>
+      </SheetCardBody>
+      {!selection.selectable && (
+        <div className={styles.sheetActions}>
+          <SheetActionsMenu
+            onExport={onExport}
+            onDelete={onDelete}
+            onLinkToCampaign={onLink}
+            linkToCampaignLabel={campaignId ? 'Gerenciar Vínculo com Mesa' : 'Vincular à Mesa'}
+          />
+        </div>
+      )}
     </li>
   )
 }
@@ -232,13 +289,20 @@ export function CharactersPage() {
   const [typeFilter, setTypeFilter] = useState<SheetTypeFilter>('all')
   const [groupFilter, setGroupFilter] = useState<string>('all')
 
-  const [importFeedback, setImportFeedback] = useState<ImportSummary | null>(null)
+  const [importFeedback, setImportFeedback] = useState<FeedbackSummary | null>(null)
   const [importProgress, setImportProgress] = useState<{
     done: number
     total: number
     fileName: string
   } | null>(null)
-  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<SheetDeleteTarget[] | null>(null)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set())
+  const [deleteProgress, setDeleteProgress] = useState<{
+    done: number
+    total: number
+    name: string
+  } | null>(null)
   const [linkingSheet, setLinkingSheet] = useState<{
     type: 'character' | 'monster' | 'npc'
     id: string
@@ -409,33 +473,88 @@ export function CharactersPage() {
     }
   }
 
-  function requestDeleteSheet(id: string, name: string) {
-    setPendingDelete({ type: 'character', id, name })
+  function characterTarget(sheet: StoredCharacterSheet): SheetDeleteTarget {
+    return {
+      type: 'character',
+      id: sheet.id,
+      name: sheet.data.character.name,
+      campaignId: sheet.data.campaignId,
+    }
   }
 
-  function requestDeleteMonster(id: string, name: string) {
-    setPendingDelete({ type: 'monster', id, name })
+  function monsterTarget(monster: StoredMonsterSheet): SheetDeleteTarget {
+    return {
+      type: 'monster',
+      id: monster.id,
+      name: monster.data.details.name,
+      campaignId: monster.data.campaignId,
+    }
+  }
+
+  /** Fichas visíveis agora (depois de busca e filtros), na ordem da tela. */
+  function visibleTargets(): SheetDeleteTarget[] {
+    return visibleBuckets.flatMap((bucket) => [
+      ...bucket.characters.map(characterTarget),
+      ...bucket.monsters.map(monsterTarget),
+      ...bucket.npcs.map(monsterTarget),
+    ])
+  }
+
+  function toggleSelected(target: SheetDeleteTarget) {
+    const key = sheetKey(target.type, target.id)
+    setSelectedKeys((current) => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  function startSelection() {
+    setImportFeedback(null)
+    setSelectedKeys(new Set())
+    setSelectionMode(true)
+  }
+
+  function exitSelection() {
+    setSelectionMode(false)
+    setSelectedKeys(new Set())
+  }
+
+  const visibleKeys = visibleTargets().map((t) => sheetKey(t.type, t.id))
+  const allVisibleSelected =
+    visibleKeys.length > 0 && visibleKeys.every((key) => selectedKeys.has(key))
+
+  function toggleSelectAllVisible() {
+    setSelectedKeys(allVisibleSelected ? new Set() : new Set(visibleKeys))
+  }
+
+  function requestDeleteSelected() {
+    // Resolve a partir das listas atuais: uma ficha excluída em outra aba some daqui.
+    const targets = [
+      ...sheets.map(characterTarget),
+      ...monsters.map(monsterTarget),
+    ].filter((t) => selectedKeys.has(sheetKey(t.type, t.id)))
+    if (targets.length > 0) setPendingDelete(targets)
   }
 
   async function confirmDelete() {
     if (!pendingDelete || !uid) return
-    const { releaseCharacterSheetFromCampaign, releaseMonsterSheetFromCampaign } =
-      await import('../../store/campaignStore')
+    const targets = pendingDelete
+    setPendingDelete(null)
+    setImportFeedback(null)
+
+    if (targets.length > 1) {
+      setDeleteProgress({ done: 0, total: targets.length, name: targets[0].name })
+    }
     try {
-      if (pendingDelete.type === 'character') {
-        // Libera o herói na mesa antes, para não sobrar um personagem fantasma.
-        const campaignId = sheets.find((s) => s.id === pendingDelete.id)?.data.campaignId
-        if (campaignId) await releaseCharacterSheetFromCampaign(campaignId, uid, pendingDelete.id)
-        await deleteCharacterSheet(uid, pendingDelete.id)
-      } else {
-        const campaignId = monsters.find((m) => m.id === pendingDelete.id)?.data.campaignId
-        if (campaignId) await releaseMonsterSheetFromCampaign(campaignId, uid, pendingDelete.id)
-        await deleteMonster(uid, pendingDelete.id)
-      }
-      setPendingDelete(null)
-    } catch (err) {
-      console.error('Erro ao excluir ficha:', err)
-      setPendingDelete(null)
+      const outcomes = await deleteSheets(uid, targets, (done, total, current) => {
+        if (total > 1) setDeleteProgress({ done, total, name: current.name })
+      })
+      setImportFeedback(summarizeDelete(outcomes))
+      if (selectionMode) exitSelection()
+    } finally {
+      setDeleteProgress(null)
     }
   }
 
@@ -503,7 +622,10 @@ export function CharactersPage() {
             key={`char-${sheet.id}`}
             sheet={sheet}
             onExport={() => handleExportSheet(sheet)}
-            onDelete={() => requestDeleteSheet(sheet.id, sheet.data.character.name)}
+            onDelete={() => setPendingDelete([characterTarget(sheet)])}
+            selectable={selectionMode}
+            selected={selectedKeys.has(sheetKey('character', sheet.id))}
+            onToggleSelect={() => toggleSelected(characterTarget(sheet))}
             onLink={() =>
               setLinkingSheet({
                 type: 'character',
@@ -521,7 +643,10 @@ export function CharactersPage() {
             key={`mon-${monster.id}`}
             sheet={monster}
             onExport={() => handleExportMonster(monster)}
-            onDelete={() => requestDeleteMonster(monster.id, monster.data.details.name)}
+            onDelete={() => setPendingDelete([monsterTarget(monster)])}
+            selectable={selectionMode}
+            selected={selectedKeys.has(sheetKey('monster', monster.id))}
+            onToggleSelect={() => toggleSelected(monsterTarget(monster))}
             onLink={() =>
               setLinkingSheet({
                 type: 'monster',
@@ -539,7 +664,10 @@ export function CharactersPage() {
             key={`npc-${npc.id}`}
             sheet={npc}
             onExport={() => handleExportMonster(npc)}
-            onDelete={() => requestDeleteMonster(npc.id, npc.data.details.name)}
+            onDelete={() => setPendingDelete([monsterTarget(npc)])}
+            selectable={selectionMode}
+            selected={selectedKeys.has(sheetKey('monster', npc.id))}
+            onToggleSelect={() => toggleSelected(monsterTarget(npc))}
             onLink={() =>
               setLinkingSheet({
                 type: 'npc',
@@ -571,6 +699,15 @@ export function CharactersPage() {
         <div className={styles.pageTitleRow}>
           <h1 className={styles.pageTitle}>Fichas</h1>
           <div className={styles.createActions}>
+            <button
+              type="button"
+              className={styles.tertiaryAction}
+              onClick={selectionMode ? exitSelection : startSelection}
+              aria-pressed={selectionMode}
+              disabled={deleteProgress !== null}
+            >
+              {selectionMode ? 'Cancelar seleção' : '☐ Selecionar'}
+            </button>
             <button
               type="button"
               className={styles.tertiaryAction}
@@ -683,6 +820,36 @@ export function CharactersPage() {
         />
       )}
 
+      {selectionMode && (
+        <div className={styles.selectionBar} role="toolbar" aria-label="Ações da seleção">
+          <span className={styles.selectionCount} aria-live="polite">
+            {selectedKeys.size === 0
+              ? 'Toque nas fichas para selecionar'
+              : selectedKeys.size === 1
+                ? '1 ficha selecionada'
+                : `${selectedKeys.size} fichas selecionadas`}
+          </span>
+          <div className={styles.selectionActions}>
+            <button
+              type="button"
+              className={styles.tertiaryAction}
+              onClick={toggleSelectAllVisible}
+              disabled={visibleKeys.length === 0}
+            >
+              {allVisibleSelected ? 'Desmarcar todas' : 'Selecionar todas'}
+            </button>
+            <button
+              type="button"
+              className={styles.confirmDangerBtn}
+              onClick={requestDeleteSelected}
+              disabled={selectedKeys.size === 0}
+            >
+              Excluir selecionadas
+            </button>
+          </div>
+        </div>
+      )}
+
       {!isLoading && visibleBuckets.length === 0 && (
         <p className={styles.emptySection}>
           {isFiltered
@@ -715,6 +882,17 @@ export function CharactersPage() {
               ))}
             </ul>
           )}
+        </div>
+      )}
+
+      {deleteProgress && (
+        <div className={styles.importOverlay} aria-busy="true">
+          <div className={styles.importCard}>
+            <DiceRollLoader
+              label={`Excluindo ${deleteProgress.done + 1} de ${deleteProgress.total}`}
+              detail={deleteProgress.name || '(sem nome)'}
+            />
+          </div>
         </div>
       )}
 
@@ -757,8 +935,24 @@ export function CharactersPage() {
             aria-labelledby="delete-dialog-title"
           >
             <p id="delete-dialog-title" className={styles.dialogTitle}>
-              Excluir "{pendingDelete.name || '(sem nome)'}" permanentemente?
+              {pendingDelete.length === 1
+                ? `Excluir "${pendingDelete[0].name || '(sem nome)'}" permanentemente?`
+                : `Excluir ${pendingDelete.length} fichas permanentemente?`}
             </p>
+            {pendingDelete.length > 1 && (
+              <ul className={styles.dialogList}>
+                {pendingDelete.slice(0, 6).map((target) => (
+                  <li key={sheetKey(target.type, target.id)}>{target.name || '(sem nome)'}</li>
+                ))}
+                {pendingDelete.length > 6 && <li>e mais {pendingDelete.length - 6}</li>}
+              </ul>
+            )}
+            {pendingDelete.some((target) => target.campaignId) && (
+              <p className={styles.dialogNote}>
+                {pendingDelete.length === 1 ? 'Ela está' : 'Algumas estão'} numa mesa e{' '}
+                {pendingDelete.length === 1 ? 'será retirada' : 'serão retiradas'} de lá também.
+              </p>
+            )}
             <div className={styles.dialogActions}>
               <button type="button" className={styles.confirmDangerBtn} onClick={confirmDelete}>
                 Confirmar exclusão
