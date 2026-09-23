@@ -1,0 +1,20 @@
+# Fim de linha: o repositório guarda sempre LF; cada máquina usa o seu padrão
+# na cópia de trabalho (CRLF no Windows, LF no Linux/macOS). Sem isso, o
+# mesmo arquivo aparecia como modificado só por causa da quebra de linha.
+* text=auto
+
+# Scripts de shell sempre com LF, mesmo no Windows.
+*.sh text eol=lf
+
+# Binários: nunca converter.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.pdf binary
+*.bundle binary
