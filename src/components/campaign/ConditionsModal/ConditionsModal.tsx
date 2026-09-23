@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Check } from 'lucide-react'
 import { DND_CONDITIONS } from '../../../store/campaignStore'
 import styles from './ConditionsModal.module.css'
@@ -8,6 +8,48 @@ interface ConditionsModalProps {
   activeConditions: string[]
   onToggleCondition: (condition: string) => void
   onClose: () => void
+  /** Rodadas restantes por condição (só com combate em andamento). */
+  rounds?: Record<string, number>
+  /** Presente só para o mestre durante o combate: define a duração. */
+  onSetRounds?: (condition: string, rounds: number | null) => void
+}
+
+/** Campo de rodadas com rascunho local: grava ao sair do campo ou com Enter. */
+function RoundsInput({
+  condition,
+  value,
+  onCommit,
+}: {
+  condition: string
+  value: number | undefined
+  onCommit: (rounds: number | null) => void
+}) {
+  const [draft, setDraft] = useState(value ? String(value) : '')
+  useEffect(() => setDraft(value ? String(value) : ''), [value])
+
+  function commit() {
+    const parsed = Math.trunc(Number(draft))
+    const next = draft.trim() === '' || !Number.isFinite(parsed) || parsed <= 0 ? null : Math.min(parsed, 100)
+    if (next !== (value ?? null)) onCommit(next)
+  }
+
+  return (
+    <input
+      type="number"
+      inputMode="numeric"
+      min="1"
+      max="100"
+      className={styles.roundsInput}
+      value={draft}
+      placeholder="sem limite"
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur()
+      }}
+      aria-label={`Rodadas de ${condition}`}
+    />
+  )
 }
 
 export function ConditionsModal({
@@ -15,6 +57,8 @@ export function ConditionsModal({
   activeConditions,
   onToggleCondition,
   onClose,
+  rounds,
+  onSetRounds,
 }: ConditionsModalProps) {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -70,6 +114,27 @@ export function ConditionsModal({
             )
           })}
         </div>
+
+        {onSetRounds && activeConditions.length > 0 && (
+          <div className={styles.durations}>
+            <p className={styles.durationsTitle}>Duração no combate (rodadas)</p>
+            <p className={styles.durationsHint}>
+              Desconta uma a cada nova rodada; ao chegar a zero, a condição sai sozinha.
+            </p>
+            <ul className={styles.durationsList}>
+              {activeConditions.map((cond) => (
+                <li key={cond} className={styles.durationRow}>
+                  <span>{cond}</span>
+                  <RoundsInput
+                    condition={cond}
+                    value={rounds?.[cond]}
+                    onCommit={(value) => onSetRounds(cond, value)}
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className={styles.footer}>
           <button type="button" className={styles.doneBtn} onClick={onClose}>

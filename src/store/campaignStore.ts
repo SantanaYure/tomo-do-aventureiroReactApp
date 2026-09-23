@@ -64,6 +64,19 @@ export function creatureAvatarForStorage(avatar: unknown): string | null {
   return avatar.startsWith('data:') ? null : avatar
 }
 
+function normalizeConditionRounds(raw: unknown): Record<string, Record<string, number>> {
+  const result: Record<string, Record<string, number>> = {}
+  if (!raw || typeof raw !== 'object') return result
+  for (const [combatant, conditions] of Object.entries(raw as Record<string, unknown>)) {
+    if (!conditions || typeof conditions !== 'object') continue
+    const entries = Object.entries(conditions as Record<string, unknown>).filter(
+      (entry): entry is [string, number] => typeof entry[1] === 'number' && entry[1] > 0,
+    )
+    if (entries.length > 0) result[combatant] = Object.fromEntries(entries.map(([k, v]) => [k, Math.trunc(v)]))
+  }
+  return result
+}
+
 export function normalizeCampaign(id: string, data: Record<string, unknown>): Campaign {
   const memberIdsRaw = Array.isArray(data.memberIds) ? data.memberIds : []
   const dmId = typeof data.dmId === 'string' ? data.dmId : ''
@@ -102,6 +115,7 @@ export function normalizeCampaign(id: string, data: Record<string, unknown>): Ca
       ? {
           round: typeof rawCombat.round === 'number' && rawCombat.round > 0 ? rawCombat.round : 1,
           activeId: typeof rawCombat.activeId === 'string' ? rawCombat.activeId : null,
+          conditionRounds: normalizeConditionRounds(rawCombat.conditionRounds),
         }
       : null
 
@@ -1294,4 +1308,49 @@ export async function isCampaignLinkStale(params: {
   } catch {
     return false
   }
+}
+
+/**
+ * Avança o turno e aplica o que expirou na virada da rodada: tira as
+ * condições cuja duração chegou a zero das criaturas (na mesma transação
+ * que grava o novo turno) e dos heróis (no documento de membro). Uso do
+ * mestre.
+ */
+export async function applyTurnAdvance(
+  campaignId: string,
+  nextCombat: CampaignCombat,
+  expired: Array<{ kind: 'hero' | 'creature'; refId: string; condition: string }>,
+  members: CampaignMember[],
+): Promise<void> {
+  const creatureExpired = expired.filter((e) => e.kind === 'creature')
+  if (creatureExpired.length === 0) {
+    await updateCampaignCombat(campaignId, nextCombat)
+  } else {
+    await mutateCreatures(
+      campaignId,
+      (current) =>
+        current.map((creature) => {
+          const drop = creatureExpired.filter((e) => e.refId === creature.id).map((e) => e.condition)
+          return drop.length === 0
+            ? creature
+            : { ...creature, conditions: creature.conditions.filter((c) => !drop.includes(c)) }
+        }),
+      { combat: nextCombat },
+    )
+  }
+
+  const heroExpired = expired.filter((e) => e.kind === 'hero')
+  if (heroExpired.length === 0) return
+  const batch = writeBatch(db)
+  let writes = 0
+  for (const member of members) {
+    const drop = heroExpired.filter((e) => e.refId === member.userId).map((e) => e.condition)
+    const conditions = member.vitals?.conditions ?? []
+    if (drop.length === 0 || !conditions.some((c) => drop.includes(c))) continue
+    batch.update(getMemberDoc(campaignId, member.userId), {
+      'vitals.conditions': conditions.filter((c) => !drop.includes(c)),
+    })
+    writes++
+  }
+  if (writes > 0) await batch.commit()
 }

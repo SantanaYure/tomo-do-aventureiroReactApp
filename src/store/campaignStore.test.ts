@@ -59,6 +59,7 @@ const {
   endCampaignCombat,
   deleteCampaign,
   isCampaignLinkStale,
+  applyTurnAdvance,
 } = await import('./campaignStore')
 
 beforeEach(() => {
@@ -511,5 +512,31 @@ describe('isCampaignLinkStale', () => {
     expect(await isCampaignLinkStale({ kind: 'monster', campaignId: 'camp-1', ownerId: 'dm-1', sheetId: 'm-1' })).toBe(true)
     getDoc.mockResolvedValueOnce(campaignSnap([{ id: 'g1', name: 'Goblin', monsterSheetId: 'm-1', ownerId: 'dm-1' }]))
     expect(await isCampaignLinkStale({ kind: 'monster', campaignId: 'camp-1', ownerId: 'dm-1', sheetId: 'm-1' })).toBe(false)
+  })
+})
+
+describe('applyTurnAdvance', () => {
+  it('tira as condições expiradas da criatura na mesma transação do novo turno', async () => {
+    txGet.mockResolvedValueOnce(campaignSnap([{ id: 'g1', name: 'Goblin', conditions: ['Caído', 'Envenenado'] }]))
+    const nextCombat = { round: 3, activeId: 'creature:g1', conditionRounds: {} }
+
+    await applyTurnAdvance('camp-1', nextCombat, [{ kind: 'creature', refId: 'g1', condition: 'Caído' }], [])
+
+    const call = txUpdate.mock.calls[txUpdate.mock.calls.length - 1][1] as Record<string, unknown>
+    expect((call.creatures as Array<Record<string, unknown>>)[0].conditions).toEqual(['Envenenado'])
+    expect(call.combat).toEqual(nextCombat)
+  })
+
+  it('tira a condição expirada do herói no documento de membro', async () => {
+    await applyTurnAdvance(
+      'camp-1',
+      { round: 2, activeId: null },
+      [{ kind: 'hero', refId: 'p-1', condition: 'Amedrontado' }],
+      [{ userId: 'p-1', displayName: 'Ana', role: 'player', joinedAt: 0, vitals: { hpCurrent: 1, hpMax: 1, hpTemp: 0, armorClass: 10, passivePerception: 10, conditions: ['Amedrontado', 'Caído'] } }],
+    )
+
+    expect(updateDoc).toHaveBeenCalledWith(expect.objectContaining({ type: 'doc' }), expect.objectContaining({ combat: { round: 2, activeId: null } }))
+    expect(batchUpdate).toHaveBeenCalledWith(expect.objectContaining({ type: 'doc' }), { 'vitals.conditions': ['Caído'] })
+    expect(batchCommit).toHaveBeenCalledOnce()
   })
 })

@@ -15,6 +15,12 @@ interface HeroVitalCardProps {
   onUpdateVitals: (userId: string, newVitals: CharacterVitals) => void
   onSelectCharacter?: () => void
   onRemoveHero?: (userId: string, sheetId?: string | null) => void
+  /** É a vez deste participante no combate. */
+  isActiveTurn?: boolean
+  /** Rodadas restantes das condições com duração. */
+  conditionRounds?: Record<string, number>
+  /** Só para o mestre durante o combate. */
+  onSetConditionRounds?: (condition: string, rounds: number | null) => void
 }
 
 export function HeroVitalCard({
@@ -26,6 +32,9 @@ export function HeroVitalCard({
   onUpdateVitals,
   onSelectCharacter,
   onRemoveHero,
+  isActiveTurn = false,
+  conditionRounds,
+  onSetConditionRounds,
 }: HeroVitalCardProps) {
   const [isHpModalOpen, setIsHpModalOpen] = useState(false)
   const [hpModalMode, setHpModalMode] = useState<'damage' | 'heal' | 'temp'>('damage')
@@ -122,7 +131,12 @@ export function HeroVitalCard({
   }
 
   return (
-    <article className={styles.card} aria-label={`Status de ${heroName}`}>
+    <article
+      className={`${styles.card} ${isActiveTurn ? styles.cardActive : ''}`}
+      aria-label={`Status de ${heroName}`}
+      aria-current={isActiveTurn ? 'true' : undefined}
+    >
+      {isActiveTurn && <span className={styles.turnTag}>Vez de agir</span>}
       <div className={styles.header}>
         {sheetUrl ? (
           <Link to={sheetUrl} title="Abrir ficha do personagem">
@@ -259,6 +273,11 @@ export function HeroVitalCard({
         {(vitals.conditions || []).map((cond) => (
           <span key={cond} className={styles.conditionChip}>
             {cond}
+            {conditionRounds?.[cond] ? (
+              <span className={styles.roundsTag} title="Rodadas restantes">
+                {conditionRounds[cond]}r
+              </span>
+            ) : null}
             {canEdit && (
               <button
                 type="button"
@@ -338,6 +357,8 @@ export function HeroVitalCard({
           activeConditions={vitals.conditions || []}
           onToggleCondition={handleToggleCondition}
           onClose={() => setIsCondModalOpen(false)}
+          rounds={conditionRounds}
+          onSetRounds={onSetConditionRounds}
         />
       )}
     </article>

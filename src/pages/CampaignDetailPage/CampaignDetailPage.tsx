@@ -31,6 +31,7 @@ import {
   updateCampaignCombat,
   endCampaignCombat,
   setCombatantOutOfCombat,
+  applyTurnAdvance,
   linkCharacterSheetToCampaign,
   unlinkCharacterSheetFromCampaign,
   linkMonsterSheetToCampaign,
@@ -50,7 +51,10 @@ import { DeleteCampaignModal } from '../../components/campaign/DeleteCampaignMod
 import { formatInviteCode } from '../../utils/inviteCode'
 import {
   advanceTurn,
+  combatantId,
   isHeroInCombat,
+  setConditionRounds,
+  tickConditionRounds,
   turnAfterRemoval,
   rollInitiative,
   type Combatant,
@@ -335,8 +339,32 @@ export function CampaignDetailPage() {
 
   async function handleNextTurn(order: Combatant[]) {
     if (!campaign || !isDm) return
+    const previousRound = campaign.combat?.round ?? 1
+    let next = advanceTurn(order, campaign.combat)
+    let expired: ReturnType<typeof tickConditionRounds>['expired'] = []
+    // Virada de rodada: desconta as durações e tira o que expirou.
+    if (campaign.combat && next.round > previousRound) {
+      const ticked = tickConditionRounds(next.conditionRounds)
+      next = { ...next, conditionRounds: ticked.next }
+      expired = ticked.expired
+    }
     await runCombatAction('Não foi possível avançar o turno.', () =>
-      updateCampaignCombat(campaign.id, advanceTurn(order, campaign.combat)),
+      applyTurnAdvance(campaign.id, next, expired, members),
+    )
+  }
+
+  async function handleSetConditionRounds(
+    target: string,
+    condition: string,
+    rounds: number | null,
+  ) {
+    if (!campaign || !isDm || !campaign.combat) return
+    const combat = campaign.combat
+    await runCombatAction('Não foi possível gravar a duração da condição.', () =>
+      updateCampaignCombat(campaign.id, {
+        ...combat,
+        conditionRounds: setConditionRounds(combat.conditionRounds, target, condition, rounds),
+      }),
     )
   }
 
@@ -573,6 +601,14 @@ export function CampaignDetailPage() {
                   onUpdateVitals={handleUpdateVitals}
                   onSelectCharacter={() => setIsSelectCharOpen(true)}
                   onRemoveHero={handleRemoveHero}
+                  isActiveTurn={campaign.combat?.activeId === combatantId('hero', member.userId)}
+                  conditionRounds={campaign.combat?.conditionRounds?.[combatantId('hero', member.userId)]}
+                  onSetConditionRounds={
+                    isDm && campaign.combat
+                      ? (condition, rounds) =>
+                          handleSetConditionRounds(combatantId('hero', member.userId), condition, rounds)
+                      : undefined
+                  }
                 />
               ))}
             </div>
@@ -617,6 +653,14 @@ export function CampaignDetailPage() {
                     onUpdate={handleUpdateCreature}
                     onRemove={handleRemoveCreature}
                     onDuplicate={handleDuplicateCreature}
+                    isActiveTurn={campaign.combat?.activeId === combatantId('creature', creature.id)}
+                    conditionRounds={campaign.combat?.conditionRounds?.[combatantId('creature', creature.id)]}
+                    onSetConditionRounds={
+                      isDm && campaign.combat
+                        ? (condition, rounds) =>
+                            handleSetConditionRounds(combatantId('creature', creature.id), condition, rounds)
+                        : undefined
+                    }
                     avatarUrl={(() => {
                       const key = creatureAvatarKey(creature)
                       return key ? creatureAvatars[key] : null

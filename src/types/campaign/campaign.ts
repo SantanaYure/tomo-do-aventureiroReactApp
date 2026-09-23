@@ -71,6 +71,11 @@ export interface CampaignCombat {
   round: number
   /** Id do participante com o turno ativo (ver `combatantId`). */
   activeId: string | null
+  /**
+   * Rodadas restantes de condições com duração, por participante:
+   * { 'creature:g1': { 'Caído': 2 } }. Sem entrada = condição sem limite.
+   */
+  conditionRounds?: Record<string, Record<string, number>>
 }
 
 export interface Campaign {

@@ -10,6 +10,9 @@ import {
   rollInitiative,
   sortByInitiative,
   turnAfterRemoval,
+  setConditionRounds,
+  tickConditionRounds,
+  parseCombatantId,
   type Combatant,
 } from './initiative'
 
@@ -189,5 +192,37 @@ describe('tirar da iniciativa', () => {
       combatant({ id: 'c', initiative: 10 }),
     ])
     expect(advanceTurn(withBench, { round: 1, activeId: 'a' })).toEqual({ round: 1, activeId: 'c' })
+  })
+})
+
+describe('duração de condições', () => {
+  it('define e remove rodadas sem mexer no resto', () => {
+    let rounds = setConditionRounds(undefined, 'creature:g1', 'Caído', 2)
+    rounds = setConditionRounds(rounds, 'hero:p1', 'Envenenado', 3)
+    expect(rounds).toEqual({ 'creature:g1': { Caído: 2 }, 'hero:p1': { Envenenado: 3 } })
+    expect(setConditionRounds(rounds, 'creature:g1', 'Caído', null)).toEqual({ 'hero:p1': { Envenenado: 3 } })
+  })
+
+  it('na virada da rodada desconta uma e devolve o que expirou', () => {
+    const { next, expired } = tickConditionRounds({
+      'creature:g1': { Caído: 1, Envenenado: 2 },
+      'hero:p1': { Amedrontado: 1 },
+    })
+    expect(next).toEqual({ 'creature:g1': { Envenenado: 1 } })
+    expect(expired).toEqual([
+      { kind: 'creature', refId: 'g1', condition: 'Caído' },
+      { kind: 'hero', refId: 'p1', condition: 'Amedrontado' },
+    ])
+  })
+
+  it('advanceTurn preserva as durações', () => {
+    const order = sortByInitiative([combatant({ id: 'a', initiative: 5 })])
+    const combat = { round: 1, activeId: 'a', conditionRounds: { 'hero:p1': { Caído: 2 } } }
+    expect(advanceTurn(order, combat).conditionRounds).toEqual({ 'hero:p1': { Caído: 2 } })
+  })
+
+  it('parseCombatantId aceita só hero e creature', () => {
+    expect(parseCombatantId('hero:u:1')).toEqual({ kind: 'hero', refId: 'u:1' })
+    expect(parseCombatantId('outro:1')).toBeNull()
   })
 })

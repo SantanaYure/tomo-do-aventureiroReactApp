@@ -101,28 +101,33 @@ export function turnAfterRemoval(
   const rolled = order.filter((c) => c.initiative !== null && !c.outOfCombat)
   const index = rolled.findIndex((c) => c.id === removedId)
   const remaining = rolled.filter((c) => c.id !== removedId)
-  if (remaining.length === 0) return { round: combat.round, activeId: null }
+  if (remaining.length === 0) return { ...combat, activeId: null }
   if (index === -1 || index >= remaining.length) {
-    return { round: combat.round + 1, activeId: remaining[0].id }
+    return { ...combat, round: combat.round + 1, activeId: remaining[0].id }
   }
-  return { round: combat.round, activeId: remaining[index].id }
+  return { ...combat, activeId: remaining[index].id }
 }
 
-/** Avança para o próximo participante que já rolou; ao passar do último, soma uma rodada. */
+/**
+ * Avança para o próximo participante que já rolou; ao passar do último, soma
+ * uma rodada. Preserva o resto do estado do combate (durações de condições);
+ * quem desconta as durações na virada é `tickConditionRounds`.
+ */
 export function advanceTurn(
   order: Combatant[],
   combat: CampaignCombat | null | undefined,
 ): CampaignCombat {
+  const base: CampaignCombat = { round: 1, activeId: null, ...(combat ?? {}) }
   const active = order.filter((c) => c.initiative !== null && !c.outOfCombat)
-  if (active.length === 0) return { round: combat?.round ?? 1, activeId: null }
+  if (active.length === 0) return { ...base, activeId: null }
 
-  const round = combat?.round ?? 1
-  const index = combat?.activeId ? active.findIndex((c) => c.id === combat.activeId) : -1
+  const round = base.round
+  const index = base.activeId ? active.findIndex((c) => c.id === base.activeId) : -1
 
   // Sem turno ativo (combate começando) ou o ativo saiu de cena: volta ao topo.
-  if (index === -1) return { round: Math.max(1, round), activeId: active[0].id }
-  if (index === active.length - 1) return { round: round + 1, activeId: active[0].id }
-  return { round, activeId: active[index + 1].id }
+  if (index === -1) return { ...base, round: Math.max(1, round), activeId: active[0].id }
+  if (index === active.length - 1) return { ...base, round: round + 1, activeId: active[0].id }
+  return { ...base, activeId: active[index + 1].id }
 }
 
 /** Remove um número final ("Goblin 3" → "Goblin"). */
@@ -175,4 +180,56 @@ export function namesForNewInstances(
     return [trimmed]
   }
   return nextInstanceNames(trimmed, existingNames, safeCount)
+}
+
+// ── Duração de condições ─────────────────────────────────────────────────────
+
+export type ConditionRounds = Record<string, Record<string, number>>
+
+export function parseCombatantId(id: string): { kind: CombatantKind; refId: string } | null {
+  const index = id.indexOf(':')
+  if (index <= 0) return null
+  const kind = id.slice(0, index)
+  if (kind !== 'hero' && kind !== 'creature') return null
+  return { kind, refId: id.slice(index + 1) }
+}
+
+/** Define (ou remove, com null/0) as rodadas restantes de uma condição. */
+export function setConditionRounds(
+  rounds: ConditionRounds | undefined,
+  combatant: string,
+  condition: string,
+  value: number | null,
+): ConditionRounds {
+  const next: ConditionRounds = {}
+  for (const [key, conditions] of Object.entries(rounds ?? {})) next[key] = { ...conditions }
+  const own = { ...(next[combatant] ?? {}) }
+  if (value && value > 0) own[condition] = Math.trunc(value)
+  else delete own[condition]
+  if (Object.keys(own).length > 0) next[combatant] = own
+  else delete next[combatant]
+  return next
+}
+
+/**
+ * Virada de rodada: desconta uma rodada de cada condição com duração. As que
+ * chegam a zero saem do mapa e voltam em `expired`, para serem removidas de
+ * quem as tinha.
+ */
+export function tickConditionRounds(rounds: ConditionRounds | undefined): {
+  next: ConditionRounds
+  expired: Array<{ kind: CombatantKind; refId: string; condition: string }>
+} {
+  const next: ConditionRounds = {}
+  const expired: Array<{ kind: CombatantKind; refId: string; condition: string }> = []
+  for (const [combatant, conditions] of Object.entries(rounds ?? {})) {
+    const parsed = parseCombatantId(combatant)
+    const remaining: Record<string, number> = {}
+    for (const [condition, left] of Object.entries(conditions)) {
+      if (left - 1 > 0) remaining[condition] = left - 1
+      else if (parsed) expired.push({ ...parsed, condition })
+    }
+    if (Object.keys(remaining).length > 0) next[combatant] = remaining
+  }
+  return { next, expired }
 }

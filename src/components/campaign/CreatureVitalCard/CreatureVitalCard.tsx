@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CopyPlus, Dices, Eye, Shield, Skull, Trash2, Plus, X, ExternalLink } from 'lucide-react'
+import { CopyPlus, Dices, Eye, Pencil, Shield, Skull, Trash2, Plus, X, ExternalLink } from 'lucide-react'
 import type { CampaignCreature } from '../../../types/campaign/campaign'
 import { ConditionsModal } from '../ConditionsModal/ConditionsModal'
 import { HpAdjustModal } from '../HpAdjustModal/HpAdjustModal'
@@ -16,6 +16,12 @@ interface CreatureVitalCardProps {
   onDuplicate?: (creatureId: string) => void
   /** Avatar lido da ficha (criaturas da mesa não guardam imagem base64). */
   avatarUrl?: string | null
+  /** É a vez deste participante no combate. */
+  isActiveTurn?: boolean
+  /** Rodadas restantes das condições com duração. */
+  conditionRounds?: Record<string, number>
+  /** Só para o mestre durante o combate. */
+  onSetConditionRounds?: (condition: string, rounds: number | null) => void
 }
 
 export function CreatureVitalCard({
@@ -26,11 +32,27 @@ export function CreatureVitalCard({
   onRemove,
   onDuplicate,
   avatarUrl,
+  isActiveTurn = false,
+  conditionRounds,
+  onSetConditionRounds,
 }: CreatureVitalCardProps) {
   const avatar = avatarUrl || creature.avatar
   const [isHpModalOpen, setIsHpModalOpen] = useState(false)
   const [hpModalMode, setHpModalMode] = useState<'damage' | 'heal' | 'temp'>('damage')
   const [isCondModalOpen, setIsCondModalOpen] = useState(false)
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [nameDraft, setNameDraft] = useState(creature.name)
+
+  function startRename() {
+    setNameDraft(creature.name)
+    setIsRenaming(true)
+  }
+
+  function commitRename() {
+    const next = nameDraft.trim()
+    setIsRenaming(false)
+    if (next && next !== creature.name) onUpdate(creature.id, { name: next.slice(0, 80) })
+  }
 
   const hpPercent = creature.hpMax > 0
     ? Math.max(0, Math.min(100, Math.round((creature.hpCurrent / creature.hpMax) * 100)))
@@ -79,7 +101,12 @@ export function CreatureVitalCard({
     : null
 
   return (
-    <article className={styles.card} aria-label={`Status de ${creature.name}`}>
+    <article
+      className={`${styles.card} ${isActiveTurn ? styles.cardActive : ''}`}
+      aria-label={`Status de ${creature.name}`}
+      aria-current={isActiveTurn ? 'true' : undefined}
+    >
+      {isActiveTurn && <span className={styles.turnTag}>Vez de agir</span>}
       <div className={styles.header}>
         {sheetUrl ? (
           <Link to={sheetUrl} title="Abrir ficha da criatura">
@@ -100,16 +127,48 @@ export function CreatureVitalCard({
         )}
 
         <div className={styles.titleArea}>
-          <h3 className={styles.name} title={creature.name}>
-            {sheetUrl ? (
-              <Link to={sheetUrl} className={styles.link} title="Abrir ficha de monstro">
-                {creature.name}
-                <ExternalLink size={12} strokeWidth={2} />
-              </Link>
-            ) : (
-              creature.name
-            )}
-          </h3>
+          {isRenaming ? (
+            <input
+              className={styles.renameInput}
+              value={nameDraft}
+              onChange={(event) => setNameDraft(event.target.value)}
+              onBlur={commitRename}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') event.currentTarget.blur()
+                if (event.key === 'Escape') {
+                  setNameDraft(creature.name)
+                  setIsRenaming(false)
+                }
+              }}
+              maxLength={80}
+              aria-label={`Novo nome para ${creature.name}`}
+              autoFocus
+            />
+          ) : (
+            <div className={styles.nameRow}>
+              <h3 className={styles.name} title={creature.name}>
+                {sheetUrl ? (
+                  <Link to={sheetUrl} className={styles.link} title="Abrir ficha de monstro">
+                    {creature.name}
+                    <ExternalLink size={12} strokeWidth={2} />
+                  </Link>
+                ) : (
+                  creature.name
+                )}
+              </h3>
+              {isDm && (
+                <button
+                  type="button"
+                  className={styles.renameBtn}
+                  onClick={startRename}
+                  aria-label={`Renomear ${creature.name}`}
+                  title="Renomear em cena"
+                >
+                  <Pencil size={11} strokeWidth={1.75} />
+                </button>
+              )}
+            </div>
+          )}
           <p className={styles.subtitle}>
             {creature.monsterSheetId ? 'Com ficha vinculada' : 'Criatura avulsa'}
           </p>
@@ -183,6 +242,11 @@ export function CreatureVitalCard({
         {(creature.conditions || []).map((cond) => (
           <span key={cond} className={styles.conditionChip}>
             {cond}
+            {conditionRounds?.[cond] ? (
+              <span className={styles.roundsTag} title="Rodadas restantes">
+                {conditionRounds[cond]}r
+              </span>
+            ) : null}
             {isDm && (
               <button
                 type="button"
@@ -251,6 +315,8 @@ export function CreatureVitalCard({
           activeConditions={creature.conditions || []}
           onToggleCondition={handleToggleCondition}
           onClose={() => setIsCondModalOpen(false)}
+          rounds={conditionRounds}
+          onSetRounds={onSetConditionRounds}
         />
       )}
     </article>

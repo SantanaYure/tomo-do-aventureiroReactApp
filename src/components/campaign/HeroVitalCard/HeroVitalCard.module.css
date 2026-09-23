@@ -348,3 +348,32 @@
   text-decoration: none;
   cursor: help;
 }
+
+/* Turno ativo na iniciativa */
+.cardActive {
+  border-color: var(--chip-violet-border);
+  box-shadow: 0 0 0 1px var(--chip-violet-border), var(--shadow-sm);
+}
+
+.turnTag {
+  position: absolute;
+  top: calc(-1 * var(--space-2));
+  left: var(--space-4);
+  padding: 1px var(--space-2);
+  border: 1px solid var(--chip-violet-border);
+  border-radius: var(--radius-sm);
+  background: var(--panel-bg);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chip-violet-text);
+}
+
+/* Rodadas restantes de uma condição */
+.roundsTag {
+  margin-left: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
