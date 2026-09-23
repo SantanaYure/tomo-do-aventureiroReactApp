@@ -21,7 +21,8 @@ vi.mock('../services/firebase', () => ({ db: { type: 'firestore-mock' }, auth: {
 
 const { saveCharacterSheet } = await import('./characterSheetStore')
 const { createDefaultCharacterSheet } = await import('./defaultCharacterSheet')
-const { saveMonsterSheet, createDefaultMonsterSheet } = await import('./monsterSheetStore')
+const { saveMonsterSheet, createDefaultMonsterSheet, createMonsterSheet, normalizeMonsterSheet } = await import('./monsterSheetStore')
+const { SRD_MONSTER_TEMPLATES } = await import('../data/srd/monsters')
 
 type SavedPayload = {
   id: string
@@ -119,5 +120,34 @@ describe('saveMonsterSheet', () => {
 
     expect(getDoc).toHaveBeenCalledTimes(1)
     expect(lastPayload().createdAt).toBe('2025-03-03T00:00:00.000Z')
+  })
+})
+
+
+describe('createMonsterSheet com template do SRD', () => {
+  it('cria a ficha já preenchida com os dados do template, com o resto normalizado', async () => {
+    addDoc.mockClear()
+    const goblin = SRD_MONSTER_TEMPLATES.find((t) => t.id === 'srd-2014-goblin')!
+
+    await createMonsterSheet('uid-1', goblin.data)
+
+    expect(addDoc).toHaveBeenCalledTimes(1)
+    const payload = addDoc.mock.calls[0][1] as { data: import('../types/system/dnd/monsterSheet').MonsterSheet }
+    expect(payload.data.details.species).toBe('Humanoide (goblinoide)')
+    expect(payload.data.details.size).toBe('Pequeno')
+    expect(payload.data.stats.maxHp).toBe(7)
+    expect(payload.data.actions).toHaveLength(2)
+    expect(payload.data.actions[0].name).toBe('Cimitarra')
+    // Campos não informados pelo template caem no default normal.
+    expect(payload.data.details.name).toBe('')
+    expect(payload.data.legendary.pointsPerRound).toBe(3)
+  })
+
+  it('sem template, continua criando a ficha padrão vazia', async () => {
+    addDoc.mockClear()
+    await createMonsterSheet('uid-1')
+
+    const payload = addDoc.mock.calls[0][1] as { data: import('../types/system/dnd/monsterSheet').MonsterSheet }
+    expect(payload.data).toEqual(normalizeMonsterSheet(createDefaultMonsterSheet()))
   })
 })

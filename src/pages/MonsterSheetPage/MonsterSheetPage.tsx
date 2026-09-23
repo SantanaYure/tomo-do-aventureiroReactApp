@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { LinkToCampaignModal } from '../../components/campaign/LinkToCampaignModal/LinkToCampaignModal'
 import { MonsterActionsPanel } from '../../components/monster/MonsterActionsPanel/MonsterActionsPanel'
 import { MonsterFeaturesPanel } from '../../components/monster/MonsterFeaturesPanel/MonsterFeaturesPanel'
 import { MonsterHeader } from '../../components/monster/MonsterHeader/MonsterHeader'
@@ -133,9 +134,13 @@ function mergeDeepPatch<T>(current: T, patch: DeepPartial<T>): T {
 export function MonsterSheetPage() {
   const { uid } = useAuth()
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
+  const ownerUid = searchParams.get('owner')
+  const campaignIdParam = searchParams.get('campaign')
+  const isSpectator = Boolean(ownerUid && uid && ownerUid !== uid)
   const navigate = useNavigate()
   const location = useLocation()
-  const { monster: storedMonster, notFound, error } = useMonsterSheet(uid, id ?? null)
+  const { monster: storedMonster, notFound, error } = useMonsterSheet(uid, id ?? null, ownerUid)
   const {
     sheet,
     commit,
@@ -152,7 +157,7 @@ export function MonsterSheetPage() {
     remoteChangedElsewhere,
     dismissRemoteChange,
   } = useSheetAutosave<MonsterSheet>({
-    uid,
+    uid: isSpectator ? null : uid,
     id: id ?? null,
     remote: storedMonster,
     scope: 'monstro',
@@ -166,6 +171,7 @@ export function MonsterSheetPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showGroupManager, setShowGroupManager] = useState(false)
+  const [showLinkModal, setShowLinkModal] = useState(false)
   const { groups, isLoading: isLoadingGroups } = useSheetGroups(uid)
   const tabBarRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -228,9 +234,10 @@ export function MonsterSheetPage() {
   // edição foi em outro painel.
   const handleSheetChange = useCallback(
     (patch: DeepPartial<MonsterSheet>) => {
+      if (isSpectator) return
       commit((current) => mergeDeepPatch(current, patch))
     },
-    [commit],
+    [commit, isSpectator],
   )
 
   function showRestFeedback(message: string) {
@@ -248,18 +255,19 @@ export function MonsterSheetPage() {
   }
 
   function handleShortRest() {
-    if (!sheet) return
+    if (!sheet || isSpectator) return
     handleSheetChange(applyRestToMonsterSheet(sheet, 'short'))
     showRestFeedback('Recursos restaurados (descanso curto)')
   }
 
   function handleLongRest() {
-    if (!sheet) return
+    if (!sheet || isSpectator) return
     handleSheetChange(applyRestToMonsterSheet(sheet, 'long'))
     showRestFeedback('Recursos restaurados (descanso longo)')
   }
 
   function handleToggleEditMode() {
+    if (isSpectator) return
     setIsEditing((previous) => !previous)
   }
 
@@ -272,6 +280,11 @@ export function MonsterSheetPage() {
     setIsDeleting(true)
     discardPending()
     try {
+      // Mantém as instâncias em cena, mas sem link para a ficha excluída.
+      if (sheet?.campaignId) {
+        const { releaseMonsterSheetFromCampaign } = await import('../../store/campaignStore')
+        await releaseMonsterSheetFromCampaign(sheet.campaignId, uid, id)
+      }
       await deleteMonsterSheet(uid, id)
       setShowDeleteDialog(false)
       navigate('/')
@@ -407,14 +420,36 @@ export function MonsterSheetPage() {
   return (
     <div className={styles.page} data-saving-status={savingStatus}>
       <div className={styles.topBar}>
-        <Link className={styles.backLink} to="/">← Voltar</Link>
+        <Link
+          className={styles.backLink}
+          to={sheet?.campaignId || campaignIdParam ? `/mesas/${sheet?.campaignId || campaignIdParam}` : '/fichas'}
+        >
+          ← {sheet?.campaignName ? `Voltar para Mesa: ${sheet.campaignName}` : 'Voltar para Fichas'}
+        </Link>
+
+        {(sheet?.campaignId || campaignIdParam) && (
+          <Link
+            to={`/mesas/${sheet?.campaignId || campaignIdParam}`}
+            className={styles.campaignLinkBadge}
+            title="Ir para a Mesa da Campanha"
+          >
+            ♜ Mesa: {sheet?.campaignName || 'Mesa Ativa'}
+          </Link>
+        )}
+
+        {isSpectator && (
+          <span className={styles.spectatorBadge}>
+            Visualizando como Visitante (Modo Leitura)
+          </span>
+        )}
+
         <div className={styles.topBarActions}>
           <div className={styles.historyControls}>
             <button
               type="button"
               className={styles.historyButton}
               onClick={undo}
-              disabled={!canUndo}
+              disabled={!canUndo || isSpectator}
               title="Desfazer (Ctrl+Z)"
               aria-label="Desfazer última alteração"
             >
@@ -424,7 +459,7 @@ export function MonsterSheetPage() {
               type="button"
               className={styles.historyButton}
               onClick={redo}
-              disabled={!canRedo}
+              disabled={!canRedo || isSpectator}
               title="Refazer (Ctrl+Shift+Z)"
               aria-label="Refazer alteração desfeita"
             >
@@ -453,9 +488,11 @@ export function MonsterSheetPage() {
           <SheetActionsMenu
             onExport={handleExport}
             onDelete={handleRequestDelete}
+            onLinkToCampaign={() => setShowLinkModal(true)}
+            linkToCampaignLabel={sheet?.campaignId ? 'Gerenciar Vínculo com Mesa' : 'Vincular à Mesa'}
             exportLabel={currentSheet.details.kind === 'npc' ? 'Exportar NPC' : 'Exportar Monstro'}
             deleteLabel={currentSheet.details.kind === 'npc' ? 'Excluir NPC' : 'Excluir Monstro'}
-            disabled={!sheet || isDeleting}
+            disabled={!sheet || isDeleting || isSpectator}
           />
         </div>
       </div>
@@ -483,10 +520,10 @@ export function MonsterSheetPage() {
       </div>
 
       <div className={styles.restBar}>
-        <button type="button" className={styles.restButton} onClick={handleShortRest}>
+        <button type="button" className={styles.restButton} onClick={handleShortRest} disabled={isSpectator}>
           Descanso curto
         </button>
-        <button type="button" className={styles.restButton} onClick={handleLongRest}>
+        <button type="button" className={styles.restButton} onClick={handleLongRest} disabled={isSpectator}>
           Descanso longo
         </button>
         <span aria-live="polite" aria-atomic="true" className={styles.restFeedback}>
@@ -517,6 +554,7 @@ export function MonsterSheetPage() {
             className={styles.editToggleButton}
             onClick={handleToggleEditMode}
             aria-controls={activePanelId}
+            disabled={isSpectator}
           >
             {isEditing ? '✓ Concluir edição' : '✎ Editar ficha'}
           </button>
@@ -569,6 +607,18 @@ export function MonsterSheetPage() {
             </div>
           </div>
         </div>
+      )}
+      {showLinkModal && uid && sheet && id && (
+        <LinkToCampaignModal
+          userId={uid}
+          sheetType={sheet.details.kind === 'npc' ? 'npc' : 'monster'}
+          sheetId={id}
+          sheetName={sheet.details.name || 'Criatura'}
+          sheetData={sheet}
+          currentCampaignId={sheet.campaignId}
+          currentCampaignName={sheet.campaignName}
+          onClose={() => setShowLinkModal(false)}
+        />
       )}
     </div>
   )

@@ -23,6 +23,9 @@ import { useMonsterSheets } from '../../hooks/useMonsterSheets'
 import { useSheetGroups } from '../../hooks/useSheetGroups'
 import { GroupManagerModal } from '../../components/GroupManagerModal/GroupManagerModal'
 import { SheetActionsMenu } from '../../components/SheetActionsMenu/SheetActionsMenu'
+import { LinkToCampaignModal } from '../../components/campaign/LinkToCampaignModal/LinkToCampaignModal'
+import { SrdMonsterPicker } from '../../components/SrdMonsterPicker/SrdMonsterPicker'
+import type { SrdMonsterTemplate } from '../../data/srd/monsters'
 import styles from './CharactersPage.module.css'
 
 const NO_GROUP_KEY = '__no_group__'
@@ -133,9 +136,10 @@ interface CharacterSheetItemProps {
   sheet: StoredCharacterSheet
   onExport: () => void
   onDelete: () => void
+  onLink?: () => void
 }
 
-function CharacterSheetItem({ sheet, onExport, onDelete }: CharacterSheetItemProps) {
+function CharacterSheetItem({ sheet, onExport, onDelete, onLink }: CharacterSheetItemProps) {
   const name = sheet.data.character.name || '(sem nome)'
   const race = sheet.data.character.race
   const avatar = sheet.data.character.avatar
@@ -145,6 +149,8 @@ function CharacterSheetItem({ sheet, onExport, onDelete }: CharacterSheetItemPro
     .map((c) => (c.level > 0 ? `${c.className} ${c.level}` : c.className))
     .join(' · ')
   const meta = [race, classNames].filter(Boolean).join(' · ') || (totalLevel > 0 ? `Nível ${totalLevel}` : null)
+  const campaignName = sheet.data.campaignName
+  const campaignId = sheet.data.campaignId
 
   return (
     <li className={styles.sheetItem}>
@@ -153,10 +159,20 @@ function CharacterSheetItem({ sheet, onExport, onDelete }: CharacterSheetItemPro
         <span className={styles.sheetText}>
           <span className={styles.sheetName}>{name}</span>
           {meta && <span className={styles.sheetMeta}>{meta}</span>}
+          {campaignName && (
+            <span className={styles.campaignBadge}>
+              ♜ {campaignName}
+            </span>
+          )}
         </span>
       </Link>
       <div className={styles.sheetActions}>
-        <SheetActionsMenu onExport={onExport} onDelete={onDelete} />
+        <SheetActionsMenu
+          onExport={onExport}
+          onDelete={onDelete}
+          onLinkToCampaign={onLink}
+          linkToCampaignLabel={campaignId ? 'Gerenciar Vínculo com Mesa' : 'Vincular à Mesa'}
+        />
       </div>
     </li>
   )
@@ -166,14 +182,17 @@ interface MonsterSheetItemProps {
   sheet: StoredMonsterSheet
   onExport: () => void
   onDelete: () => void
+  onLink?: () => void
 }
 
-function MonsterSheetItem({ sheet, onExport, onDelete }: MonsterSheetItemProps) {
+function MonsterSheetItem({ sheet, onExport, onDelete, onLink }: MonsterSheetItemProps) {
   const name = sheet.data.details.name || '(sem nome)'
   const avatar = sheet.data.details.avatar
   const fallbackLabel = sheet.data.details.kind === 'npc' ? 'NPC' : 'MON'
   const cr = sheet.data.traits.challengeRating.trim()
   const meta = cr ? `ND ${cr}` : null
+  const campaignName = sheet.data.campaignName
+  const campaignId = sheet.data.campaignId
 
   return (
     <li className={styles.sheetItem}>
@@ -182,10 +201,20 @@ function MonsterSheetItem({ sheet, onExport, onDelete }: MonsterSheetItemProps) 
         <span className={styles.sheetText}>
           <span className={styles.sheetName}>{name}</span>
           {meta && <span className={styles.sheetMeta}>{meta}</span>}
+          {campaignName && (
+            <span className={styles.campaignBadge}>
+              ♜ {campaignName}
+            </span>
+          )}
         </span>
       </Link>
       <div className={styles.sheetActions}>
-        <SheetActionsMenu onExport={onExport} onDelete={onDelete} />
+        <SheetActionsMenu
+          onExport={onExport}
+          onDelete={onDelete}
+          onLinkToCampaign={onLink}
+          linkToCampaignLabel={campaignId ? 'Gerenciar Vínculo com Mesa' : 'Vincular à Mesa'}
+        />
       </div>
     </li>
   )
@@ -262,11 +291,20 @@ export function CharactersPage() {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [showGroupManager, setShowGroupManager] = useState(false)
+  const [showSrdPicker, setShowSrdPicker] = useState(false)
   const [typeFilter, setTypeFilter] = useState<SheetTypeFilter>('all')
   const [groupFilter, setGroupFilter] = useState<string>('all')
 
   const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
+  const [linkingSheet, setLinkingSheet] = useState<{
+    type: 'character' | 'monster' | 'npc'
+    id: string
+    name: string
+    data: any
+    campaignId?: string | null
+    campaignName?: string | null
+  } | null>(null)
   const importFileInputRef = useRef<HTMLInputElement>(null)
 
   const groupNameById = useMemo(() => {
@@ -416,6 +454,19 @@ export function CharactersPage() {
     }
   }
 
+  async function handleCreateMonsterFromSrd(template: SrdMonsterTemplate) {
+    if (!uid) return
+    try {
+      const stored = await createMonsterSheet(uid, template.data)
+      setShowSrdPicker(false)
+      navigate(`/monstro/${stored.id}`, {
+        state: { startEditing: true },
+      })
+    } catch (err) {
+      console.error('Erro ao criar monstro/NPC a partir do SRD:', err)
+    }
+  }
+
   function requestDeleteSheet(id: string, name: string) {
     setPendingDelete({ type: 'character', id, name })
   }
@@ -426,12 +477,24 @@ export function CharactersPage() {
 
   async function confirmDelete() {
     if (!pendingDelete || !uid) return
-    if (pendingDelete.type === 'character') {
-      await deleteCharacterSheet(uid, pendingDelete.id)
-    } else {
-      await deleteMonster(uid, pendingDelete.id)
+    const { releaseCharacterSheetFromCampaign, releaseMonsterSheetFromCampaign } =
+      await import('../../store/campaignStore')
+    try {
+      if (pendingDelete.type === 'character') {
+        // Libera o herói na mesa antes, para não sobrar um personagem fantasma.
+        const campaignId = sheets.find((s) => s.id === pendingDelete.id)?.data.campaignId
+        if (campaignId) await releaseCharacterSheetFromCampaign(campaignId, uid, pendingDelete.id)
+        await deleteCharacterSheet(uid, pendingDelete.id)
+      } else {
+        const campaignId = monsters.find((m) => m.id === pendingDelete.id)?.data.campaignId
+        if (campaignId) await releaseMonsterSheetFromCampaign(campaignId, uid, pendingDelete.id)
+        await deleteMonster(uid, pendingDelete.id)
+      }
+      setPendingDelete(null)
+    } catch (err) {
+      console.error('Erro ao excluir ficha:', err)
+      setPendingDelete(null)
     }
-    setPendingDelete(null)
   }
 
   function handleExportSheet(sheet: StoredCharacterSheet) {
@@ -546,6 +609,16 @@ export function CharactersPage() {
             sheet={sheet}
             onExport={() => handleExportSheet(sheet)}
             onDelete={() => requestDeleteSheet(sheet.id, sheet.data.character.name)}
+            onLink={() =>
+              setLinkingSheet({
+                type: 'character',
+                id: sheet.id,
+                name: sheet.data.character.name,
+                data: sheet.data,
+                campaignId: sheet.data.campaignId,
+                campaignName: sheet.data.campaignName,
+              })
+            }
           />
         ))}
         {bucket.monsters.map((monster) => (
@@ -554,6 +627,16 @@ export function CharactersPage() {
             sheet={monster}
             onExport={() => handleExportMonster(monster)}
             onDelete={() => requestDeleteMonster(monster.id, monster.data.details.name)}
+            onLink={() =>
+              setLinkingSheet({
+                type: 'monster',
+                id: monster.id,
+                name: monster.data.details.name,
+                data: monster.data,
+                campaignId: monster.data.campaignId,
+                campaignName: monster.data.campaignName,
+              })
+            }
           />
         ))}
         {bucket.npcs.map((npc) => (
@@ -562,6 +645,16 @@ export function CharactersPage() {
             sheet={npc}
             onExport={() => handleExportMonster(npc)}
             onDelete={() => requestDeleteMonster(npc.id, npc.data.details.name)}
+            onLink={() =>
+              setLinkingSheet({
+                type: 'npc',
+                id: npc.id,
+                name: npc.data.details.name,
+                data: npc.data,
+                campaignId: npc.data.campaignId,
+                campaignName: npc.data.campaignName,
+              })
+            }
           />
         ))}
       </ul>
@@ -596,6 +689,13 @@ export function CharactersPage() {
               disabled={isLoadingGroups}
             >
               Gerenciar mesas
+            </button>
+            <button
+              type="button"
+              className={styles.tertiaryAction}
+              onClick={() => setShowSrdPicker(true)}
+            >
+              Monstro do SRD
             </button>
             <button
               type="button"
@@ -715,6 +815,13 @@ export function CharactersPage() {
         </p>
       )}
 
+      {showSrdPicker && uid && (
+        <SrdMonsterPicker
+          onSelect={handleCreateMonsterFromSrd}
+          onClose={() => setShowSrdPicker(false)}
+        />
+      )}
+
       {showGroupManager && uid && (
         <GroupManagerModal
           uid={uid}
@@ -748,6 +855,19 @@ export function CharactersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {linkingSheet && uid && (
+        <LinkToCampaignModal
+          userId={uid}
+          sheetType={linkingSheet.type}
+          sheetId={linkingSheet.id}
+          sheetName={linkingSheet.name}
+          sheetData={linkingSheet.data}
+          currentCampaignId={linkingSheet.campaignId}
+          currentCampaignName={linkingSheet.campaignName}
+          onClose={() => setLinkingSheet(null)}
+        />
       )}
     </div>
   )

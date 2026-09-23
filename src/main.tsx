@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.js'
 import { ThemeProvider } from './context/ThemeContext'
+import { RulesetProvider } from './context/RulesetContext'
 import { AuthProvider } from './context/AuthContext'
 import { purgeUnusableSheetDrafts } from './utils/sheetDraft'
 
@@ -14,9 +15,11 @@ purgeUnusableSheetDrafts()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <RulesetProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </RulesetProvider>
     </ThemeProvider>
   </StrictMode>,
 )

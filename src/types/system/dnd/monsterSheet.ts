@@ -109,6 +109,8 @@ export interface MonsterSheet {
     systemId: MonsterSystemId
 
     groupId?: string
+    campaignId?: string | null
+    campaignName?: string | null
 
     details: {
         name: string

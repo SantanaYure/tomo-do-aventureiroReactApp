@@ -4,6 +4,8 @@ import styles from './SheetActionsMenu.module.css'
 interface SheetActionsMenuProps {
   onExport: () => void
   onDelete: () => void
+  onLinkToCampaign?: () => void
+  linkToCampaignLabel?: string
   exportLabel?: string
   deleteLabel?: string
   ariaLabel?: string
@@ -13,6 +15,8 @@ interface SheetActionsMenuProps {
 export function SheetActionsMenu({
   onExport,
   onDelete,
+  onLinkToCampaign,
+  linkToCampaignLabel = 'Vincular à Mesa',
   exportLabel = 'Exportar',
   deleteLabel = 'Excluir',
   ariaLabel = 'Mais ações',
@@ -54,6 +58,16 @@ export function SheetActionsMenu({
       </button>
       {open && (
         <div className={styles.dropdown} role="menu">
+          {onLinkToCampaign && (
+            <button
+              type="button"
+              role="menuitem"
+              className={styles.item}
+              onClick={() => { setOpen(false); onLinkToCampaign() }}
+            >
+              {linkToCampaignLabel}
+            </button>
+          )}
           <button
             type="button"
             role="menuitem"

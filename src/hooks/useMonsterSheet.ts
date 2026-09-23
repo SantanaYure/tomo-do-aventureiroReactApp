@@ -10,6 +10,7 @@ import {
 export function useMonsterSheet(
   uid: string | null,
   id: string | null,
+  ownerUid?: string | null,
 ): {
   monster: StoredMonsterSheet | null
   loading: boolean
@@ -22,7 +23,8 @@ export function useMonsterSheet(
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
-    if (!uid || !id) {
+    const effectiveUid = ownerUid || uid
+    if (!effectiveUid || !id) {
       setMonster(null)
       setLoading(false)
       setNotFound(true)
@@ -33,7 +35,7 @@ export function useMonsterSheet(
     setNotFound(false)
     setError(null)
 
-    const docRef = doc(db, 'users', uid, 'monsterSheets', id)
+    const docRef = doc(db, 'users', effectiveUid, 'monsterSheets', id)
 
     const unsubscribe = onSnapshot(
       docRef,
@@ -60,7 +62,7 @@ export function useMonsterSheet(
     )
 
     return unsubscribe
-  }, [uid, id])
+  }, [uid, id, ownerUid])
 
   return { monster, loading, notFound, error }
 }
