@@ -248,22 +248,16 @@
   gap: var(--space-6);
 }
 
+/*
+ * Até 4 cards por fileira. A coluna mínima de 13.5rem faz caber exatamente 4
+ * na largura máxima da página (68rem) e reduz sozinha para 3, 2 ou 1 quando a
+ * área útil encolhe (barra lateral, tablet, celular), sem depender da largura
+ * da janela. auto-fill mantém a grade de 4 mesmo com poucos cards.
+ */
 .vitalsGrid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr));
   gap: var(--space-4);
-}
-
-@media (min-width: 640px) {
-  .vitalsGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 1024px) {
-  .vitalsGrid {
-    grid-template-columns: repeat(3, 1fr);
-  }
 }
 
 .creaturesSection {

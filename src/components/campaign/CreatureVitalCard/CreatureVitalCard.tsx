@@ -96,7 +96,7 @@ export function CreatureVitalCard({
         )}
 
         <div className={styles.titleArea}>
-          <h3 className={styles.name}>
+          <h3 className={styles.name} title={creature.name}>
             {sheetUrl ? (
               <Link to={sheetUrl} className={styles.link} title="Abrir ficha de monstro">
                 {creature.name}
@@ -107,7 +107,7 @@ export function CreatureVitalCard({
             )}
           </h3>
           <p className={styles.subtitle}>
-            {creature.monsterSheetId ? 'Monstro / NPC Vinculado' : 'Criatura / Monstro em Cena'}
+            {creature.monsterSheetId ? 'Com ficha vinculada' : 'Criatura avulsa'}
           </p>
         </div>
 
@@ -144,13 +144,13 @@ export function CreatureVitalCard({
         </div>
         <div className={styles.statBadge}>
           <Eye size={14} strokeWidth={1.75} />
-          <span>Percepção</span>
+          <abbr title="Percepção passiva">Perc.</abbr>
           <span className={styles.statVal}>{creature.passivePerception ?? 10}</span>
         </div>
         {typeof creature.initiative === 'number' && (
           <div className={styles.statBadge}>
             <Dices size={14} strokeWidth={1.75} />
-            <span>Iniciativa</span>
+            <abbr title="Iniciativa">Inic.</abbr>
             <span className={styles.statVal}>{creature.initiative}</span>
           </div>
         )}

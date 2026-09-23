@@ -138,17 +138,20 @@
   border-color: var(--chip-violet-border);
 }
 
+/* Colunas mínimas pequenas: cabe CA + Perc. lado a lado no card de 1/4 da grade. */
 .statsRow {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(5.25rem, 1fr));
   gap: var(--space-2);
 }
 
 .statBadge {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-2);
+  white-space: nowrap;
   background: var(--item-bg);
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-md);
@@ -339,4 +342,9 @@
 .actionTemp:hover {
   border-color: var(--temp-solid);
   color: var(--temp-solid);
+}
+
+.statBadge abbr {
+  text-decoration: none;
+  cursor: help;
 }

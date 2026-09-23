@@ -200,7 +200,7 @@ export function HeroVitalCard({
         </div>
         <div className={styles.statBadge}>
           <Eye size={14} strokeWidth={1.75} />
-          <span>Percepção</span>
+          <abbr title="Percepção passiva">Perc.</abbr>
           <span className={styles.statVal}>{vitals.passivePerception}</span>
         </div>
       </div>
