@@ -278,7 +278,17 @@ Se durante a análise for identificado um problema crítico (segurança, dado co
 
 ## Inventário de Referência (snapshot — validar contra o código atual)
 
-> **Atenção:** Esta seção representa o estado observado em 2026-05-03. Antes de citar qualquer item desta seção em uma análise, **validar contra o código atual**. Se algo divergir, seguir o código e registrar a divergência.
+> **Atenção:** Esta seção representa o estado observado em 2026-05-03, com as divergências conhecidas até 2026-09-22 anotadas logo abaixo. Antes de citar qualquer item desta seção em uma análise, **validar contra o código atual**. Se algo divergir, seguir o código e registrar a divergência.
+
+### Atualização 2026-09-22 (o que mudou desde o snapshot)
+
+- **Testes existem**: Vitest 3 + Testing Library + jsdom (`npm run test`, `npm run test:watch`), `npm run typecheck`, `npm run smoke` e `npm run test:rules` (regras do Firestore no emulador, `tests/rules/`, config `vitest.rules.config.ts`). O CI (`.github/workflows/ci.yml`) roda os jobs `verify` e `firestore-rules` em PR e em push na `main`.
+- **Mesas (campanhas) implementadas**: `src/pages/CampaignsPage/`, `src/pages/CampaignDetailPage/`, `src/components/campaign/`, `src/store/campaignStore.ts`, `src/hooks/useCampaign(s).ts`, `src/types/campaign/`. As pastas `SalaDeJogoPage/`, `SalasPage/`, `SessionPage/`, `SessionRoomPage/`, `session/`, `gameRoom/`, `realtime/` continuam vazias; a feature de sala virou "mesas" nesses outros caminhos.
+- **Firestore**: coleção global `campaigns/{id}` (com `creatures[]` e `combat`) e subcoleção `members/{uid}`. `firestore.rules` deixou de ter regra única: há regras para fichas vinculadas a mesas e para `campaigns/**`.
+- **SRD e preferência de regras**: `src/context/RulesetContext.tsx`, `src/utils/ruleset.ts` (`tomo:ruleset`), `src/data/srd/monsters.ts`, `src/components/SrdMonsterPicker/`.
+- **Iniciativa**: `src/utils/initiative.ts` (funções puras) e `src/components/campaign/InitiativeTracker/`.
+- **Fim de linha**: `.gitattributes` com `text=auto`.
+- `CLAUDE.md` está atualizado com esses fluxos; em caso de dúvida, ele e o código têm prioridade sobre este inventário.
 
 ### Stack verificada
 

@@ -47,9 +47,18 @@ src/
     AppearancePanel/ ← tema, cor de marca (presets/caixa de cores/hex-rgb-rgba) e tipografia (Literária/Moderna)
     UserAvatar/     ← avatar do usuário: foto do provedor → Gravatar (hash do e-mail) → inicial do 1º nome
     AvatarCropper/ ProtectedRoute/ PrivacyPolicyModal/
+    SrdMonsterPicker/ ← modal "Monstro do SRD" da lista de fichas (filtra pela preferência de regras)
+    campaign/       ← mesas: CampaignCard (menu editar/excluir), Create/Join/DeleteCampaignModal,
+                       HeroVitalCard, CreatureVitalCard (replicar), AddCreatureModal (clique adiciona),
+                       InitiativeTracker (ordem, turno, fora do combate), MemberCard, LinkToCampaignModal,
+                       SelectCharacterModal, ConditionsModal, HpAdjustModal
     RoomHeader/ RoomInstancesPanel/ RoomMembersPanel/ SheetGallery/  ← VAZIOS
   context/
-    AuthContext.tsx → provider de autenticação + hook useAuth()
+    AuthContext.tsx    → provider de autenticação + hook useAuth()
+    ThemeContext.tsx   → tema, cor de marca e tipografia
+    RulesetContext.tsx → preferência de regras do SRD: '2014' | '2024' | 'all'
+  data/srd/
+    monsters.ts        → seed de monstros do SRD 5.1/5.2 (CC-BY-4.0) já no formato MonsterSheet
   hooks/
     index.ts
     useCharacterSheet.ts   → snapshot Firestore de uma ficha por id
@@ -57,6 +66,9 @@ src/
     useMonsterSheet.ts     → snapshot Firestore de um monstro por id
     useMonsterSheets.ts    → lista de monstros do usuário
     useFirestoreSearch.ts  → busca prefixada no Firestore com debounce (300ms)
+    useCampaign.ts / useCampaigns.ts → mesa aberta (doc + membros) e lista de mesas do usuário
+    useCreatureAvatars.ts  → avatar das criaturas lido da ficha (não fica na mesa, ver Riscos)
+    useStaleCampaignLinkCleanup.ts → limpa vínculo órfão com a mesa ao abrir a própria ficha
   pages/
     Home/             → página inicial
     CharactersPage/   → lista de PJs, monstros e NPCs
@@ -66,6 +78,8 @@ src/
     NewCharacterPage/    → não utilizado (criação é feita direto na CharactersPage)
     LoginPage/ RegisterPage/ EmailVerificationPage/ VerifyEmailPage/
     PrivacyPolicyPage/ NotFound/
+    CampaignsPage/       → lista de mesas (/mesas)
+    CampaignDetailPage/  → mesa (/mesas/:id): iniciativa, heróis, criaturas, integrantes
     SalaDeJogoPage/ SalasPage/ SessionPage/ SessionRoomPage/ ← VAZIOS
   realtime/
     session/          → VAZIO — feature de sessão não implementada
@@ -76,6 +90,7 @@ src/
     characterSheetStore.ts  → CRUD + normalização de fichas de personagem
     monsterSheetStore.ts    → CRUD + normalização de fichas de monstro
     defaultCharacterSheet.ts → valores padrão de uma ficha vazia
+    campaignStore.ts         → mesas, membros, criaturas, iniciativa, vínculo de fichas, exclusão
   styles/
     theme.css           → design tokens globais (CSS custom properties)
     panel.module.css    → estilos compartilhados entre painéis
@@ -84,14 +99,20 @@ src/
     system/dnd/         → interfaces do modelo de dados D&D
       CharacterSheet.ts Character.ts Attack.ts Spell.ts Resource.ts
       Inventory.ts Attribute.ts Skill.ts monsterSheet.ts e outros
+    campaign/campaign.ts → Campaign, CampaignMember, CampaignCreature, CampaignCombat
+    system/dnd/Ruleset.ts → '2014' | '2024' | 'all'
     gameRoom/           → VAZIO
     realtime/           → VAZIO
   utils/
     recentlyOpened.ts   → registro de abertura recente em localStorage
     weaponCatalog.ts    → utilitários de proficiências com armas
     appearance.ts       → cor de marca + tipografia: aplica custom properties no <html>, valida cor, persiste
+    initiative.ts       → regras puras de iniciativa (rolagem, ordem, turno) e numeração de réplicas
+    ruleset.ts          → leitura/rótulos da preferência de regras (tomo:ruleset)
+    inviteCode.ts       → código de convite das mesas
   App.tsx               → definição das rotas e layout principal
-  main.tsx              → ponto de entrada (monta AuthProvider + App)
+  main.tsx              → ponto de entrada (ThemeProvider > RulesetProvider > AuthProvider > App)
+tests/rules/            → testes das regras do Firestore no emulador (npm run test:rules)
   index.css             → reset global e importação de theme.css
 ```
 
@@ -169,6 +190,19 @@ src/
 
 ---
 
+### Mesas (campanhas)
+- **Papéis**: o mestre (`dmId`) controla criaturas, iniciativa, turno e integrantes; o jogador edita só o próprio documento de membro (vínculo de ficha, vitais, iniciativa); o "ajudante" (`canManageHeroes`) pode desvincular heróis de outros.
+- **Mestre como jogador**: o mestre só aparece em "Heróis na Sessão" e na iniciativa se marcar `participatesAsPlayer` (card dele na aba Integrantes). Ter ficha vinculada não basta.
+- **Criaturas** ficam num array em `campaigns/{id}.creatures`. Toda escrita nele passa por `mutateCreatures` (transação), nunca pelo estado local, para duas ações rápidas não se sobrescreverem.
+- **Réplica**: `duplicateCreatureInCampaign` e a quantidade do `AddCreatureModal` numeram os nomes (`initiative.ts → namesForNewInstances/nextInstanceNames`).
+- **Iniciativa**: valor em `creature.initiative` e `member.initiative` (fora de `vitals`, que a sincronização da ficha reescreve). Turno em `campaign.combat = { round, activeId }`, com ids `hero:{uid}` e `creature:{id}`. `outOfCombat` tira da ordem sem tirar de cena.
+- **Limpeza de vínculo é sempre opcional**: remover jogador, desvincular, excluir mesa etc. gravam primeiro o essencial; escrever na ficha de outra pessoa pode ser negado e nunca derruba a operação (`commitWithOptionalWrites`, `safeGetDoc`). O que sobrar órfão é limpo quando o dono abre a ficha (`useStaleCampaignLinkCleanup`).
+- **Excluir ficha vinculada** libera o herói (`releaseCharacterSheetFromCampaign`) ou mantém as criaturas em cena sem link (`releaseMonsterSheetFromCampaign`). **Excluir mesa** apaga membros + mesa no mesmo batch (o Firestore não apaga subcoleções sozinho).
+
+### SRD e preferência de regras
+- `tomo:ruleset` (Configurações → Aparência) filtra o conteúdo do SRD: D&D 5E (2014), D&D 5.5 (2024) ou Ambos.
+- `src/data/srd/monsters.ts` é um seed pequeno, conferido contra o SRD oficial. O SRD 5.2 não tem Goblin nem Orc como monstro. Conteúdo CC-BY-4.0: manter a atribuição (rodapé do picker e página de créditos).
+
 ## Modelo de dados e persistência
 
 ### Firestore
@@ -187,12 +221,24 @@ users/{uid}/monsterSheets/{monsterId}
   updatedAt: string (ISO)
 ```
 
-Regra de segurança: cada usuário só pode ler e escrever seus próprios documentos (`request.auth.uid == userId`).
+Mesas (coleção global):
+```
+campaigns/{campaignId}
+  name, description, dmId, dmName, inviteCode, memberIds[], archived
+  creatures: CampaignCreature[]   ← sem avatar base64 (limite de 1 MB do documento)
+  combat: { round, activeId } | null
+campaigns/{campaignId}/members/{uid}
+  role 'dm' | 'player', canManageHeroes, participatesAsPlayer (só mestre)
+  characterSheetId/Name/Class/AvatarUrl, vitals, initiative, outOfCombat
+```
+
+Regras de segurança (`firestore.rules`, testadas em `tests/rules/`): cada usuário lê e escreve os próprios dados; membros da mesa leem as fichas vinculadas a ela; o mestre pode limpar o vínculo e espelhar PV nas fichas dos jogadores; o jogador só grava campos do próprio documento de membro.
 
 ### LocalStorage
 - `tomo:theme` → `'light' | 'dark' | 'parchment'` (preferência de tema)
 - `tomo:brand-color` → cor de marca (hex/rgb/rgba); ausente = destaque padrão do tema
 - `tomo:font` → `'literary' | 'modern'` (tipografia)
+- `tomo:ruleset` → `'2014' | '2024' | 'all'` (conteúdo do SRD exibido)
 - `tomo:recentlyOpened` → map de `{id: ISOTimestamp}` com últimas aberturas
 - `tomo-char-order-{uid}` → ordem customizada de personagens
 - `tomo-monster-order-{uid}` → ordem customizada de monstros
@@ -268,12 +314,16 @@ npm run test:watch
 # Verificação de tipos TypeScript
 npm run typecheck
 
+# Testes das regras do Firestore no emulador (precisa de Java 21; baixa o
+# emulador na primeira vez)
+npm run test:rules
+
 # Smoke test contra uma URL implantada (pós-deploy)
 npm run smoke -- https://tomo-do-aventureiro-react-app.vercel.app
 ```
 
 **CI/CD** (GitHub Actions + Vercel) — ver [docs/ci-cd.md](docs/ci-cd.md):
-- PR para `main`/`develop`: `ci.yml` roda o job **`verify`** (lint + typecheck + test + build + `npm audit`). O Preview Deployment é criado pela **integração nativa da Vercel** (check `Vercel`), não por workflow.
+- PR para `main`/`develop` e push na `main`: `ci.yml` roda o job **`verify`** (lint + typecheck + test + build + `npm audit`) e o job **`firestore-rules`** (regras no emulador). O Preview Deployment é criado pela **integração nativa da Vercel** (check `Vercel`), não por workflow.
 - `deploy-staging.yml` / `deploy-production.yml` / `rollback.yml` implementam deploy 100% via Vercel CLI, mas ficam **dormentes** (job `guard`) até o secret `VERCEL_TOKEN` existir. Hoje o deploy segue como estava (Vercel nativo + `vercel --prod` manual). `monitoring.yml` roda smoke contra produção a cada 6h.
 - Testes rodam **sem `.env`**: `src/test/setup.ts` mocka `src/services/firebase.ts`.
 - Não há suíte E2E. jsdom não cobre layout real, media queries nem Firebase autenticado — validar no navegador (Preview) continua necessário.
@@ -351,6 +401,9 @@ Não remover essas pastas sem confirmar com o dono do projeto — podem represen
 ### Riscos comuns
 - **Avatar muito grande**: imagens base64 de alta resolução aumentam o tamanho do documento Firestore; sempre usar o `AvatarCropper` antes de salvar
 - **Migrations de schema**: ao adicionar novos campos obrigatórios, garantir que `normalizeCharacterSheet`/`normalizeMonsterSheet` inicialize o campo com um valor padrão para documentos antigos
+- **Documento da mesa tem limite de 1 MB**: `campaign.creatures` vive num único documento. Nunca guardar imagem base64 nas criaturas (`creatureAvatarForStorage` descarta); o avatar vem da ficha via `useCreatureAvatars`.
+- **Mudou `firestore.rules`?** Rode/atualize `tests/rules/` e publique com `firebase deploy --only firestore:rules`. Os bugs mais graves das mesas vieram de regras (leitura negada derrubando o batch inteiro).
+- **Pasta dentro do OneDrive**: a sincronização trava arquivos `.lock` do git e bloqueia exclusões. Preferir o projeto fora do OneDrive.
 - **ESLint cobre apenas .js/.jsx**: o `eslint.config.js` atual não inclui `.ts/.tsx`. Erros de lint não são capturados para TypeScript via `npm run lint`
 
 ---
@@ -364,6 +417,7 @@ Não remover essas pastas sem confirmar com o dono do projeto — podem represen
 - [ ] Se alterou lógica de salvamento, confirmou que o campo `name_lower` ainda é gerado corretamente?
 - [ ] Adicionou ou atualizou testes para o comportamento alterado?
 - [ ] Rodou `npm run test` e `npm run typecheck`?
+- [ ] Se alterou `firestore.rules` ou uma escrita em `campaignStore.ts`, atualizou `tests/rules/` e publicou as regras?
 - [ ] Nenhuma chave Firebase ou secret foi incluída no código?
 - [ ] Estilos usam variáveis CSS de `theme.css` em vez de valores hardcoded?
 
@@ -381,4 +435,5 @@ Não remover essas pastas sem confirmar com o dono do projeto — podem represen
 - Há um `.venv` Python na raiz — provavelmente residual de alguma ferramenta auxiliar; não faz parte do projeto frontend.
 - O deploy no Vercel usa SPA fallback: todas as rotas desconhecidas retornam `index.html`. Isso está configurado em `vercel.json`.
 - As regras do Firestore precisam de deploy separado via Firebase CLI. Alterar `firestore.rules` sem fazer o deploy não tem efeito em produção.
-- O `firestore.rules` atual permite que cada usuário leia e escreva apenas seus próprios dados (subcoleção `users/{userId}/**`). Qualquer nova coleção que não siga esse padrão precisará de regras adicionais.
+- O `firestore.rules` cobre `users/{userId}/**` (dono), leitura de fichas vinculadas por membros da mesa, e `campaigns/**`. Qualquer nova coleção precisa de regras e de casos em `tests/rules/`.
+- Fim de linha: `.gitattributes` com `text=auto` (repositório em LF). Se um arquivo aparecer modificado sem mudança real, é quebra de linha; `git add --renormalize .` resolve.
