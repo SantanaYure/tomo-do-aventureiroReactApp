@@ -100,27 +100,68 @@ describe('importSheetFiles', () => {
 })
 
 describe('summarizeImport', () => {
-  it('com um arquivo, mantém a mensagem detalhada de sempre', () => {
+  const invalid: ImportResult = { imported: 0, skipped: 0, errors: 1, reason: 'invalid-json' }
+
+  it('com um arquivo, mantém a mensagem detalhada', () => {
     const summary = summarizeImport([{ fileName: 'a.json', scope: 'npc', result: ok }])
     expect(summary.message).toBe('NPC importado com sucesso.')
     expect(summary.problems).toEqual([])
     expect(summary.tone).toBe('ok')
   })
 
-  it('com vários, resume a contagem e lista o que não entrou', () => {
+  it('com um arquivo danificado, explica sem termos técnicos', () => {
+    const summary = summarizeImport([{ fileName: 'a.json', scope: 'unknown', result: invalid }])
+    expect(summary.message).toMatch(/^Não conseguimos abrir esse arquivo/)
+    expect(summary.message).not.toMatch(/json/i)
+  })
+
+  it('quando tudo entra, só confirma', () => {
     const summary = summarizeImport([
       { fileName: 'a.json', scope: 'character', result: ok },
-      { fileName: 'b.json', scope: 'monster', result: ok },
-      { fileName: 'c.json', scope: 'npc', result: skipped },
-      { fileName: 'd.json', scope: 'unknown', result: { imported: 0, skipped: 0, errors: 1, reason: 'invalid-json' } },
+      { fileName: 'b.json', scope: 'npc', result: ok },
+    ])
+    expect(summary.message).toBe('Pronto! 2 fichas foram importadas.')
+    expect(summary.problems).toEqual([])
+  })
+
+  it('com parte dos arquivos, diz quantas entraram e lista o motivo das outras', () => {
+    const summary = summarizeImport([
+      { fileName: 'lobo.json', scope: 'monster', result: ok },
+      { fileName: 'guarda.json', scope: 'npc', result: ok },
+      { fileName: 'vampiro.json', scope: 'unknown', result: invalid },
     ])
 
-    expect(summary.message).toBe('2 fichas importadas, 1 já existia, 1 com erro de 4 arquivos.')
+    expect(summary.message).toBe('2 de 3 fichas foram importadas. Veja o que aconteceu com a outra:')
     expect(summary.problems).toEqual([
-      { fileName: 'c.json', reason: 'já existe, não foi sobrescrito' },
-      { fileName: 'd.json', reason: 'JSON inválido' },
+      { fileName: 'vampiro.json', reason: 'o arquivo está danificado ou incompleto e não abriu' },
     ])
     expect(summary.tone).toBe('ok')
+  })
+
+  it('nenhuma mensagem do resumo fala em JSON', () => {
+    const reasons = ['invalid-json', 'not-a-sheet', 'too-large', 'document-too-large', 'save-failed'] as const
+    const summary = summarizeImport([
+      { fileName: 'ok.json', scope: 'npc', result: ok },
+      { fileName: 'rep.json', scope: 'npc', result: skipped },
+      ...reasons.map((reason) => ({
+        fileName: `${reason}.json`,
+        scope: 'unknown' as const,
+        result: { imported: 0, skipped: 0, errors: 1, reason },
+      })),
+    ])
+
+    for (const text of [summary.message, ...summary.problems.map((p) => p.reason)]) {
+      expect(text).not.toMatch(/json|firestore|documento/i)
+    }
+  })
+
+  it('usa o plural quando mais de uma ficha ficou de fora', () => {
+    const summary = summarizeImport([
+      { fileName: 'a.json', scope: 'npc', result: ok },
+      { fileName: 'b.json', scope: 'unknown', result: invalid },
+      { fileName: 'c.json', scope: 'npc', result: skipped },
+    ])
+    expect(summary.message).toBe('1 de 3 fichas foi importada. Veja o que aconteceu com as outras:')
   })
 
   it('fica em tom de erro quando nada foi importado', () => {
@@ -129,7 +170,16 @@ describe('summarizeImport', () => {
       { fileName: 'a.json', scope: 'npc', result: fail },
       { fileName: 'b.json', scope: 'npc', result: fail },
     ])
-    expect(summary.message).toBe('0 fichas importadas, 2 com erro de 2 arquivos.')
+    expect(summary.message).toBe('Não conseguimos importar essas fichas. Veja o que aconteceu com cada uma:')
     expect(summary.tone).toBe('error')
+  })
+
+  it('se todas já existiam, avisa sem listar uma por uma', () => {
+    const summary = summarizeImport([
+      { fileName: 'a.json', scope: 'npc', result: skipped },
+      { fileName: 'b.json', scope: 'npc', result: skipped },
+    ])
+    expect(summary.message).toBe('Essas fichas já estavam no seu Tomo, então nada foi alterado.')
+    expect(summary.problems).toEqual([])
   })
 })

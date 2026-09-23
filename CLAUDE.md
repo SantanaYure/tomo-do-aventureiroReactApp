@@ -165,7 +165,7 @@ tests/rules/            → testes das regras do Firestore no emulador (npm run 
 
 ### Importação/exportação
 - Fichas são exportadas como JSON via download no browser
-- Importação aceita um ou vários arquivos JSON de uma vez (`utils/importSheetFiles.ts`): cada um é lido, tem o tipo detectado (PJ/monstro/NPC) e vai para o store correspondente, em sequência. Um arquivo com problema não interrompe os outros. Durante a importação, `DiceRollLoader` (d20 girando, com "Importando N de M" e o nome do arquivo) cobre a tela; no fim, um resumo conta importadas, repetidas e com erro e lista cada arquivo que não entrou com o motivo. Com um arquivo só, a mensagem é a detalhada de sempre
+- Importação aceita um ou vários arquivos JSON de uma vez (`utils/importSheetFiles.ts`): cada um é lido, tem o tipo detectado (PJ/monstro/NPC) e vai para o store correspondente, em sequência. Um arquivo com problema não interrompe os outros. Durante a importação, `DiceRollLoader` (d20 girando, com "Importando N de M" e o nome do arquivo) cobre a tela; no fim, um resumo conta importadas, repetidas e com erro e lista cada arquivo que não entrou com o motivo. Com um arquivo só, a mensagem é a detalhada de sempre. As mensagens são para o jogador: nada de "JSON", "Firestore" ou "documento" (há teste garantindo); o motivo técnico fica no `reason` e no console
 - Fichas com ID já existente são ignoradas (sem sobrescrita)
 - Id ausente ou inválido para o Firestore (`utils/firestoreId.ts`) vira id automático; a ficha crua, sem `{ id, data }`, também é aceita
 - A validação da importação só exige `character` (PJ) ou `details` (monstro/NPC); o resto vem da normalização. `kind` é lido sem diferenciar maiúsculas

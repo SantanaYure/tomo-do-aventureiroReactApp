@@ -139,46 +139,48 @@ const SCOPE_LABEL: Record<ImportScope, string> = {
   unknown: 'Arquivo',
 }
 
+/*
+ * Mensagens para quem usa o app, não para quem o programa: nada de "JSON",
+ * "Firestore" ou "documento". O motivo técnico fica no `reason` e no console.
+ */
+
 function failureReasonText(reason: ImportResult['reason']): string {
   switch (reason) {
     case 'invalid-json':
-      return 'O arquivo não é um JSON válido. Confira se ele não foi cortado ou editado com erro de sintaxe.'
+      return 'Não conseguimos abrir esse arquivo. Ele pode estar danificado ou incompleto. Tente exportar a ficha de novo e importar outra vez.'
     case 'too-large':
-      return 'O arquivo passa de 20 MB. Reduza a imagem do avatar e tente de novo.'
+      return 'Esse arquivo é grande demais para importar. Tente usar um avatar menor na ficha e exportar de novo.'
     case 'document-too-large':
-      return 'A ficha ficou grande demais para salvar, mesmo depois de reduzir o avatar. Troque a imagem por uma menor e tente de novo.'
+      return 'A ficha é grande demais para salvar, mesmo depois de reduzirmos o avatar. Tente trocar por uma imagem menor.'
     case 'save-failed':
-      return 'A ficha foi lida, mas não foi possível salvá-la. Verifique sua conexão e tente de novo.'
+      return 'Abrimos a ficha, mas não conseguimos salvá-la agora. Confira sua internet e tente de novo.'
     default:
-      return 'O arquivo não parece ser uma ficha do Tomo. Ele precisa ter "character" (PJ) ou "details" (monstro ou NPC).'
+      return 'Esse arquivo não parece ser uma ficha do Tomo. Use um arquivo exportado pelo próprio Tomo.'
   }
 }
 
 /** Mensagem de um arquivo só, a mesma usada quando se importava um por vez. */
 export function outcomeMessage({ scope, result }: SheetImportOutcome): string {
-  const label = SCOPE_LABEL[scope]
-  const labelLow = scope === 'character' || scope === 'npc' ? label : label.toLowerCase()
-
-  if (result.imported > 0) return `${label} importado com sucesso.`
-  if (result.skipped > 0) return `Esse ${labelLow} já existe e não foi sobrescrito.`
+  if (result.imported > 0) return `${SCOPE_LABEL[scope]} importado com sucesso.`
+  if (result.skipped > 0) return 'Essa ficha já está no seu Tomo, então ela foi mantida como estava.'
   if (result.errors > 0) return failureReasonText(result.reason)
-  return `Nenhum ${labelLow} foi importado.`
+  return 'Nenhuma ficha foi importada.'
 }
 
 /** Motivo curto de um arquivo que não entrou, para a lista do resumo. */
 export function outcomeShortReason({ result }: SheetImportOutcome): string {
-  if (result.skipped > 0) return 'já existe, não foi sobrescrito'
+  if (result.skipped > 0) return 'já está no seu Tomo, então foi mantida como estava'
   switch (result.reason) {
     case 'invalid-json':
-      return 'JSON inválido'
+      return 'o arquivo está danificado ou incompleto e não abriu'
     case 'too-large':
-      return 'arquivo acima de 20 MB'
+      return 'o arquivo é grande demais para importar'
     case 'document-too-large':
-      return 'ficha grande demais para salvar'
+      return 'a ficha é grande demais para salvar; tente um avatar menor'
     case 'save-failed':
-      return 'não foi possível salvar'
+      return 'não conseguimos salvar agora; confira sua internet e tente de novo'
     default:
-      return 'não é uma ficha do Tomo'
+      return 'não parece ser uma ficha do Tomo'
   }
 }
 
@@ -193,8 +195,8 @@ export type ImportSummary = {
   tone: 'ok' | 'error'
 }
 
-function plural(count: number, singular: string, pluralForm: string): string {
-  return `${count} ${count === 1 ? singular : pluralForm}`
+function fichas(count: number): string {
+  return count === 1 ? '1 ficha' : `${count} fichas`
 }
 
 export function summarizeImport(outcomes: SheetImportOutcome[]): ImportSummary {
@@ -207,20 +209,29 @@ export function summarizeImport(outcomes: SheetImportOutcome[]): ImportSummary {
     return { imported, skipped, failed, message: outcomeMessage(outcomes[0]), problems: [], tone }
   }
 
-  const parts = [plural(imported, 'ficha importada', 'fichas importadas')]
-  if (skipped > 0) parts.push(plural(skipped, 'já existia', 'já existiam'))
-  if (failed > 0) parts.push(plural(failed, 'com erro', 'com erro'))
-
   const problems = outcomes
     .filter((o) => o.result.imported === 0)
     .map((o) => ({ fileName: o.fileName, reason: outcomeShortReason(o) }))
+
+  let message: string
+  if (problems.length === 0) {
+    message = `Pronto! ${fichas(imported)} ${imported === 1 ? 'foi importada' : 'foram importadas'}.`
+  } else if (imported === 0) {
+    message =
+      skipped === outcomes.length
+        ? 'Essas fichas já estavam no seu Tomo, então nada foi alterado.'
+        : 'Não conseguimos importar essas fichas. Veja o que aconteceu com cada uma:'
+  } else {
+    const others = outcomes.length - imported === 1 ? 'com a outra' : 'com as outras'
+    message = `${imported} de ${fichas(outcomes.length)} ${imported === 1 ? 'foi importada' : 'foram importadas'}. Veja o que aconteceu ${others}:`
+  }
 
   return {
     imported,
     skipped,
     failed,
-    message: `${parts.join(', ')} de ${plural(outcomes.length, 'arquivo', 'arquivos')}.`,
-    problems,
+    message,
+    problems: skipped === outcomes.length ? [] : problems,
     tone,
   }
 }
