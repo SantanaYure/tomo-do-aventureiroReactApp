@@ -264,4 +264,38 @@ describe('CampaignCard', () => {
     // O código secreto de convite não fica em destaque no rodapé do jogador comum
     expect(screen.queryByText(/Cód: FRG-456/i)).not.toBeInTheDocument()
   })
+
+  it('mestre abre o menu do card e escolhe editar ou excluir', async () => {
+    const user = userEvent.setup()
+    const onEdit = vi.fn()
+    const onDelete = vi.fn()
+    render(
+      <MemoryRouter>
+        <CampaignCard campaign={mockCampaign} currentUserId="user-dm" onEdit={onEdit} onDelete={onDelete} />
+      </MemoryRouter>,
+    )
+
+    // O link da mesa continua existindo, separado do botão do menu.
+    expect(screen.getByRole('link', { name: 'A Forja da Fúria' })).toHaveAttribute('href', '/mesas/camp-1')
+    const trigger = screen.getByRole('button', { name: /Ações da mesa/ })
+    expect(trigger.closest('a')).toBeNull()
+
+    await user.click(trigger)
+    await user.click(screen.getByRole('menuitem', { name: 'Editar mesa' }))
+    expect(onEdit).toHaveBeenCalledWith(mockCampaign)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+
+    await user.click(trigger)
+    await user.click(screen.getByRole('menuitem', { name: 'Excluir mesa' }))
+    expect(onDelete).toHaveBeenCalledWith(mockCampaign)
+  })
+
+  it('jogador não vê o menu de ações', () => {
+    render(
+      <MemoryRouter>
+        <CampaignCard campaign={mockCampaign} currentUserId="user-other" onEdit={vi.fn()} onDelete={vi.fn()} />
+      </MemoryRouter>,
+    )
+    expect(screen.queryByRole('button', { name: /Ações da mesa/ })).not.toBeInTheDocument()
+  })
 })
