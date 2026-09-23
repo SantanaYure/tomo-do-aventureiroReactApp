@@ -303,6 +303,20 @@
   border-color: var(--chip-violet-border);
 }
 
+/*
+ * O backdrop-filter faz de cada card uma camada de empilhamento própria: o
+ * z-index do menu de ações só vale dentro do card, e o card seguinte cobria o
+ * menu aberto. Enquanto o menu estiver aberto, o card inteiro sobe.
+ */
+.sheetItem {
+  position: relative;
+}
+
+.sheetItem:has([aria-haspopup='menu'][aria-expanded='true']),
+.sheetItem:focus-within {
+  z-index: 30;
+}
+
 .sheetCardLink {
   flex: 1;
   min-width: 0;
