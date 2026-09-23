@@ -27,6 +27,7 @@ import {
   defaultCharacterSheet,
 } from './defaultCharacterSheet'
 import { db } from '../services/firebase'
+import { readImportedDocId } from '../utils/firestoreId'
 
 export interface StoredCharacterSheet {
   id: string
@@ -526,7 +527,8 @@ function createCharacterSheetPayload(
 // ── Import validation ─────────────────────────────────────────────────────────
 
 type ImportedCharacterSheetPayload = {
-  id: string
+  /** `null` quando o arquivo não traz id ou traz um id que o Firestore recusaria. */
+  id: string | null
   data: CharacterSheet
   createdAt?: string
 }
@@ -538,12 +540,17 @@ function extractImportedCharacterSheetPayload(
 
   const entry = parsed as Record<string, unknown>
 
-  if (typeof entry.id === 'string' && entry.data && typeof entry.data === 'object') {
+  if (entry.data && typeof entry.data === 'object' && !Array.isArray(entry.data)) {
     return {
-      id: entry.id,
+      id: readImportedDocId(entry.id),
       data: entry.data as CharacterSheet,
       createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : undefined,
     }
+  }
+
+  // Ficha crua, sem o envelope { id, data }.
+  if (isValidCharacterSheetPayload(entry)) {
+    return { id: null, data: entry as unknown as CharacterSheet }
   }
 
   const entries = Object.entries(entry)
@@ -556,7 +563,7 @@ function extractImportedCharacterSheetPayload(
   if (!nestedEntry.data || typeof nestedEntry.data !== 'object') return null
 
   return {
-    id: typeof nestedEntry.id === 'string' ? nestedEntry.id : key,
+    id: readImportedDocId(typeof nestedEntry.id === 'string' ? nestedEntry.id : key),
     data: nestedEntry.data as CharacterSheet,
     createdAt:
       typeof nestedEntry.createdAt === 'string' ? nestedEntry.createdAt : undefined,
@@ -713,13 +720,19 @@ export async function importCharacterSheetFromJSON(
   }
 
   try {
-    const normalizedId = normalizeId(payload.id)
-    const docRef = getDocRef(uid, normalizedId)
-    const existing = await getDoc(docRef)
+    // Sem id válido no arquivo, o Firestore gera um automático. Um id gerado
+    // é novo por definição, então não há ficha existente a checar.
+    const docRef = payload.id
+      ? getDocRef(uid, payload.id)
+      : doc(getCollectionRef(uid))
+    const normalizedId = docRef.id
 
-    if (existing.exists()) {
-      result.skipped = 1
-      return result
+    if (payload.id) {
+      const existing = await getDoc(docRef)
+      if (existing.exists()) {
+        result.skipped = 1
+        return result
+      }
     }
 
     const resolvedGroupId = await resolveGroupReferenceOnImport(uid, payload.data.groupId)

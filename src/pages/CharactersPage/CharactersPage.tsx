@@ -231,6 +231,14 @@ function getImportedSheetData(parsed: unknown): Record<string, unknown> | null {
     return entry.data as Record<string, unknown>
   }
 
+  // Ficha crua, sem o envelope { id, data }.
+  if (
+    (entry.character && typeof entry.character === 'object') ||
+    (entry.details && typeof entry.details === 'object')
+  ) {
+    return entry
+  }
+
   const entries = Object.values(entry)
 
   if (entries.length !== 1) {
