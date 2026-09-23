@@ -1,46 +1,53 @@
 import { describe, expect, it, vi } from 'vitest'
-import { compressDataUrlToMaxBytes, type ImageEncoder } from './imageCompression'
+import { compressDataUrlToMaxChars, type ImageEncoder } from './imageCompression'
 
-function dataUrlOfSize(bytes: number): string {
-  return `data:image/jpeg;base64,${'A'.repeat(Math.ceil((bytes * 4) / 3))}`
+const KB = 1024
+
+function dataUrlOfLength(chars: number): string {
+  const prefix = 'data:image/webp;base64,'
+  return prefix + 'A'.repeat(Math.max(0, chars - prefix.length))
 }
 
-describe('compressDataUrlToMaxBytes', () => {
+describe('compressDataUrlToMaxChars', () => {
   it('para no primeiro passo que já cabe no limite', async () => {
-    const encode: ImageEncoder = vi.fn(async (_dataUrl, maxDimension) =>
-      // Passo de 1600px já cabe; os passos seguintes nem deveriam ser tentados.
-      dataUrlOfSize(maxDimension === 1600 ? 3 * 1024 * 1024 : 10 * 1024 * 1024),
-    )
+    const encode: ImageEncoder = vi.fn(async () => dataUrlOfLength(200 * KB))
 
-    const result = await compressDataUrlToMaxBytes(dataUrlOfSize(6 * 1024 * 1024), 4 * 1024 * 1024, encode)
+    const result = await compressDataUrlToMaxChars(dataUrlOfLength(3000 * KB), 500 * KB, encode)
 
     expect(encode).toHaveBeenCalledTimes(1)
-    expect(encode).toHaveBeenCalledWith(expect.any(String), 1600, 0.8)
-    expect(result).toBe(dataUrlOfSize(3 * 1024 * 1024))
+    expect(encode).toHaveBeenCalledWith(expect.any(String), 1024, 0.85)
+    expect(result.length).toBe(200 * KB)
   })
 
   it('tenta passos cada vez mais agressivos até caber', async () => {
-    const sizesByDimension: Record<number, number> = {
-      1600: 8 * 1024 * 1024,
-      1280: 6 * 1024 * 1024,
-      1024: 3 * 1024 * 1024,
-    }
+    const sizes: Record<number, number> = { 1024: 900 * KB, 800: 700 * KB, 640: 450 * KB }
     const encode: ImageEncoder = vi.fn(async (_dataUrl, maxDimension) =>
-      dataUrlOfSize(sizesByDimension[maxDimension] ?? 1024),
+      dataUrlOfLength(sizes[maxDimension] ?? 10 * KB),
     )
 
-    const result = await compressDataUrlToMaxBytes(dataUrlOfSize(9 * 1024 * 1024), 4 * 1024 * 1024, encode)
+    const result = await compressDataUrlToMaxChars(dataUrlOfLength(3000 * KB), 500 * KB, encode)
 
     expect(encode).toHaveBeenCalledTimes(3)
-    expect(result).toBe(dataUrlOfSize(3 * 1024 * 1024))
+    expect(result.length).toBe(450 * KB)
   })
 
-  it('é melhor esforço: devolve o último passo mesmo sem caber no limite', async () => {
-    const encode: ImageEncoder = vi.fn(async () => dataUrlOfSize(9 * 1024 * 1024))
+  it('é melhor esforço: devolve o menor resultado quando nada cabe', async () => {
+    const sizes = [900, 800, 700, 650, 620, 600]
+    let call = 0
+    const encode: ImageEncoder = vi.fn(async () => dataUrlOfLength(sizes[call++] * KB))
 
-    const result = await compressDataUrlToMaxBytes(dataUrlOfSize(20 * 1024 * 1024), 4 * 1024 * 1024, encode)
+    const result = await compressDataUrlToMaxChars(dataUrlOfLength(3000 * KB), 500 * KB, encode)
 
     expect(encode).toHaveBeenCalledTimes(6)
-    expect(result).toBe(dataUrlOfSize(9 * 1024 * 1024))
+    expect(result.length).toBe(600 * KB)
+  })
+
+  it('nunca devolve algo maior que a imagem original', async () => {
+    const original = dataUrlOfLength(600 * KB)
+    const encode: ImageEncoder = vi.fn(async () => dataUrlOfLength(900 * KB))
+
+    const result = await compressDataUrlToMaxChars(original, 500 * KB, encode)
+
+    expect(result).toBe(original)
   })
 })

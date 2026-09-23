@@ -28,7 +28,11 @@ import {
 } from './defaultCharacterSheet'
 import { db } from '../services/firebase'
 import { readImportedDocId } from '../utils/firestoreId'
-import { stripUnsupportedFirestoreValues } from '../utils/firestoreSafe'
+import {
+  estimateFirestoreDocBytes,
+  FIRESTORE_DOC_SAFE_BYTES,
+  stripUnsupportedFirestoreValues,
+} from '../utils/firestoreSafe'
 
 export interface StoredCharacterSheet {
   id: string
@@ -42,7 +46,7 @@ export interface ImportResult {
   skipped: number
   errors: number
   /** Por que a importação falhou, para a tela dar uma mensagem útil. */
-  reason?: 'invalid-json' | 'not-a-sheet' | 'save-failed' | 'too-large'
+  reason?: 'invalid-json' | 'not-a-sheet' | 'save-failed' | 'too-large' | 'document-too-large'
 }
 
 type LegacyCharacter = Character & {
@@ -750,15 +754,20 @@ export async function importCharacterSheetFromJSON(
     }
 
     const timestamp = new Date().toISOString()
-    await setDoc(
-      docRef,
-      stripUnsupportedFirestoreValues(createCharacterSheetPayload(
+    const docPayload = stripUnsupportedFirestoreValues(createCharacterSheetPayload(
         dataWithResolvedGroup,
         timestamp,
         payload.createdAt ?? timestamp,
         normalizedId,
-      )),
-    )
+      ))
+
+    // O Firestore recusa documento acima de 1 MiB. Checar antes dá uma
+    // mensagem clara em vez do erro genérico de gravação.
+    if (estimateFirestoreDocBytes(docPayload) > FIRESTORE_DOC_SAFE_BYTES) {
+      return { ...result, errors: 1, reason: 'document-too-large' }
+    }
+
+    await setDoc(docRef, docPayload)
 
     result.imported = 1
   } catch (error) {

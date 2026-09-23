@@ -24,7 +24,11 @@ import type {
 } from '../types/system/dnd/monsterSheet'
 import { db } from '../services/firebase'
 import { readImportedDocId } from '../utils/firestoreId'
-import { stripUnsupportedFirestoreValues } from '../utils/firestoreSafe'
+import {
+  estimateFirestoreDocBytes,
+  FIRESTORE_DOC_SAFE_BYTES,
+  stripUnsupportedFirestoreValues,
+} from '../utils/firestoreSafe'
 
 export type { StoredMonsterSheet } from '../types/system/dnd/monsterSheet'
 
@@ -33,7 +37,7 @@ export interface MonsterImportResult {
     skipped: number
     errors: number
     /** Por que a importação falhou, para a tela dar uma mensagem útil. */
-    reason?: 'invalid-json' | 'not-a-sheet' | 'save-failed' | 'too-large'
+    reason?: 'invalid-json' | 'not-a-sheet' | 'save-failed' | 'too-large' | 'document-too-large'
 }
 
 // ── Firestore helpers ────────────────────────────────────────────────────────
@@ -808,15 +812,20 @@ export async function importMonsterSheetFromJSON(
         }
 
         const timestamp = new Date().toISOString()
-        await setDoc(
-            docRef,
-            stripUnsupportedFirestoreValues(createMonsterSheetPayload(
+        const docPayload = stripUnsupportedFirestoreValues(createMonsterSheetPayload(
                 dataWithResolvedGroup,
                 timestamp,
                 payload.createdAt ?? timestamp,
                 normalizedId,
-            )),
-        )
+            ))
+
+        // O Firestore recusa documento acima de 1 MiB. Checar antes dá uma
+        // mensagem clara em vez do erro genérico de gravação.
+        if (estimateFirestoreDocBytes(docPayload) > FIRESTORE_DOC_SAFE_BYTES) {
+            return { ...result, errors: 1, reason: 'document-too-large' }
+        }
+
+        await setDoc(docRef, docPayload)
 
         result.imported = 1
     } catch (error) {

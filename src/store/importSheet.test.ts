@@ -124,6 +124,16 @@ describe('importCharacterSheetFromJSON', () => {
     expect(saved.data.extra).toEqual([3])
   })
 
+  it('recusa antes de gravar quando o documento passaria de 1 MiB', async () => {
+    const sheet = character()
+    sheet.character.avatar = `data:image/png;base64,${'A'.repeat(1_100_000)}`
+
+    const result = await importCharacterSheetFromJSON('uid-1', JSON.stringify({ data: sheet }))
+
+    expect(result).toMatchObject({ imported: 0, errors: 1, reason: 'document-too-large' })
+    expect(setDoc).not.toHaveBeenCalled()
+  })
+
   it('informa falha ao salvar quando o Firestore recusa a escrita', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     setDoc.mockRejectedValueOnce(new Error('permission-denied'))

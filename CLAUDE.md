@@ -169,8 +169,8 @@ tests/rules/            → testes das regras do Firestore no emulador (npm run 
 - Fichas com ID já existente são ignoradas (sem sobrescrita)
 - Id ausente ou inválido para o Firestore (`utils/firestoreId.ts`) vira id automático; a ficha crua, sem `{ id, data }`, também é aceita
 - A validação da importação só exige `character` (PJ) ou `details` (monstro/NPC); o resto vem da normalização. `kind` é lido sem diferenciar maiúsculas
-- Antes de gravar, `utils/firestoreSafe.ts` descarta lista dentro de lista (o Firestore recusa). A falha traz `reason` (`invalid-json`, `not-a-sheet`, `save-failed`, `too-large`) e a tela mostra a mensagem correspondente
-- Avatar acima de 5 MB no JSON importado é recomprimido para até 4 MB antes de salvar (`utils/imageCompression.ts` + `utils/importAvatarCompression.ts`), redesenhando a imagem em canvas com dimensão/qualidade decrescentes até caber; melhor esforço, nunca trava a importação por causa do tamanho da imagem
+- Antes de gravar, `utils/firestoreSafe.ts` descarta lista dentro de lista (o Firestore recusa) e a importação recusa documento acima de ~1 MB (`FIRESTORE_DOC_SAFE_BYTES`). A falha traz `reason` (`invalid-json`, `not-a-sheet`, `too-large`, `document-too-large`, `save-failed`) e a tela mostra a mensagem correspondente
+- Avatar importado acima de 500 KB de texto (`AVATAR_MAX_STORED_CHARS`) é recomprimido antes de salvar (`utils/importAvatarCompression.ts` + `utils/imageCompression.ts`): redesenha em canvas, WebP com fallback para JPEG, dimensão e qualidade decrescentes até caber. O limite é medido no data URL (o que o Firestore conta), não na imagem decodificada. Melhor esforço: se falhar, segue com a original e cai no `document-too-large`
 - Limite de 20MB por arquivo de importação (folga para caber o avatar original antes da compressão acima)
 - Nomes dos arquivos exportados: `pj-{nome}.json`, `monstro-{nome}.json`, `npc-{nome}.json`
 
@@ -403,7 +403,7 @@ Os seguintes itens existem no projeto mas **não têm código**:
 Não remover essas pastas sem confirmar com o dono do projeto — podem representar trabalho futuro planejado.
 
 ### Riscos comuns
-- **Avatar muito grande**: imagens base64 de alta resolução aumentam o tamanho do documento Firestore; sempre usar o `AvatarCropper` antes de salvar
+- **Avatar muito grande**: o documento da ficha tem limite de 1 MiB e o avatar vive dentro dele. Pela UI, o `AvatarCropper` limita a 400 KB; na importação, `compressOversizedAvatarIfNeeded` recomprime acima de 500 KB
 - **Migrations de schema**: ao adicionar novos campos obrigatórios, garantir que `normalizeCharacterSheet`/`normalizeMonsterSheet` inicialize o campo com um valor padrão para documentos antigos
 - **Documento da mesa tem limite de 1 MB**: `campaign.creatures` vive num único documento. Nunca guardar imagem base64 nas criaturas (`creatureAvatarForStorage` descarta); o avatar vem da ficha via `useCreatureAvatars`.
 - **Mudou `firestore.rules`?** Rode/atualize `tests/rules/` e publique com `firebase deploy --only firestore:rules`. Os bugs mais graves das mesas vieram de regras (leitura negada derrubando o batch inteiro).

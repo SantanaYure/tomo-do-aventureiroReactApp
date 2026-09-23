@@ -31,3 +31,15 @@ function clean(value: unknown, insideArray: boolean): unknown {
   if (typeof value === 'number' && !Number.isFinite(value)) return null
   return value
 }
+
+/**
+ * Limite prático de um documento do Firestore. O teto oficial é 1 MiB
+ * (1.048.576 bytes) contando nomes de campo e metadados; ficar em 1.000.000
+ * de bytes do JSON deixa margem para essa diferença.
+ */
+export const FIRESTORE_DOC_SAFE_BYTES = 1_000_000
+
+/** Tamanho aproximado, em bytes UTF-8, de um documento antes de gravar. */
+export function estimateFirestoreDocBytes(value: unknown): number {
+  return new TextEncoder().encode(JSON.stringify(value)).length
+}

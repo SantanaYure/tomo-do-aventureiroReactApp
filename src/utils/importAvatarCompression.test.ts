@@ -1,68 +1,68 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const compressDataUrlToMaxBytes = vi.fn(async (_dataUrl: string, _maxBytes: number) => 'data:image/jpeg;base64,COMPRIMIDO')
+const compressDataUrlToMaxChars = vi.fn(
+  async (_dataUrl: string, _maxChars: number) => 'data:image/webp;base64,COMPRIMIDO',
+)
 
 vi.mock('./imageCompression', () => ({
-  compressDataUrlToMaxBytes: (dataUrl: string, maxBytes: number) =>
-    compressDataUrlToMaxBytes(dataUrl, maxBytes),
+  compressDataUrlToMaxChars: (dataUrl: string, maxChars: number) =>
+    compressDataUrlToMaxChars(dataUrl, maxChars),
 }))
 
-const { compressOversizedAvatarIfNeeded, AVATAR_COMPRESSION_TARGET_BYTES } = await import(
+const { compressOversizedAvatarIfNeeded, AVATAR_MAX_STORED_CHARS } = await import(
   './importAvatarCompression'
 )
 
-function bigAvatar(bytes: number): string {
-  return `data:image/png;base64,${'A'.repeat(Math.ceil((bytes * 4) / 3))}`
+function avatarOfLength(chars: number): string {
+  return `data:image/png;base64,${'A'.repeat(chars)}`
 }
 
 beforeEach(() => {
-  compressDataUrlToMaxBytes.mockClear()
+  compressDataUrlToMaxChars.mockClear()
 })
 
 describe('compressOversizedAvatarIfNeeded', () => {
-  it('comprime o avatar do PJ quando passa de 5 MB', async () => {
-    const sheetData = { character: { name: 'Valeros', avatar: bigAvatar(6 * 1024 * 1024) } }
-
-    const originalAvatar = sheetData.character.avatar
-    await compressOversizedAvatarIfNeeded(sheetData, 'character')
-
-    expect(compressDataUrlToMaxBytes).toHaveBeenCalledWith(originalAvatar, AVATAR_COMPRESSION_TARGET_BYTES)
-    expect(sheetData.character.avatar).toBe('data:image/jpeg;base64,COMPRIMIDO')
-  })
-
-  it('comprime o avatar do monstro/NPC em details.avatar', async () => {
-    const sheetData = { details: { name: 'Lobo', avatar: bigAvatar(7 * 1024 * 1024) } }
-
-    await compressOversizedAvatarIfNeeded(sheetData, 'monster')
-
-    expect(compressDataUrlToMaxBytes).toHaveBeenCalledTimes(1)
-    expect(sheetData.details.avatar).toBe('data:image/jpeg;base64,COMPRIMIDO')
-  })
-
-  it('não mexe em avatar dentro do limite', async () => {
-    const original = bigAvatar(1 * 1024 * 1024)
+  it('comprime o avatar do PJ acima do limite guardado', async () => {
+    const original = avatarOfLength(3_000_000)
     const sheetData = { character: { name: 'Valeros', avatar: original } }
 
     await compressOversizedAvatarIfNeeded(sheetData, 'character')
 
-    expect(compressDataUrlToMaxBytes).not.toHaveBeenCalled()
+    expect(compressDataUrlToMaxChars).toHaveBeenCalledWith(original, AVATAR_MAX_STORED_CHARS)
+    expect(sheetData.character.avatar).toBe('data:image/webp;base64,COMPRIMIDO')
+  })
+
+  it('comprime o avatar de monstro/NPC em details.avatar', async () => {
+    // Caso real: PNG de 1254 px com ~3 MB em base64, abaixo de 5 MB mas
+    // muito acima do que cabe num documento do Firestore.
+    const sheetData = { details: { name: 'Cavaleiro da Morte', avatar: avatarOfLength(3_137_000) } }
+
+    await compressOversizedAvatarIfNeeded(sheetData, 'monster')
+
+    expect(compressDataUrlToMaxChars).toHaveBeenCalledTimes(1)
+    expect(sheetData.details.avatar).toBe('data:image/webp;base64,COMPRIMIDO')
+  })
+
+  it('não mexe em avatar que já cabe', async () => {
+    const original = avatarOfLength(300 * 1024)
+    const sheetData = { character: { name: 'Valeros', avatar: original } }
+
+    await compressOversizedAvatarIfNeeded(sheetData, 'character')
+
+    expect(compressDataUrlToMaxChars).not.toHaveBeenCalled()
     expect(sheetData.character.avatar).toBe(original)
   })
 
   it('ignora quando não há avatar ou não é imagem', async () => {
-    const semAvatar = { character: { name: 'Valeros' } }
-    await compressOversizedAvatarIfNeeded(semAvatar, 'character')
-    expect(compressDataUrlToMaxBytes).not.toHaveBeenCalled()
-
-    const avatarTexto = { character: { name: 'Valeros', avatar: 'não é imagem' } }
-    await compressOversizedAvatarIfNeeded(avatarTexto, 'character')
-    expect(compressDataUrlToMaxBytes).not.toHaveBeenCalled()
+    await compressOversizedAvatarIfNeeded({ character: { name: 'Valeros' } }, 'character')
+    await compressOversizedAvatarIfNeeded({ character: { avatar: 'x'.repeat(900_000) } }, 'character')
+    expect(compressDataUrlToMaxChars).not.toHaveBeenCalled()
   })
 
   it('segue sem travar quando a compressão falha', async () => {
-    compressDataUrlToMaxBytes.mockRejectedValueOnce(new Error('canvas indisponível'))
+    compressDataUrlToMaxChars.mockRejectedValueOnce(new Error('canvas indisponível'))
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const original = bigAvatar(6 * 1024 * 1024)
+    const original = avatarOfLength(3_000_000)
     const sheetData = { character: { name: 'Valeros', avatar: original } }
 
     await compressOversizedAvatarIfNeeded(sheetData, 'character')

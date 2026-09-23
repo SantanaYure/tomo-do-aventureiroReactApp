@@ -606,6 +606,8 @@ export function CharactersPage() {
           return 'O arquivo não é um JSON válido. Confira se ele não foi cortado ou editado com erro de sintaxe.'
         case 'too-large':
           return 'O arquivo passa de 20 MB. Reduza a imagem do avatar e tente de novo.'
+        case 'document-too-large':
+          return 'A ficha ficou grande demais para salvar, mesmo depois de reduzir o avatar. Troque a imagem por uma menor e tente de novo.'
         case 'save-failed':
           return 'A ficha foi lida, mas não foi possível salvá-la. Verifique sua conexão e tente de novo.'
         default:

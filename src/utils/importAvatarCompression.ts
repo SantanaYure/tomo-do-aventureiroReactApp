@@ -1,14 +1,16 @@
-import { dataUrlByteLength } from './imageSize'
-import { compressDataUrlToMaxBytes } from './imageCompression'
+import { compressDataUrlToMaxChars } from './imageCompression'
 
-// Um avatar importado acima disso é recomprimido para caber no alvo abaixo,
-// em vez de travar a importação inteira por causa do tamanho da imagem.
-export const AVATAR_COMPRESSION_TRIGGER_BYTES = 5 * 1024 * 1024
-export const AVATAR_COMPRESSION_TARGET_BYTES = 4 * 1024 * 1024
+/**
+ * Tamanho máximo do avatar guardado na ficha, em caracteres do data URL. O
+ * Firestore recusa documentos acima de 1 MiB, e o avatar vive dentro do
+ * documento da ficha; 500 KB deixa folga para o resto dos dados. Um avatar
+ * importado acima disso é recomprimido até caber.
+ */
+export const AVATAR_MAX_STORED_CHARS = 500 * 1024
 
 /**
  * Recomprime o avatar de uma ficha importada quando ele passa de
- * `AVATAR_COMPRESSION_TRIGGER_BYTES`. `sheetData` é a mesma referência que
+ * `AVATAR_MAX_STORED_CHARS`. `sheetData` é a mesma referência que
  * `getImportedSheetData` devolve de dentro do JSON completo; alterá-la aqui
  * já reflete no objeto que será reserializado antes de salvar.
  */
@@ -23,13 +25,13 @@ export async function compressOversizedAvatarIfNeeded(
   const record = container as Record<string, unknown>
   const avatar = record.avatar
   if (typeof avatar !== 'string' || !avatar.startsWith('data:image')) return
-  if (dataUrlByteLength(avatar) <= AVATAR_COMPRESSION_TRIGGER_BYTES) return
+  if (avatar.length <= AVATAR_MAX_STORED_CHARS) return
 
   try {
-    record.avatar = await compressDataUrlToMaxBytes(avatar, AVATAR_COMPRESSION_TARGET_BYTES)
+    record.avatar = await compressDataUrlToMaxChars(avatar, AVATAR_MAX_STORED_CHARS)
   } catch (error) {
     console.error('Erro ao comprimir avatar importado:', error)
-    // Segue com a imagem original; se ainda for grande demais para o
-    // Firestore, o import falha com o motivo `save-failed`.
+    // Segue com a imagem original; se o documento passar do limite do
+    // Firestore, o import recusa com o motivo `document-too-large`.
   }
 }
