@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   applyAppearance,
   brandTokens,
+  solidTokens,
   isValidColor,
   readStoredBrandColor,
   readStoredFont,
@@ -52,7 +53,52 @@ describe('brandTokens', () => {
   })
 })
 
+describe('solidTokens', () => {
+  it('deriva os botões sólidos do matiz da marca, mantendo a claridade do tema', () => {
+    const t = solidTokens('#22a06b')
+    expect(t['--danger-solid']).toBe('oklch(from #22a06b 38% min(c, 0.12) h)')
+    expect(t['--heal-solid']).toContain('56%')
+    expect(t['--temp-solid']).toContain('70%')
+    expect(t['--on-solid']).toBe('oklch(from #22a06b 97% 0.015 h)')
+    expect(Object.keys(t)).toEqual([
+      '--danger-solid',
+      '--danger-hover',
+      '--heal-solid',
+      '--heal-hover',
+      '--temp-solid',
+      '--temp-hover',
+      '--on-solid',
+      '--on-temp',
+    ])
+  })
+})
+
 describe('applyAppearance', () => {
+  it('pinta os botões sólidos com a marca quando o navegador suporta cor relativa', () => {
+    vi.stubGlobal('CSS', { supports: () => true })
+    const root = document.documentElement
+
+    applyAppearance(root, '#22a06b', 'literary')
+    expect(root.style.getPropertyValue('--danger-solid')).toContain('#22a06b')
+    expect(root.style.getPropertyValue('--on-temp')).toContain('#22a06b')
+
+    applyAppearance(root, null, 'literary')
+    expect(root.style.getPropertyValue('--danger-solid')).toBe('')
+    vi.unstubAllGlobals()
+  })
+
+  it('sem cor relativa, os botões sólidos ficam com o padrão do tema', () => {
+    vi.stubGlobal('CSS', { supports: (_p: string, v: string) => !v.includes('from') })
+    const root = document.documentElement
+
+    applyAppearance(root, '#22a06b', 'literary')
+    expect(root.style.getPropertyValue('--chip-violet-text')).toBe('#22a06b')
+    expect(root.style.getPropertyValue('--danger-solid')).toBe('')
+
+    applyAppearance(root, null, 'literary')
+    vi.unstubAllGlobals()
+  })
+
   it('aplica a cor de marca e remove ao voltar para o padrão', () => {
     const root = document.documentElement
     applyAppearance(root, '#3b82f6', 'literary')

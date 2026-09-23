@@ -29,6 +29,17 @@
         r.style.setProperty('--chip-violet-bg', 'color-mix(in oklab, ' + b + ' 16%, transparent)');
         r.style.setProperty('--chip-violet-bg-hover', 'color-mix(in oklab, ' + b + ' 26%, transparent)');
         r.style.setProperty('--chip-violet-border', 'color-mix(in oklab, ' + b + ' 42%, transparent)');
+        if (window.CSS && CSS.supports && CSS.supports('color', 'oklch(from red l c h)')) {
+          var tone = function (l, c) { return 'oklch(from ' + b + ' ' + l + ' min(c, ' + c + ') h)'; };
+          r.style.setProperty('--danger-solid', tone('38%', 0.12));
+          r.style.setProperty('--danger-hover', tone('43%', 0.12));
+          r.style.setProperty('--heal-solid', tone('56%', 0.1));
+          r.style.setProperty('--heal-hover', tone('61%', 0.1));
+          r.style.setProperty('--temp-solid', tone('70%', 0.08));
+          r.style.setProperty('--temp-hover', tone('75%', 0.08));
+          r.style.setProperty('--on-solid', 'oklch(from ' + b + ' 97% 0.015 h)');
+          r.style.setProperty('--on-temp', 'oklch(from ' + b + ' 25% 0.04 h)');
+        }
       }
       if (localStorage.getItem('tomo:font') === 'modern') {
         var sans = "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";

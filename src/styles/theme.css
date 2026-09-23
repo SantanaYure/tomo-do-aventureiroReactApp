@@ -28,16 +28,19 @@
   --input-bg: oklch(100% 0 0 / 0.7);
   --track-bg: oklch(90% 0.005 280 / 0.6);
 
-  --danger-solid: oklch(38% 0.07 75);
-  --heal-solid: oklch(56% 0.07 75);
-  --temp-solid: oklch(70% 0.06 75);
-  --on-solid: oklch(97% 0.015 75);
+  /* Botões sólidos no matiz padrão do sistema (o mesmo violeta de
+     --chip-violet-*). Com cor de marca definida, applyAppearance troca o matiz
+     pelo da marca e mantém estas claridades (utils/appearance.ts → solidTokens). */
+  --danger-solid: oklch(38% 0.07 300);
+  --heal-solid: oklch(56% 0.07 300);
+  --temp-solid: oklch(70% 0.06 300);
+  --on-solid: oklch(97% 0.015 300);
   /* Texto sobre --temp-solid (o tom mais claro): escuro, para contraste AA. */
-  --on-temp: oklch(25% 0.04 75);
+  --on-temp: oklch(25% 0.04 300);
   /* Hover dos botões sólidos: leve ganho de luminosidade, sem salto de opacidade. */
-  --danger-hover: oklch(43% 0.075 75);
-  --heal-hover: oklch(61% 0.07 75);
-  --temp-hover: oklch(75% 0.055 75);
+  --danger-hover: oklch(43% 0.075 300);
+  --heal-hover: oklch(61% 0.07 300);
+  --temp-hover: oklch(75% 0.055 300);
   /* Acabamento "espelhado" dos botões sólidos: reflexo no topo + sombra na base,
      realce da borda e brilho interno. */
   --btn-gloss: linear-gradient(

@@ -1,21 +1,22 @@
 import { useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { normalizeFileName, downloadJsonFile } from '../../utils/exportSheet'
-import { compressOversizedAvatarIfNeeded } from '../../utils/importAvatarCompression'
+import {
+  importSheetFiles,
+  summarizeImport,
+  type ImportSummary,
+} from '../../utils/importSheetFiles'
+import { DiceRollLoader } from '../../components/DiceRollLoader/DiceRollLoader'
 import {
   createCharacterSheet,
   deleteCharacterSheet,
   exportCharacterSheetAsJSON,
-  importCharacterSheetFromJSON,
   type StoredCharacterSheet,
-  type ImportResult as CharacterImportResult,
 } from '../../store/characterSheetStore'
 import {
   createMonsterSheet,
   deleteMonsterSheet as deleteMonster,
   exportMonsterSheetAsJSON,
-  importMonsterSheetFromJSON,
-  type MonsterImportResult,
   type StoredMonsterSheet,
 } from '../../store/monsterSheetStore'
 import { useAuth } from '../../context/AuthContext'
@@ -34,20 +35,11 @@ const NO_GROUP_LABEL = 'Personagem Independente'
 
 type SheetTypeFilter = 'all' | 'character' | 'monster' | 'npc'
 
-type ImportFeedback = {
-  scope: 'character' | 'monster' | 'npc' | 'unknown'
-  result: CharacterImportResult | MonsterImportResult
-}
-
 type PendingDelete = {
   type: 'character' | 'monster'
   id: string
   name: string
 }
-
-// Alto o bastante para caber uma foto original grande em base64 (a codificação
-// já infla o tamanho em ~33%) até o avatar ser comprimido logo abaixo.
-const MAX_JSON_BYTES = 20 * 1024 * 1024
 
 function matchesText(text: string, term: string): boolean {
   if (!term) return false
@@ -223,68 +215,6 @@ function MonsterSheetItem({ sheet, onExport, onDelete, onLink }: MonsterSheetIte
   )
 }
 
-function getImportedSheetData(parsed: unknown): Record<string, unknown> | null {
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return null
-  }
-
-  const entry = parsed as Record<string, unknown>
-
-  if (entry.data && typeof entry.data === 'object' && !Array.isArray(entry.data)) {
-    return entry.data as Record<string, unknown>
-  }
-
-  // Ficha crua, sem o envelope { id, data }.
-  if (
-    (entry.character && typeof entry.character === 'object') ||
-    (entry.details && typeof entry.details === 'object')
-  ) {
-    return entry
-  }
-
-  const entries = Object.values(entry)
-
-  if (entries.length !== 1) {
-    return null
-  }
-
-  const nestedEntry = entries[0]
-
-  if (!nestedEntry || typeof nestedEntry !== 'object' || Array.isArray(nestedEntry)) {
-    return null
-  }
-
-  const nestedRecord = nestedEntry as Record<string, unknown>
-
-  if (!nestedRecord.data || typeof nestedRecord.data !== 'object' || Array.isArray(nestedRecord.data)) {
-    return null
-  }
-
-  return nestedRecord.data as Record<string, unknown>
-}
-
-function detectImportedSheetType(parsed: unknown): ImportFeedback['scope'] {
-  const data = getImportedSheetData(parsed)
-
-  if (!data) {
-    return 'unknown'
-  }
-
-  if (data.character && typeof data.character === 'object') {
-    return 'character'
-  }
-
-  if (data.details && typeof data.details === 'object') {
-    const details = data.details as Record<string, unknown>
-
-    // Sem `kind` reconhecível, trata como monstro (o mesmo padrão da importação).
-    const kind = typeof details.kind === 'string' ? details.kind.trim().toLowerCase() : ''
-    return kind === 'npc' ? 'npc' : 'monster'
-  }
-
-  return 'unknown'
-}
-
 export function CharactersPage() {
   const { uid } = useAuth()
   const navigate = useNavigate()
@@ -302,7 +232,12 @@ export function CharactersPage() {
   const [typeFilter, setTypeFilter] = useState<SheetTypeFilter>('all')
   const [groupFilter, setGroupFilter] = useState<string>('all')
 
-  const [importFeedback, setImportFeedback] = useState<ImportFeedback | null>(null)
+  const [importFeedback, setImportFeedback] = useState<ImportSummary | null>(null)
+  const [importProgress, setImportProgress] = useState<{
+    done: number
+    total: number
+    fileName: string
+  } | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [linkingSheet, setLinkingSheet] = useState<{
     type: 'character' | 'monster' | 'npc'
@@ -524,97 +459,23 @@ export function CharactersPage() {
     setSearchTerm(event.target.value)
   }
 
-  function handleImportFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    if (file.size > MAX_JSON_BYTES) {
-      setImportFeedback({
-        scope: 'unknown',
-        result: { imported: 0, skipped: 0, errors: 1, reason: 'too-large' },
-      })
-      event.target.value = ''
-      return
-    }
-
-    if (!uid) return
-
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      const rawJson = String(e.target?.result ?? '')
-
-      let parsed: unknown
-
-      try {
-        parsed = JSON.parse(rawJson)
-      } catch {
-        setImportFeedback({
-          scope: 'unknown',
-          result: { imported: 0, skipped: 0, errors: 1, reason: 'invalid-json' },
-        })
-        return
-      }
-
-      const detectedType = detectImportedSheetType(parsed)
-
-      if (detectedType === 'character' || detectedType === 'monster' || detectedType === 'npc') {
-        const sheetData = getImportedSheetData(parsed)
-        if (sheetData) await compressOversizedAvatarIfNeeded(sheetData, detectedType)
-      }
-
-      if (detectedType === 'character') {
-        const result = await importCharacterSheetFromJSON(uid, JSON.stringify(parsed))
-        setImportFeedback({ scope: 'character', result })
-        return
-      }
-
-      if (detectedType === 'monster' || detectedType === 'npc') {
-        const result = await importMonsterSheetFromJSON(uid, JSON.stringify(parsed))
-        setImportFeedback({ scope: detectedType, result })
-        return
-      }
-
-      setImportFeedback({
-        scope: 'unknown',
-        result: { imported: 0, skipped: 0, errors: 1, reason: 'not-a-sheet' },
-      })
-    }
-    reader.readAsText(file)
+  async function handleImportFileChange(event: ChangeEvent<HTMLInputElement>) {
+    // Copia a lista antes de limpar o input: FileList é viva e esvazia junto.
+    const files = Array.from(event.target.files ?? [])
     event.target.value = ''
-  }
+    if (files.length === 0 || !uid || importProgress) return
 
-  function feedbackMessage(feedback: ImportFeedback): string {
-    const label =
-      feedback.scope === 'character'
-        ? 'PJ'
-        : feedback.scope === 'npc'
-          ? 'NPC'
-          : feedback.scope === 'monster'
-            ? 'Monstro'
-            : 'Arquivo'
+    setImportFeedback(null)
+    setImportProgress({ done: 0, total: files.length, fileName: files[0].name })
 
-    const labelLow =
-      feedback.scope === 'character' || feedback.scope === 'npc'
-        ? label
-        : label.toLowerCase()
-
-    if (feedback.result.imported > 0) return `${label} importado com sucesso.`
-    if (feedback.result.skipped > 0) return `Esse ${labelLow} já existe e não foi sobrescrito.`
-    if (feedback.result.errors > 0) {
-      switch (feedback.result.reason) {
-        case 'invalid-json':
-          return 'O arquivo não é um JSON válido. Confira se ele não foi cortado ou editado com erro de sintaxe.'
-        case 'too-large':
-          return 'O arquivo passa de 20 MB. Reduza a imagem do avatar e tente de novo.'
-        case 'document-too-large':
-          return 'A ficha ficou grande demais para salvar, mesmo depois de reduzir o avatar. Troque a imagem por uma menor e tente de novo.'
-        case 'save-failed':
-          return 'A ficha foi lida, mas não foi possível salvá-la. Verifique sua conexão e tente de novo.'
-        default:
-          return 'O arquivo não parece ser uma ficha do Tomo. Ele precisa ter "character" (PJ) ou "details" (monstro ou NPC).'
-      }
+    try {
+      const outcomes = await importSheetFiles(uid, files, (done, total, current) =>
+        setImportProgress({ done, total, fileName: current.name }),
+      )
+      setImportFeedback(summarizeImport(outcomes))
+    } finally {
+      setImportProgress(null)
     }
-    return `Nenhum ${labelLow} foi importado.`
   }
 
   if (loadError) {
@@ -701,6 +562,7 @@ export function CharactersPage() {
         ref={importFileInputRef}
         type="file"
         accept=".json,application/json"
+        multiple
         className={styles.hiddenInput}
         onChange={handleImportFileChange}
       />
@@ -713,6 +575,7 @@ export function CharactersPage() {
               type="button"
               className={styles.tertiaryAction}
               onClick={handleImportClick}
+              disabled={importProgress !== null}
             >
               ↑ Importar PJ
             </button>
@@ -838,15 +701,36 @@ export function CharactersPage() {
       ))}
 
       {importFeedback && (
-        <p
-          className={
-            importFeedback.result.errors > 0 && importFeedback.result.imported === 0
-              ? styles.feedbackError
-              : styles.feedbackOk
-          }
+        <div
+          className={importFeedback.tone === 'error' ? styles.feedbackError : styles.feedbackOk}
+          role="status"
         >
-          {feedbackMessage(importFeedback)}
-        </p>
+          <p className={styles.feedbackMessage}>{importFeedback.message}</p>
+          {importFeedback.problems.length > 0 && (
+            <ul className={styles.feedbackProblems}>
+              {importFeedback.problems.map((problem, index) => (
+                <li key={`${problem.fileName}-${index}`}>
+                  <span className={styles.feedbackFile}>{problem.fileName}</span>: {problem.reason}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {importProgress && (
+        <div className={styles.importOverlay} aria-busy="true">
+          <div className={styles.importCard}>
+            <DiceRollLoader
+              label={
+                importProgress.total > 1
+                  ? `Importando ${importProgress.done + 1} de ${importProgress.total}`
+                  : 'Importando ficha'
+              }
+              detail={importProgress.fileName}
+            />
+          </div>
+        </div>
       )}
 
       {showSrdPicker && uid && (

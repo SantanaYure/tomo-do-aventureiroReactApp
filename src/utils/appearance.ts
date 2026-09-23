@@ -37,6 +37,41 @@ export function brandTokens(color: string): Record<string, string> {
 
 const BRAND_PROPS = Object.keys(brandTokens('#000'))
 
+/**
+ * Botões sólidos (excluir, dano, cura, PV temporário) no matiz da cor de
+ * marca. Cada token mantém a claridade do tema padrão, então o contraste do
+ * texto sobre o botão não muda com a cor escolhida; só o matiz (e um teto de
+ * croma, para cores muito saturadas não gritarem) vem da marca.
+ */
+export function solidTokens(color: string): Record<string, string> {
+  const tone = (lightness: string, maxChroma: number) =>
+    `oklch(from ${color} ${lightness} min(c, ${maxChroma}) h)`
+  return {
+    '--danger-solid': tone('38%', 0.12),
+    '--danger-hover': tone('43%', 0.12),
+    '--heal-solid': tone('56%', 0.1),
+    '--heal-hover': tone('61%', 0.1),
+    '--temp-solid': tone('70%', 0.08),
+    '--temp-hover': tone('75%', 0.08),
+    '--on-solid': `oklch(from ${color} 97% 0.015 h)`,
+    '--on-temp': `oklch(from ${color} 25% 0.04 h)`,
+  }
+}
+
+const SOLID_PROPS = Object.keys(solidTokens('#000'))
+
+/**
+ * Cor relativa (`oklch(from …)`) é recente. Onde não existe, o valor inválido
+ * apagaria o fundo dos botões; aí eles ficam com a cor padrão do tema.
+ */
+export function supportsRelativeColor(): boolean {
+  return (
+    typeof CSS !== 'undefined' &&
+    typeof CSS.supports === 'function' &&
+    CSS.supports('color', 'oklch(from red l c h)')
+  )
+}
+
 /** Aceita hex (#rgb/#rrggbb/#rrggbbaa), rgb() e rgba(). */
 export function isValidColor(value: string): boolean {
   const v = value.trim()
@@ -75,10 +110,14 @@ export function applyAppearance(
   font: FontChoice,
 ): void {
   if (brandColor && isValidColor(brandColor)) {
-    const tokens = brandTokens(brandColor)
+    const tokens = {
+      ...brandTokens(brandColor),
+      ...(supportsRelativeColor() ? solidTokens(brandColor) : {}),
+    }
+    for (const prop of SOLID_PROPS) if (!(prop in tokens)) root.style.removeProperty(prop)
     for (const [prop, val] of Object.entries(tokens)) root.style.setProperty(prop, val)
   } else {
-    for (const prop of BRAND_PROPS) root.style.removeProperty(prop)
+    for (const prop of [...BRAND_PROPS, ...SOLID_PROPS]) root.style.removeProperty(prop)
   }
 
   if (font === 'modern') {

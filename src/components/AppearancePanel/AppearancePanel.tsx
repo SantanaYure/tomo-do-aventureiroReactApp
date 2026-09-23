@@ -151,8 +151,8 @@ export function AppearancePanel() {
           >
             <span className={styles.typoSample} data-variant="literary" aria-hidden="true">Aa</span>
             <span className={styles.typoText}>
-              <strong>Literária</strong>
-              <small>Serifa clássica</small>
+              <strong>Clássica</strong>
+              <small>Com serifa</small>
             </span>
           </button>
           <button

@@ -86,7 +86,7 @@ describe('AppearancePanel — cor de marca', () => {
 })
 
 describe('AppearancePanel — tipografia', () => {
-  it('"Moderna" aplica sans em display e corpo; "Literária" remove', async () => {
+  it('"Moderna" aplica sans em display e corpo; "Clássica" remove', async () => {
     const user = userEvent.setup()
     wrap(<AppearancePanel />)
 
@@ -95,7 +95,7 @@ describe('AppearancePanel — tipografia', () => {
     expect(document.documentElement.style.getPropertyValue('--font-display')).toContain('Inter')
     expect(localStorage.getItem('tomo:font')).toBe('modern')
 
-    await user.click(screen.getByRole('button', { name: /Literária/ }))
+    await user.click(screen.getByRole('button', { name: /Clássica/ }))
     expect(document.documentElement.style.getPropertyValue('--font-display')).toBe('')
     expect(localStorage.getItem('tomo:font')).toBe('literary')
   })

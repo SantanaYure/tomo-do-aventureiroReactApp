@@ -44,7 +44,7 @@ src/
     ResourcesPanel/ SkillsPanel/ SpellsPanel/ CharacterDetailsPanel/
     AttributesPanel/ SkillPanel/ Sidebar/ UserMenu/ (UserMenu = código morto)
     SettingsModal/  ← modal de configurações (identidade + AppearancePanel + sair); abre pela Sidebar
-    AppearancePanel/ ← tema, cor de marca (presets/caixa de cores/hex-rgb-rgba) e tipografia (Literária/Moderna)
+    AppearancePanel/ ← tema, cor de marca (presets/caixa de cores/hex-rgb-rgba) e tipografia (Clássica/Moderna; valores internos `literary`/`modern`)
     UserAvatar/     ← avatar do usuário: foto do provedor → Gravatar (hash do e-mail) → inicial do 1º nome
     AvatarCropper/ ProtectedRoute/ PrivacyPolicyModal/
     SrdMonsterPicker/ ← modal "Monstro do SRD" da lista de fichas (filtra pela preferência de regras)
@@ -165,7 +165,7 @@ tests/rules/            → testes das regras do Firestore no emulador (npm run 
 
 ### Importação/exportação
 - Fichas são exportadas como JSON via download no browser
-- Importação lê um arquivo JSON, detecta o tipo (PJ/monstro/NPC) e chama a função de import correspondente
+- Importação aceita um ou vários arquivos JSON de uma vez (`utils/importSheetFiles.ts`): cada um é lido, tem o tipo detectado (PJ/monstro/NPC) e vai para o store correspondente, em sequência. Um arquivo com problema não interrompe os outros. Durante a importação, `DiceRollLoader` (d20 girando, com "Importando N de M" e o nome do arquivo) cobre a tela; no fim, um resumo conta importadas, repetidas e com erro e lista cada arquivo que não entrou com o motivo. Com um arquivo só, a mensagem é a detalhada de sempre
 - Fichas com ID já existente são ignoradas (sem sobrescrita)
 - Id ausente ou inválido para o Firestore (`utils/firestoreId.ts`) vira id automático; a ficha crua, sem `{ id, data }`, também é aceita
 - A validação da importação só exige `character` (PJ) ou `details` (monstro/NPC); o resto vem da normalização. `kind` é lido sem diferenciar maiúsculas
@@ -186,7 +186,7 @@ tests/rules/            → testes das regras do Firestore no emulador (npm run 
 ### Aparência (tema + cor de marca + tipografia)
 - `src/context/ThemeContext.tsx` expõe `ThemeProvider` + `useTheme()` com: `mode`/`setMode`/`toggle` (`light` | `dark` | `parchment`, ciclo claro → escuro → pergaminho → claro, default segue `prefers-color-scheme`), `brandColor`/`setBrandColor` e `fontChoice`/`setFontChoice`.
 - **Persistência**: `localStorage['tomo:theme' | 'tomo:brand-color' | 'tomo:font']`.
-- **Aplicação**: `data-theme` no `<html>` (tema) + custom properties inline no `<html>` para cor e fonte, via `src/utils/appearance.ts` (`applyAppearance`). A cor de marca deriva `--brand` e a família `--chip-violet-*` (logo `--accent`) por `color-mix`. `fontChoice = 'modern'` troca `--font-display`/`--font-body` por `Inter` (vale sobre qualquer tema); `'literary'` remove os overrides.
+- **Aplicação**: `data-theme` no `<html>` (tema) + custom properties inline no `<html>` para cor e fonte, via `src/utils/appearance.ts` (`applyAppearance`). A cor de marca deriva `--brand` e a família `--chip-violet-*` (logo `--accent`) por `color-mix`. Os botões sólidos (`--danger-*`, `--heal-*`, `--temp-*`, `--on-solid`, `--on-temp`) também seguem a marca via `solidTokens`: cor relativa `oklch(from <marca> …)` que mantém a claridade do tema e troca só o matiz. Sem marca, usam o violeta padrão (matiz 300) nos temas claro e escuro; o pergaminho mantém o próprio vermelho. Onde o navegador não suporta cor relativa, os botões ficam no padrão do tema. `fontChoice = 'modern'` troca `--font-display`/`--font-body` por `Inter` (vale sobre qualquer tema); `'literary'` remove os overrides.
 - **Anti-flash**: o script inline em `index.html` reaplica os três no primeiro paint. **Espelha `applyAppearance` — manter em sincronia.**
 - `ThemeProvider` é montado em `main.tsx` por fora do `AuthProvider`.
 - `theme.css` define a paleta clara (glass) em `:root` e sobrescreve a escura (glass) e a pergaminho (paleta sépia legada, sem blur, corpo em Crimson Text) em `:root[data-theme="dark"|"parchment"]`.
