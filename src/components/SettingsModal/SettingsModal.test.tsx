@@ -3,10 +3,15 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ThemeProvider } from '../../context/ThemeContext'
+import { RulesetProvider } from '../../context/RulesetContext'
 import { SettingsModal } from './SettingsModal'
 
 function wrap(node: ReactNode) {
-  return render(<ThemeProvider>{node}</ThemeProvider>)
+  return render(
+    <ThemeProvider>
+      <RulesetProvider>{node}</RulesetProvider>
+    </ThemeProvider>,
+  )
 }
 
 beforeEach(() => {

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, it, expect, vi } from 'vitest'
@@ -105,12 +105,16 @@ describe('CampaignDetailPage — Fase 2: Painel da Sessão', () => {
 
     // Seção de Heróis
     expect(screen.getByRole('heading', { name: /Heróis na Sessão/i })).toBeInTheDocument()
-    expect(screen.getByText('Valeros')).toBeInTheDocument()
-    expect(screen.getByText('Guerreiro 3')).toBeInTheDocument()
+    // O nome aparece no card e no rastreador de iniciativa; confere o card.
+    const heroCard = screen.getByRole('article', { name: 'Status de Valeros' })
+    expect(within(heroCard).getByText('Guerreiro 3')).toBeInTheDocument()
 
     // Seção de Criaturas
     expect(screen.getByRole('heading', { name: /Criaturas & Monstros em Cena/i })).toBeInTheDocument()
-    expect(screen.getByText('Lobo Sombrio')).toBeInTheDocument()
+    expect(screen.getByRole('article', { name: 'Status de Lobo Sombrio' })).toBeInTheDocument()
+
+    // Rastreador de iniciativa
+    expect(screen.getByRole('heading', { name: /Iniciativa/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Adicionar Criatura/i })).toBeInTheDocument()
   })
 
