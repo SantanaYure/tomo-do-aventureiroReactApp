@@ -23,9 +23,8 @@ export function AddCreatureModal({
   const { monsters, isLoading } = useMonsterSheets(userId)
   const [activeTab, setActiveTab] = useState<'library' | 'custom'>('library')
 
-  // Seleção de monstro da biblioteca
-  const [selectedMonsterId, setSelectedMonsterId] = useState<string | null>(null)
-  const [instanceName, setInstanceName] = useState('')
+  // Biblioteca: clicar na criatura já adiciona. Guarda qual está sendo adicionada.
+  const [addingId, setAddingId] = useState<string | null>(null)
 
   // Campos customizados
   const [customName, setCustomName] = useState('')
@@ -44,55 +43,54 @@ export function AddCreatureModal({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  function handleSelectMonster(id: string, name: string) {
-    setSelectedMonsterId(id)
-    setInstanceName(name)
-  }
-
   const safeQuantity = Math.max(1, Math.min(20, parseInt(quantity, 10) || 1))
+
+  /** Clique numa criatura da biblioteca: adiciona à sessão na hora e fecha. */
+  async function handlePickMonster(monsterId: string) {
+    if (addingId) return
+    const monster = monsters.find((m) => m.id === monsterId)
+    if (!monster) return
+    try {
+      setAddingId(monsterId)
+      setError(null)
+      const vitals = extractVitalsFromMonsterSheet(monster.data, monster.id)
+      await onAdd({ ...vitals, ownerId: userId }, safeQuantity)
+      onClose()
+    } catch (addError) {
+      console.error('Erro ao adicionar criatura:', addError)
+      setError('Não foi possível vincular a criatura à mesa. Tente novamente.')
+      setAddingId(null)
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (activeTab !== 'custom') return
 
     try {
       setIsSubmitting(true)
       setError(null)
-      if (activeTab === 'library') {
-        const monster = monsters.find((m) => m.id === selectedMonsterId)
-        if (!monster) return
+      if (!customName.trim()) return
 
-        const vitals = extractVitalsFromMonsterSheet(monster.data, monster.id)
-        await onAdd(
-          {
-            ...vitals,
-            ownerId: userId,
-            name: instanceName.trim() || vitals.name,
-          },
-          safeQuantity,
-        )
-      } else {
-        if (!customName.trim()) return
+      const hp = Math.max(1, parseInt(customHp, 10) || 10)
+      const ac = Math.max(1, parseInt(customAc, 10) || 10)
+      const initBonus = parseInt(customInit, 10) || 0
 
-        const hp = Math.max(1, parseInt(customHp, 10) || 10)
-        const ac = Math.max(1, parseInt(customAc, 10) || 10)
-        const initBonus = parseInt(customInit, 10) || 0
-
-        await onAdd(
-          {
-            name: customName.trim(),
-            monsterSheetId: null,
-            avatar: null,
-            hpCurrent: hp,
-            hpMax: hp,
-            hpTemp: 0,
-            armorClass: ac,
-            passivePerception: 10,
-            conditions: [],
-            initiativeBonus: initBonus,
-          },
-          safeQuantity,
-        )
-      }
+      await onAdd(
+        {
+          name: customName.trim(),
+          monsterSheetId: null,
+          avatar: null,
+          hpCurrent: hp,
+          hpMax: hp,
+          hpTemp: 0,
+          armorClass: ac,
+          passivePerception: 10,
+          conditions: [],
+          initiativeBonus: initBonus,
+        },
+        safeQuantity,
+      )
       onClose()
     } catch (submitError) {
       console.error('Erro ao adicionar criatura:', submitError)
@@ -166,77 +164,66 @@ export function AddCreatureModal({
                 </div>
               ) : (
                 <>
-                  <div className={styles.monsterList} role="listbox">
+                  <div className={styles.quantityRow}>
+                    <label htmlFor="library-quantity" className={styles.label}>
+                      Quantidade
+                    </label>
+                    <input
+                      id="library-quantity"
+                      type="number"
+                      min="1"
+                      max="20"
+                      className={`${styles.input} ${styles.quantityInput}`}
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                      disabled={addingId !== null}
+                    />
+                    <span className={styles.quantityHint}>
+                      Clique na criatura para adicionar{safeQuantity > 1 ? ` ${safeQuantity} cópias` : ''}.
+                    </span>
+                  </div>
+
+                  <div className={styles.monsterList}>
                     {monsters.map((m) => {
-                      const isSelected = m.id === selectedMonsterId
+                      const isAdding = m.id === addingId
                       const name = m.data.details?.name || 'Monstro Sem Nome'
                       const hp = m.data.stats?.maxHp ?? 10
                       const ac = m.data.stats?.ac ?? 10
                       const cr = m.data.traits?.challengeRating || '—'
 
                       return (
-                        <div
+                        <button
                           key={m.id}
-                          className={`${styles.monsterItem} ${isSelected ? styles.monsterItemActive : ''}`}
-                          onClick={() => handleSelectMonster(m.id, name)}
-                          role="option"
-                          aria-selected={isSelected}
+                          type="button"
+                          className={`${styles.monsterItem} ${isAdding ? styles.monsterItemActive : ''}`}
+                          onClick={() => handlePickMonster(m.id)}
+                          disabled={addingId !== null}
+                          aria-label={`Adicionar ${name} à sessão`}
                         >
                           {m.data.details?.avatar ? (
                             <img
                               src={m.data.details.avatar}
-                              alt={name}
+                              alt=""
                               className={styles.monsterThumb}
                             />
                           ) : (
-                            <div className={styles.monsterThumbPlaceholder}>
+                            <span className={styles.monsterThumbPlaceholder}>
                               <Skull size={18} strokeWidth={1.5} />
-                            </div>
+                            </span>
                           )}
 
-                          <div className={styles.monsterInfo}>
-                            <p className={styles.monsterName}>{name}</p>
-                            <p className={styles.monsterMeta}>
-                              {m.data.details?.kind === 'npc' ? 'NPC • ' : ''}ND {cr} • PV {hp} • CA {ac}
-                            </p>
-                          </div>
-                        </div>
+                          <span className={styles.monsterInfo}>
+                            <span className={styles.monsterName}>{name}</span>
+                            <span className={styles.monsterMeta}>
+                              {isAdding
+                                ? 'Adicionando...'
+                                : `${m.data.details?.kind === 'npc' ? 'NPC • ' : ''}ND ${cr} • PV ${hp} • CA ${ac}`}
+                            </span>
+                          </span>
+                        </button>
                       )
                     })}
                   </div>
-
-                  {selectedMonsterId && (
-                    <div className={styles.field} style={{ marginTop: 'var(--space-2)' }}>
-                      <label htmlFor="instance-name" className={styles.label}>
-                        Nome em Cena (opcional, ex: Goblin 1)
-                      </label>
-                      <input
-                        id="instance-name"
-                        type="text"
-                        className={styles.input}
-                        value={instanceName}
-                        onChange={(e) => setInstanceName(e.target.value)}
-                        placeholder="Ex.: Goblin Arqueiro 1"
-                      />
-                    </div>
-                  )}
-
-                  {selectedMonsterId && (
-                    <div className={styles.field}>
-                      <label htmlFor="library-quantity" className={styles.label}>
-                        Quantidade (1 a 20)
-                      </label>
-                      <input
-                        id="library-quantity"
-                        type="number"
-                        min="1"
-                        max="20"
-                        className={styles.input}
-                        value={quantity}
-                        onChange={(e) => setQuantity(e.target.value)}
-                      />
-                    </div>
-                  )}
                 </>
               )}
             </>
@@ -326,21 +313,19 @@ export function AddCreatureModal({
             <button type="button" className={styles.cancelBtn} onClick={onClose}>
               Cancelar
             </button>
-            <button
-              type="submit"
-              className={styles.submitBtn}
-              disabled={
-                isSubmitting || (activeTab === 'library'
-                  ? !selectedMonsterId
-                  : !customName.trim())
-              }
-            >
-              {isSubmitting
-                ? 'Vinculando...'
-                : safeQuantity > 1
-                  ? `Adicionar ${safeQuantity} à Sessão`
-                  : 'Adicionar à Sessão'}
-            </button>
+            {activeTab === 'custom' && (
+              <button
+                type="submit"
+                className={styles.submitBtn}
+                disabled={isSubmitting || !customName.trim()}
+              >
+                {isSubmitting
+                  ? 'Vinculando...'
+                  : safeQuantity > 1
+                    ? `Adicionar ${safeQuantity} à Sessão`
+                    : 'Adicionar à Sessão'}
+              </button>
+            )}
           </div>
         </form>
       </div>
