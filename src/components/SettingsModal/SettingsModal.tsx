@@ -91,6 +91,50 @@ export function SettingsModal({
 
         <AppearancePanel />
 
+        <details className={styles.credits}>
+          <summary className={styles.creditsSummary}>Créditos e licenças</summary>
+          <div className={styles.creditsBody}>
+            <p>
+              Os modelos de monstros prontos usam conteúdo do System Reference Document,
+              traduzido e adaptado para o português. Nomes, textos e medidas foram
+              ajustados; as estatísticas seguem o original.
+            </p>
+            <p lang="en">
+              This work includes material taken from the System Reference Document 5.1
+              (&ldquo;SRD 5.1&rdquo;) by Wizards of the Coast LLC and available at{' '}
+              <a
+                href="https://dnd.wizards.com/resources/systems-reference-document"
+                target="_blank"
+                rel="noreferrer"
+              >
+                dnd.wizards.com/resources/systems-reference-document
+              </a>
+              . The SRD 5.1 is licensed under the Creative Commons Attribution 4.0
+              International License.
+            </p>
+            <p lang="en">
+              This work includes material from the System Reference Document 5.2
+              (&ldquo;SRD 5.2&rdquo;) by Wizards of the Coast LLC, available at{' '}
+              <a href="https://www.dndbeyond.com/srd" target="_blank" rel="noreferrer">
+                dndbeyond.com/srd
+              </a>
+              . The SRD 5.2 is licensed under the Creative Commons Attribution 4.0
+              International License.
+            </p>
+            <p>
+              Licença:{' '}
+              <a
+                href="https://creativecommons.org/licenses/by/4.0/legalcode"
+                target="_blank"
+                rel="noreferrer"
+              >
+                CC-BY-4.0
+              </a>
+              . Tomo do Aventureiro não é afiliado à Wizards of the Coast.
+            </p>
+          </div>
+        </details>
+
         <div className={styles.divider} aria-hidden="true" />
 
         <button type="button" className={styles.logoutBtn} onClick={onLogout}>

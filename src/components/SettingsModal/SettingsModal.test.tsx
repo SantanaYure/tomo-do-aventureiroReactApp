@@ -61,6 +61,19 @@ describe('SettingsModal', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('parchment')
   })
 
+  it('traz os créditos do SRD 5.1 e 5.2 com a licença CC-BY-4.0', async () => {
+    const user = userEvent.setup()
+    wrap(<SettingsModal {...baseProps} />)
+
+    await user.click(screen.getByText('Créditos e licenças'))
+    expect(screen.getByText(/System Reference Document 5\.1/)).toBeInTheDocument()
+    expect(screen.getByText(/System Reference Document 5\.2/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'CC-BY-4.0' })).toHaveAttribute(
+      'href',
+      'https://creativecommons.org/licenses/by/4.0/legalcode',
+    )
+  })
+
   it('o botão Sair dispara onLogout', async () => {
     const user = userEvent.setup()
     const onLogout = vi.fn()
