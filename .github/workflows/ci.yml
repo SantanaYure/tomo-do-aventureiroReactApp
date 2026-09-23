@@ -5,6 +5,10 @@ name: CI
 on:
   pull_request:
     branches: [main, develop]
+  # Envios direto na main também passam pelo gate (não bloqueiam o deploy
+  # nativo da Vercel, mas deixam o resultado visível no commit).
+  push:
+    branches: [main]
   workflow_call:
 
 # Em PR, cancela a execução anterior quando chega um novo push. Quando é
@@ -43,3 +47,28 @@ jobs:
 
       - name: Auditoria de dependências (bloqueia em high/critical)
         run: npm audit --audit-level=high
+
+  rules:
+    # Regras do Firestore (firestore.rules) testadas no emulador com vários
+    # usuários: mestre, jogador, ajudante e quem é de fora da mesa.
+    name: firestore-rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # O emulador do Firestore roda em Java.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Testes das regras do Firestore (emulador)
+        run: npm run test:rules
