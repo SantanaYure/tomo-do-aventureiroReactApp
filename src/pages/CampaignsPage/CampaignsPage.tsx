@@ -6,6 +6,8 @@ import { useCampaigns } from '../../hooks/useCampaigns'
 import { CampaignCard } from '../../components/campaign/CampaignCard/CampaignCard'
 import { CreateCampaignModal } from '../../components/campaign/CreateCampaignModal/CreateCampaignModal'
 import { JoinCampaignModal } from '../../components/campaign/JoinCampaignModal/JoinCampaignModal'
+import { DeleteCampaignModal } from '../../components/campaign/DeleteCampaignModal/DeleteCampaignModal'
+import { deleteCampaign } from '../../store/campaignStore'
 import type { Campaign, CampaignMember } from '../../types/campaign/campaign'
 import styles from './CampaignsPage.module.css'
 
@@ -19,6 +21,8 @@ export function CampaignsPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isJoinOpen, setIsJoinOpen] = useState(false)
+  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
+  const [deletingCampaign, setDeletingCampaign] = useState<Campaign | null>(null)
 
   const displayedCampaigns =
     activeTab === 'dm'
@@ -30,6 +34,13 @@ export function CampaignsPage() {
   function handleCampaignCreated(campaign: Campaign) {
     setIsCreateOpen(false)
     navigate(`/mesas/${campaign.id}`)
+  }
+
+  /** Erros sobem para o DeleteCampaignModal, que os mostra sem fechar. */
+  async function handleConfirmDelete() {
+    if (!deletingCampaign) return
+    await deleteCampaign(deletingCampaign.id)
+    setDeletingCampaign(null)
   }
 
   function handleCampaignJoined(result: { campaign: Campaign; member: CampaignMember }) {
@@ -133,6 +144,8 @@ export function CampaignsPage() {
               key={camp.id}
               campaign={camp}
               currentUserId={user?.uid}
+              onEdit={setEditingCampaign}
+              onDelete={setDeletingCampaign}
             />
           ))}
         </div>
@@ -145,6 +158,25 @@ export function CampaignsPage() {
           dmPhotoURL={user.photoURL}
           onCreated={handleCampaignCreated}
           onClose={() => setIsCreateOpen(false)}
+        />
+      )}
+
+      {editingCampaign && user && (
+        <CreateCampaignModal
+          dmId={user.uid}
+          dmName={editingCampaign.dmName}
+          campaign={editingCampaign}
+          onClose={() => setEditingCampaign(null)}
+        />
+      )}
+
+      {deletingCampaign && (
+        <DeleteCampaignModal
+          campaignName={deletingCampaign.name}
+          memberCount={deletingCampaign.memberIds.length}
+          creatureCount={deletingCampaign.creatures?.length ?? 0}
+          onConfirm={handleConfirmDelete}
+          onClose={() => setDeletingCampaign(null)}
         />
       )}
 
