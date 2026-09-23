@@ -170,7 +170,8 @@ tests/rules/            → testes das regras do Firestore no emulador (npm run 
 - Id ausente ou inválido para o Firestore (`utils/firestoreId.ts`) vira id automático; a ficha crua, sem `{ id, data }`, também é aceita
 - A validação da importação só exige `character` (PJ) ou `details` (monstro/NPC); o resto vem da normalização. `kind` é lido sem diferenciar maiúsculas
 - Antes de gravar, `utils/firestoreSafe.ts` descarta lista dentro de lista (o Firestore recusa). A falha traz `reason` (`invalid-json`, `not-a-sheet`, `save-failed`, `too-large`) e a tela mostra a mensagem correspondente
-- Limite de 2MB por arquivo de importação
+- Avatar acima de 5 MB no JSON importado é recomprimido para até 4 MB antes de salvar (`utils/imageCompression.ts` + `utils/importAvatarCompression.ts`), redesenhando a imagem em canvas com dimensão/qualidade decrescentes até caber; melhor esforço, nunca trava a importação por causa do tamanho da imagem
+- Limite de 20MB por arquivo de importação (folga para caber o avatar original antes da compressão acima)
 - Nomes dos arquivos exportados: `pj-{nome}.json`, `monstro-{nome}.json`, `npc-{nome}.json`
 
 ### Painéis persistentes (visíveis em todas as abas)

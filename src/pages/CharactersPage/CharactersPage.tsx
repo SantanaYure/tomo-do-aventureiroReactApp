@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { normalizeFileName, downloadJsonFile } from '../../utils/exportSheet'
+import { compressOversizedAvatarIfNeeded } from '../../utils/importAvatarCompression'
 import {
   createCharacterSheet,
   deleteCharacterSheet,
@@ -44,7 +45,9 @@ type PendingDelete = {
   name: string
 }
 
-const MAX_JSON_BYTES = 2 * 1024 * 1024
+// Alto o bastante para caber uma foto original grande em base64 (a codificação
+// já infla o tamanho em ~33%) até o avatar ser comprimido logo abaixo.
+const MAX_JSON_BYTES = 20 * 1024 * 1024
 
 function matchesText(text: string, term: string): boolean {
   if (!term) return false
@@ -554,14 +557,19 @@ export function CharactersPage() {
 
       const detectedType = detectImportedSheetType(parsed)
 
+      if (detectedType === 'character' || detectedType === 'monster' || detectedType === 'npc') {
+        const sheetData = getImportedSheetData(parsed)
+        if (sheetData) await compressOversizedAvatarIfNeeded(sheetData, detectedType)
+      }
+
       if (detectedType === 'character') {
-        const result = await importCharacterSheetFromJSON(uid, rawJson)
+        const result = await importCharacterSheetFromJSON(uid, JSON.stringify(parsed))
         setImportFeedback({ scope: 'character', result })
         return
       }
 
       if (detectedType === 'monster' || detectedType === 'npc') {
-        const result = await importMonsterSheetFromJSON(uid, rawJson)
+        const result = await importMonsterSheetFromJSON(uid, JSON.stringify(parsed))
         setImportFeedback({ scope: detectedType, result })
         return
       }
@@ -597,7 +605,7 @@ export function CharactersPage() {
         case 'invalid-json':
           return 'O arquivo não é um JSON válido. Confira se ele não foi cortado ou editado com erro de sintaxe.'
         case 'too-large':
-          return 'O arquivo passa de 2 MB. Reduza o avatar da ficha e tente de novo.'
+          return 'O arquivo passa de 20 MB. Reduza a imagem do avatar e tente de novo.'
         case 'save-failed':
           return 'A ficha foi lida, mas não foi possível salvá-la. Verifique sua conexão e tente de novo.'
         default:
