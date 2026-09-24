@@ -383,6 +383,7 @@ export function createDefaultMonsterSheet(): MonsterSheet {
             resistances: [],
             immunities: [],
             conditionImmunities: [],
+            senses: [],
             challengeRating: '1',
             xp: 200,
         },
@@ -479,6 +480,8 @@ export function normalizeMonsterSheet(raw: unknown): MonsterSheet {
             resistances: normalizeStringArray(traits.resistances),
             immunities: normalizeStringArray(traits.immunities),
             conditionImmunities: normalizeStringArray(traits.conditionImmunities),
+            // Fichas antigas não têm o campo: vira lista vazia.
+            senses: normalizeStringArray(traits.senses),
             challengeRating: normalizeString(
                 traits.challengeRating,
                 defaultSheet.traits.challengeRating,

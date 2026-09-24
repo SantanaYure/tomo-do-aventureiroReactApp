@@ -178,6 +178,7 @@ tests/rules/            → testes das regras do Firestore no emulador (npm run 
 
 ### Painéis persistentes (visíveis em todas as abas)
 - `CharacterCombatSummary` é renderizado **fora** do `role="tabpanel"`, entre a barra de abas e o conteúdo da aba ativa, na `CharacterSheetPage`. Exibe: CA, PV (com gestor de HP), iniciativa, deslocamento, bônus de proficiência, percepção passiva, atributo de conjuração e grid de 6 atributos (FOR/DES/CON/INT/SAB/CAR).
+- `MonsterTraitsPanel` tem o campo **Sentidos** (`traits.senses: string[]`, um por linha, ex.: "Visão no escuro 18 m"), ao lado de Imunidades a Condições; fichas antigas recebem lista vazia na normalização. A percepção passiva continua calculada à parte.
 - `MonsterCombatSummary` segue o mesmo padrão na `MonsterSheetPage`. Exibe: CA, PV (com gestor de HP), chips de movimento, resistências a dano, imunidades a dano e imunidades a condições.
 - Ambos os componentes recebem a ficha completa e um callback de atualização — alterações no HP são salvas com o mesmo debounce de 800ms.
 
