@@ -110,6 +110,7 @@ export function MonsterTraitsPanel({
   const [conditionImmunitiesDraft, setConditionImmunitiesDraft] = useState(
     formatLines(sheet.traits.conditionImmunities),
   )
+  const [sensesDraft, setSensesDraft] = useState(formatLines(sheet.traits.senses))
 
   function updateTraits(patch: DeepPartial<MonsterSheet['traits']>) {
     onChange({ traits: patch })
@@ -155,26 +156,33 @@ export function MonsterTraitsPanel({
     }
   }, [conditionImmunitiesDraft, traits.conditionImmunities])
 
+  useEffect(() => {
+    if (!areLinesEqual(traits.senses, parseLines(sensesDraft))) {
+      setSensesDraft(formatLines(traits.senses))
+    }
+  }, [sensesDraft, traits.senses])
+
   const hasVisibleContent =
     hasTextItems(traits.savingThrows) ||
     hasTextItems(traits.skills) ||
     hasTextItems(traits.languages) ||
     hasTextItems(traits.resistances) ||
     hasTextItems(traits.immunities) ||
-    hasTextItems(traits.conditionImmunities)
+    hasTextItems(traits.conditionImmunities) ||
+    hasTextItems(traits.senses)
 
   return (
     <section className={`${panelStyles.panel} ${styles.panel}`}>
       <div className={panelStyles.panelHeader}>
-        <h2 className={panelStyles.panelTitle}>Caracteristicas</h2>
-        <p className={panelStyles.panelSubtitle}>Pericias, idiomas e defesas especiais</p>
+        <h2 className={panelStyles.panelTitle}>Características</h2>
+        <p className={panelStyles.panelSubtitle}>Perícias, idiomas e defesas especiais</p>
       </div>
 
       {isEditing ? (
         <div className={styles.editLayout}>
           <div className={styles.textGrid}>
             <label className={styles.field}>
-              Testes de Resistencia
+              Testes de Resistência
               <textarea
                 value={savingThrowsDraft}
                 onChange={(event) => {
@@ -182,12 +190,12 @@ export function MonsterTraitsPanel({
                   setSavingThrowsDraft(nextValue)
                   updateTraits({ savingThrows: parseLines(nextValue) })
                 }}
-                placeholder="Um por linha. Ex.: Forca +5"
+                placeholder="Um por linha. Ex.: Força +5"
               />
             </label>
 
             <label className={styles.field}>
-              Pericias
+              Perícias
               <textarea
                 value={skillsDraft}
                 onChange={(event) => {
@@ -195,7 +203,7 @@ export function MonsterTraitsPanel({
                   setSkillsDraft(nextValue)
                   updateTraits({ skills: parseLines(nextValue) })
                 }}
-                placeholder="Uma por linha. Ex.: Percepcao +5"
+                placeholder="Uma por linha. Ex.: Percepção +5"
               />
             </label>
 
@@ -208,14 +216,14 @@ export function MonsterTraitsPanel({
                   setLanguagesDraft(nextValue)
                   updateTraits({ languages: parseLines(nextValue) })
                 }}
-                placeholder="Uma por linha. Ex.: Comum, Draconico"
+                placeholder="Uma por linha. Ex.: Comum, Dracônico"
               />
             </label>
           </div>
 
           <div className={styles.selectionGrid}>
             <label className={styles.field}>
-              Resistencias a Dano
+              Resistências a Dano
               <textarea
                 value={resistancesDraft}
                 onChange={(event) => {
@@ -241,7 +249,7 @@ export function MonsterTraitsPanel({
             </label>
 
             <label className={styles.field}>
-              Imunidades a Condicoes
+              Imunidades a Condições
               <textarea
                 value={conditionImmunitiesDraft}
                 onChange={(event) => {
@@ -249,7 +257,20 @@ export function MonsterTraitsPanel({
                   setConditionImmunitiesDraft(nextValue)
                   updateTraits({ conditionImmunities: parseLines(nextValue) })
                 }}
-                placeholder="Uma por linha. Ex.: Enfeiticado"
+                placeholder="Uma por linha. Ex.: Enfeitiçado"
+              />
+            </label>
+
+            <label className={styles.field}>
+              Sentidos
+              <textarea
+                value={sensesDraft}
+                onChange={(event) => {
+                  const nextValue = event.target.value
+                  setSensesDraft(nextValue)
+                  updateTraits({ senses: parseLines(nextValue) })
+                }}
+                placeholder="Um por linha. Ex.: Visão no escuro 18 m"
               />
             </label>
           </div>
@@ -285,19 +306,20 @@ export function MonsterTraitsPanel({
             </label>
 
             <div className={`${styles.field} ${styles.ratingCard}`}>
-              Percepcao Passiva
+              Percepção Passiva
               <strong className={styles.ratingValue}>{passivePerception}</strong>
             </div>
           </div>
         </div>
       ) : hasVisibleContent ? (
         <div className={styles.viewLayout}>
-          {renderTextList('Testes de Resistencia', traits.savingThrows)}
-          {renderTextList('Pericias', traits.skills)}
+          {renderTextList('Testes de Resistência', traits.savingThrows)}
+          {renderTextList('Perícias', traits.skills)}
           {renderTextList('Idiomas', traits.languages)}
-          {renderTextList('Resistencias a Dano', traits.resistances)}
+          {renderTextList('Resistências a Dano', traits.resistances)}
           {renderTextList('Imunidades a Dano', traits.immunities)}
-          {renderTextList('Imunidades a Condicoes', traits.conditionImmunities)}
+          {renderTextList('Imunidades a Condições', traits.conditionImmunities)}
+          {renderTextList('Sentidos', traits.senses)}
 
           <div className={styles.ratingRow}>
             <div className={styles.ratingCard}>
@@ -316,14 +338,14 @@ export function MonsterTraitsPanel({
             </div>
 
             <div className={styles.ratingCard}>
-              <span className={styles.ratingLabel}>Percepcao Passiva</span>
+              <span className={styles.ratingLabel}>Percepção Passiva</span>
               <strong className={styles.ratingValue}>{passivePerception}</strong>
             </div>
           </div>
         </div>
       ) : (
         <div className={styles.viewLayout}>
-          <p className={panelStyles.emptyState}>Nenhuma caracteristica preenchida.</p>
+          <p className={panelStyles.emptyState}>Nenhuma característica preenchida.</p>
           <div className={styles.ratingRow}>
             <div className={styles.ratingCard}>
               <span className={styles.ratingLabel}>ND</span>
@@ -341,7 +363,7 @@ export function MonsterTraitsPanel({
             </div>
 
             <div className={styles.ratingCard}>
-              <span className={styles.ratingLabel}>Percepcao Passiva</span>
+              <span className={styles.ratingLabel}>Percepção Passiva</span>
               <strong className={styles.ratingValue}>{passivePerception}</strong>
             </div>
           </div>

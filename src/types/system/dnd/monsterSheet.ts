@@ -146,6 +146,8 @@ export interface MonsterSheet {
         resistances: string[]
         immunities: string[]
         conditionImmunities: string[]
+        /** Um por linha. Ex.: "Visão no escuro 18 m". A percepção passiva é calculada à parte. */
+        senses: string[]
         challengeRating: string
         xp: number
     }
