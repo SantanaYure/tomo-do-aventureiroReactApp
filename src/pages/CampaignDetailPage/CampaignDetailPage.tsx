@@ -173,24 +173,21 @@ export function CampaignDetailPage() {
   }) {
     if (!campaign || !user) return
 
-    try {
-      if (data.characterSheetId && data.sheetData) {
-        await linkCharacterSheetToCampaign(
-          campaign.id,
-          campaign.name,
-          user.uid,
-          data.characterSheetId,
-          data.sheetData,
-        )
-      } else {
-        await unlinkCharacterSheetFromCampaign(
-          campaign.id,
-          user.uid,
-          currentMember?.characterSheetId,
-        )
-      }
-    } catch (err) {
-      console.error('Erro ao atualizar vínculo do personagem:', err)
+    // Erros sobem para o SelectCharacterModal, que os mostra sem fechar.
+    if (data.characterSheetId && data.sheetData) {
+      await linkCharacterSheetToCampaign(
+        campaign.id,
+        campaign.name,
+        user.uid,
+        data.characterSheetId,
+        data.sheetData,
+      )
+    } else {
+      await unlinkCharacterSheetFromCampaign(
+        campaign.id,
+        user.uid,
+        currentMember?.characterSheetId,
+      )
     }
   }
 

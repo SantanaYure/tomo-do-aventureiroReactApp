@@ -191,3 +191,9 @@
   background: var(--item-bg);
   border-radius: var(--radius-md);
 }
+
+.error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--danger-solid);
+}
