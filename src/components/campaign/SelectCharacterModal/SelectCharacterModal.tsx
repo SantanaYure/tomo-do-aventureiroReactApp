@@ -28,6 +28,7 @@ export function SelectCharacterModal({
 }: SelectCharacterModalProps) {
   const [selectedId, setSelectedId] = useState(currentSheetId || '')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const { sheets, isLoading } = useCharacterSheets(userId)
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export function SelectCharacterModal({
     e.preventDefault()
     try {
       setIsSubmitting(true)
+      setError(null)
       if (!selectedId) {
         await onSelect({
           characterSheetId: null,
@@ -80,6 +82,11 @@ export function SelectCharacterModal({
 
     } catch (err) {
       console.error('Erro ao atualizar personagem:', err)
+      setError(
+        selectedId
+          ? 'Não foi possível vincular a ficha. Tente de novo em instantes.'
+          : 'Não foi possível desvincular a ficha. Tente de novo em instantes.',
+      )
       setIsSubmitting(false)
     }
   }
@@ -89,7 +96,7 @@ export function SelectCharacterModal({
       <div className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="select-char-title">
         <div className={styles.header}>
           <h2 id="select-char-title" className={styles.title}>
-            Vincular Personagem
+            Vincular PJ
           </h2>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Fechar">
             ✕
@@ -120,6 +127,12 @@ export function SelectCharacterModal({
               })}
             </select>
           </div>
+
+          {error && (
+            <p className={styles.error} role="alert">
+              {error}
+            </p>
+          )}
 
           <div className={styles.actions}>
             <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={isSubmitting}>

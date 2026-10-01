@@ -37,6 +37,7 @@ export function LinkToCampaignModal({
   const { campaigns, isLoading } = useCampaigns(userId)
   const [selectedCampaignId, setSelectedCampaignId] = useState(currentCampaignId || '')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -68,6 +69,7 @@ export function LinkToCampaignModal({
 
     try {
       setIsSubmitting(true)
+      setError(null)
 
       if (sheetType === 'character') {
         await linkCharacterSheetToCampaign(
@@ -92,6 +94,7 @@ export function LinkToCampaignModal({
       onClose()
     } catch (err) {
       console.error('Erro ao vincular ficha à mesa:', err)
+      setError('Não foi possível vincular a ficha à mesa. Tente de novo em instantes.')
       setIsSubmitting(false)
     }
   }
@@ -105,6 +108,7 @@ export function LinkToCampaignModal({
 
     try {
       setIsSubmitting(true)
+      setError(null)
       if (sheetType === 'character') {
         await unlinkCharacterSheetFromCampaign(currentCampaignId, userId, sheetId)
       } else {
@@ -115,11 +119,12 @@ export function LinkToCampaignModal({
       onClose()
     } catch (err) {
       console.error('Erro ao desvincular ficha:', err)
+      setError('Não foi possível desvincular a ficha. Tente de novo em instantes.')
       setIsSubmitting(false)
     }
   }
 
-  const typeLabel = sheetType === 'character' ? 'Personagem' : sheetType === 'npc' ? 'NPC' : 'Monstro'
+  const typeLabel = sheetType === 'character' ? 'PJ' : sheetType === 'npc' ? 'NPC' : 'Monstro'
 
   return (
     <div
@@ -201,6 +206,12 @@ export function LinkToCampaignModal({
               </select>
             )}
           </div>
+
+          {error && (
+            <p className={styles.error} role="alert">
+              {error}
+            </p>
+          )}
 
           <div className={styles.actions}>
             {currentCampaignId ? (

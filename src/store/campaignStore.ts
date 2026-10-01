@@ -157,10 +157,11 @@ export function normalizeCampaignMember(
         successes: typeof deathSavesRaw?.successes === 'number' ? deathSavesRaw.successes : 0,
         failures: typeof deathSavesRaw?.failures === 'number' ? deathSavesRaw.failures : 0,
       },
-      spellSlots:
-        v.spellSlots && typeof v.spellSlots === 'object'
-          ? (v.spellSlots as Record<string, { current: number; max: number }>)
-          : undefined,
+      // Sem espaços de magia a chave fica de fora: o Firestore recusa `undefined`
+      // e estes vitais voltam para o banco ao ajustar PV na mesa.
+      ...(v.spellSlots && typeof v.spellSlots === 'object'
+        ? { spellSlots: v.spellSlots as Record<string, { current: number; max: number }> }
+        : {}),
       initiativeBonus: typeof v.initiativeBonus === 'number' ? v.initiativeBonus : 0,
     }
   }
@@ -538,12 +539,15 @@ export async function linkCharacterSheetToCampaign(
   const sheetRef = doc(db, 'users', userId, 'characterSheets', sheetId)
   batch.update(sheetRef, characterCampaignFields(campaignId, campaignName))
 
+  // Atualizar documento inexistente derruba o batch inteiro: a ficha anterior
+  // pode ter sido excluída sem que o membro fosse liberado.
   const previousSheetId = currentMember.data().characterSheetId
   if (typeof previousSheetId === 'string' && previousSheetId !== sheetId) {
-    batch.update(
-      doc(db, 'users', userId, 'characterSheets', previousSheetId),
-      characterCampaignFields(null, null),
-    )
+    const previousSheetRef = doc(db, 'users', userId, 'characterSheets', previousSheetId)
+    const previousSheet = await safeGetDoc(previousSheetRef)
+    if (previousSheet?.exists()) {
+      batch.update(previousSheetRef, characterCampaignFields(null, null))
+    }
   }
 
   const previousCampaignId = sheetData.campaignId
@@ -938,7 +942,9 @@ export function extractVitalsFromCharacterSheet(sheet: CharacterSheet): Characte
       successes: char.deathSaves?.success ?? 0,
       failures: char.deathSaves?.failure ?? 0,
     },
-    spellSlots: Object.keys(spellSlots).length > 0 ? spellSlots : undefined,
+    // Nunca `undefined`: o Firestore recusa o valor e derrubava o vínculo de
+    // todo PJ sem espaços de magia.
+    ...(Object.keys(spellSlots).length > 0 ? { spellSlots } : {}),
     initiativeBonus: initiativeBonusFromCharacter(sheet),
   }
 }

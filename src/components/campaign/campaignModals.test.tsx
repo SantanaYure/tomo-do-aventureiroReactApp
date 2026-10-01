@@ -6,12 +6,14 @@ import { CreateCampaignModal } from './CreateCampaignModal/CreateCampaignModal'
 import { JoinCampaignModal } from './JoinCampaignModal/JoinCampaignModal'
 import { CampaignCard } from './CampaignCard/CampaignCard'
 import { DeleteCampaignModal } from './DeleteCampaignModal/DeleteCampaignModal'
+import { SelectCharacterModal } from './SelectCharacterModal/SelectCharacterModal'
 import type { Campaign } from '../../types/campaign/campaign'
 
 const updateCampaignMock = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('../../store/campaignStore', () => ({
   updateCampaign: (...args: unknown[]) => updateCampaignMock(...args),
+  extractVitalsFromCharacterSheet: () => ({ hpCurrent: 10, hpMax: 10 }),
   createCampaign: vi.fn().mockResolvedValue({
     id: 'camp-100',
     name: 'Mesa do Dragão',
@@ -297,5 +299,23 @@ describe('CampaignCard', () => {
       </MemoryRouter>,
     )
     expect(screen.queryByRole('button', { name: /Ações da mesa/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('SelectCharacterModal', () => {
+  it('mostra a falha do vínculo e não fecha como se tivesse dado certo', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn().mockRejectedValue(new Error('boom'))
+    const onClose = vi.fn()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    render(<SelectCharacterModal userId="user-player" onSelect={onSelect} onClose={onClose} />)
+
+    await user.selectOptions(screen.getByRole('combobox'), 'sheet-1')
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível vincular a ficha')
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Confirmar' })).toBeEnabled()
   })
 })

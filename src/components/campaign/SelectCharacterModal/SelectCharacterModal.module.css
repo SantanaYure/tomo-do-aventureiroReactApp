@@ -108,3 +108,9 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--danger-solid);
+}

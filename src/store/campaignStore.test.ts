@@ -144,6 +144,11 @@ describe('normalizeCampaignMember', () => {
     expect(member.characterName).toBe('Valeros, o Bravo')
     expect(member.characterClass).toBe('Guerreiro 5')
   })
+
+  it('vitais sem espaços de magia não carregam spellSlots undefined', () => {
+    const member = normalizeCampaignMember('user-1', { vitals: { hpCurrent: 5, hpMax: 9 } })
+    expect(undefinedPaths(member)).toEqual([])
+  })
 })
 
 describe('createCampaign & joinCampaignByCode', () => {
@@ -169,6 +174,14 @@ describe('createCampaign & joinCampaignByCode', () => {
     ).rejects.toThrow('Mesa não encontrada')
   })
 })
+
+function undefinedPaths(value: unknown, path = ''): string[] {
+  if (value === undefined) return [path]
+  if (value && typeof value === 'object') {
+    return Object.entries(value).flatMap(([key, child]) => undefinedPaths(child, `${path}.${key}`))
+  }
+  return []
+}
 
 describe('vínculo com a ficha real', () => {
   const sheet = {
@@ -208,6 +221,36 @@ describe('vínculo com a ficha real', () => {
         'data.campaignId': 'camp-1',
       }),
     )
+    expect(batchCommit).toHaveBeenCalledOnce()
+  })
+
+  // O Firestore recusa `undefined` em qualquer campo (o mock daqui aceita, por
+  // isso a checagem é explícita). PJ sem espaços de magia quebrava o vínculo.
+  it('não manda campo undefined ao vincular PJ sem espaços de magia', async () => {
+    getDoc.mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({ characterSheetId: null }),
+    })
+
+    await linkCharacterSheetToCampaign('camp-1', 'Mesa 1', 'user-1', 'sheet-1', sheet)
+
+    for (const [, payload] of batchUpdate.mock.calls) {
+      expect(undefinedPaths(payload)).toEqual([])
+    }
+  })
+
+  it('não inclui no batch a ficha anterior que já foi excluída', async () => {
+    getDoc
+      .mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ characterSheetId: 'sheet-old' }),
+      })
+      .mockResolvedValueOnce({ exists: () => false, data: () => undefined })
+
+    await linkCharacterSheetToCampaign('camp-1', 'Mesa 1', 'user-1', 'sheet-1', sheet)
+
+    const touched = batchUpdate.mock.calls.map(([ref]) => (ref as { path: unknown[] }).path)
+    expect(touched).not.toContainEqual(expect.arrayContaining(['sheet-old']))
     expect(batchCommit).toHaveBeenCalledOnce()
   })
 
