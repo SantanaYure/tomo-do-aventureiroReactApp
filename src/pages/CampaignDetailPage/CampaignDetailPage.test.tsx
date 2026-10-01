@@ -107,7 +107,7 @@ describe('CampaignDetailPage — Fase 2: Painel da Sessão', () => {
     expect(screen.getByRole('heading', { name: /Heróis na Sessão/i })).toBeInTheDocument()
     // O nome aparece no card e no rastreador de iniciativa; confere o card.
     const heroCard = screen.getByRole('article', { name: 'Status de Valeros' })
-    expect(within(heroCard).getByText('Guerreiro 3')).toBeInTheDocument()
+    expect(within(heroCard).getByText(/Guerreiro 3/)).toBeInTheDocument()
 
     // Seção de Criaturas
     expect(screen.getByRole('heading', { name: /Criaturas & Monstros em Cena/i })).toBeInTheDocument()

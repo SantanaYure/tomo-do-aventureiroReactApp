@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { useState, useEffect, useRef } from 'react'
 import { applyHpChange } from '../../../store/campaignStore'
 import styles from './HpAdjustModal.module.css'
@@ -51,7 +52,9 @@ export function HpAdjustModal({
     if (event.target === event.currentTarget) onClose()
   }
 
-  return (
+  // Portal: o card da mesa usa backdrop-filter, que vira o contêiner de
+  // elementos fixed e prendia o overlay dentro do card.
+  return createPortal(
     <div className={styles.overlay} role="presentation" onClick={handleOverlayClick}>
       <div
         className={styles.dialog}
@@ -168,6 +171,7 @@ export function HpAdjustModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

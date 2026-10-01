@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { useEffect, useState } from 'react'
 import { Check } from 'lucide-react'
 import { DND_CONDITIONS } from '../../../store/campaignStore'
@@ -72,7 +73,9 @@ export function ConditionsModal({
     if (event.target === event.currentTarget) onClose()
   }
 
-  return (
+  // Portal: o card da mesa usa backdrop-filter, que vira o contêiner de
+  // elementos fixed e prendia o overlay dentro do card.
+  return createPortal(
     <div className={styles.overlay} role="presentation" onClick={handleOverlayClick}>
       <div
         className={styles.dialog}
@@ -142,6 +145,7 @@ export function ConditionsModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
