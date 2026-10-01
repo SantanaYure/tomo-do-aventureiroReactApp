@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Eye, Shield, Sparkles, Plus, X, ExternalLink, Trash2 } from 'lucide-react'
+import { ExternalLink, HeartPulse, Plus, Skull, Sparkles, Trash2, X } from 'lucide-react'
 import type { CampaignMember, CharacterVitals } from '../../../types/campaign/campaign'
 import { ConditionsModal } from '../ConditionsModal/ConditionsModal'
 import { HpAdjustModal } from '../HpAdjustModal/HpAdjustModal'
@@ -130,6 +130,16 @@ export function HeroVitalCard({
     }
   }
 
+  const avatar = member.characterAvatarUrl ? (
+    <img src={member.characterAvatarUrl} alt={heroName} className={styles.portraitImg} />
+  ) : (
+    <span className={styles.portraitPlaceholder} aria-hidden="true">
+      {heroName.charAt(0).toUpperCase()}
+    </span>
+  )
+
+  const subtitle = [member.displayName, heroClass].filter(Boolean).join(' · ')
+
   return (
     <article
       className={`${styles.card} ${isActiveTurn ? styles.cardActive : ''}`}
@@ -137,33 +147,8 @@ export function HeroVitalCard({
       aria-current={isActiveTurn ? 'true' : undefined}
     >
       {isActiveTurn && <span className={styles.turnTag}>Vez de agir</span>}
-      <div className={styles.header}>
-        {sheetUrl ? (
-          <Link to={sheetUrl} title="Abrir ficha do personagem">
-            {member.characterAvatarUrl ? (
-              <img
-                src={member.characterAvatarUrl}
-                alt={heroName}
-                className={styles.avatar}
-              />
-            ) : (
-              <div className={styles.avatarPlaceholder}>
-                {heroName.charAt(0).toUpperCase()}
-              </div>
-            )}
-          </Link>
-        ) : member.characterAvatarUrl ? (
-          <img
-            src={member.characterAvatarUrl}
-            alt={heroName}
-            className={styles.avatar}
-          />
-        ) : (
-          <div className={styles.avatarPlaceholder}>
-            {heroName.charAt(0).toUpperCase()}
-          </div>
-        )}
 
+      <header className={styles.header}>
         <div className={styles.titleArea}>
           <h3 className={styles.heroName}>
             {sheetUrl ? (
@@ -175,15 +160,28 @@ export function HeroVitalCard({
               heroName
             )}
           </h3>
-          <p className={styles.playerName}>{member.displayName}</p>
-          <p className={styles.heroClass}>{heroClass}</p>
+          <p className={styles.subtitle}>{subtitle}</p>
+          <p className={styles.subtitle}>
+            <abbr title="Percepção passiva">Perc. passiva</abbr> {vitals.passivePerception}
+          </p>
         </div>
 
         <div className={styles.headerActions}>
+          {canEdit && (
+            <button
+              type="button"
+              className={`${styles.iconBtn} ${vitals.heroicInspiration ? styles.inspirationActive : ''}`}
+              onClick={handleToggleInspiration}
+              title={vitals.heroicInspiration ? 'Inspiração Heróica ativa' : 'Conceder Inspiração Heróica'}
+              aria-pressed={vitals.heroicInspiration}
+            >
+              <Sparkles size={15} strokeWidth={1.75} />
+            </button>
+          )}
           {canRemove && onRemoveHero && (
             <button
               type="button"
-              className={styles.removeHeroBtn}
+              className={`${styles.iconBtn} ${styles.removeHeroBtn}`}
               onClick={handleConfirmRemove}
               title="Desvincular herói da mesa"
               aria-label={`Desvincular ${heroName}`}
@@ -191,81 +189,73 @@ export function HeroVitalCard({
               <Trash2 size={15} strokeWidth={1.75} />
             </button>
           )}
-
-          {canEdit && (
-            <button
-              type="button"
-              className={`${styles.inspirationBtn} ${vitals.heroicInspiration ? styles.inspirationActive : ''}`}
-              onClick={handleToggleInspiration}
-              title={vitals.heroicInspiration ? 'Inspiração Heróica ativa' : 'Conceder Inspiração Heróica'}
-              aria-pressed={vitals.heroicInspiration}
-            >
-              <Sparkles size={16} strokeWidth={1.75} />
-            </button>
-          )}
         </div>
+      </header>
+
+      {sheetUrl ? (
+        <Link to={sheetUrl} className={styles.portrait} title="Abrir ficha do personagem">
+          {avatar}
+        </Link>
+      ) : (
+        <div className={styles.portrait}>{avatar}</div>
+      )}
+
+      <div className={styles.divider} aria-hidden="true" />
+
+      <dl className={styles.statsRow}>
+        <div className={styles.stat}>
+          <dt>CA</dt>
+          <dd>{vitals.armorClass}</dd>
+        </div>
+        <div className={styles.stat}>
+          <dt>PV Temp</dt>
+          <dd className={vitals.hpTemp > 0 ? styles.tempValue : undefined}>{vitals.hpTemp}</dd>
+        </div>
+        <div className={styles.stat}>
+          <dt>PV</dt>
+          <dd className={isHpLow ? styles.lowValue : undefined}>
+            {vitals.hpCurrent}/{vitals.hpMax}
+          </dd>
+        </div>
+      </dl>
+
+      <div
+        className={styles.track}
+        role="meter"
+        aria-label="Pontos de vida"
+        aria-valuemin={0}
+        aria-valuemax={vitals.hpMax}
+        aria-valuenow={vitals.hpCurrent}
+      >
+        <div
+          className={`${styles.fill} ${isHpLow ? styles.fillLow : ''}`}
+          style={{ width: `${hpPercent}%` }}
+        />
       </div>
 
-      <div className={styles.statsRow}>
-        <div className={styles.statBadge}>
-          <Shield size={14} strokeWidth={1.75} />
-          <span>CA</span>
-          <span className={styles.statVal}>{vitals.armorClass}</span>
-        </div>
-        <div className={styles.statBadge}>
-          <Eye size={14} strokeWidth={1.75} />
-          <abbr title="Percepção passiva">Perc.</abbr>
-          <span className={styles.statVal}>{vitals.passivePerception}</span>
-        </div>
-      </div>
-
-      <div className={styles.hpSection}>
-        <div className={styles.hpHeader}>
-          <span>Pontos de Vida</span>
-          <span className={styles.hpNumbers}>
-            {vitals.hpCurrent} / {vitals.hpMax}
-            {vitals.hpTemp > 0 && (
-              <span className={styles.tempHpTag}> (+{vitals.hpTemp})</span>
-            )}
-          </span>
-        </div>
-
-        <div className={styles.track}>
-          <div
-            className={`${styles.fill} ${isHpLow ? styles.fillLow : ''}`}
-            style={{ width: `${hpPercent}%` }}
-          />
-        </div>
-      </div>
-
-      {vitals.hpCurrent === 0 && (
-        <div className={styles.deathSaves}>
-          <span>Mortes</span>
-          <div className={styles.pips}>
-            {[0, 1, 2].map((idx) => (
-              <button
-                key={`succ-${idx}`}
-                type="button"
-                className={`${styles.pip} ${(vitals.deathSaves?.successes ?? 0) > idx ? styles.pipSuccessActive : ''}`}
-                onClick={() => handleToggleDeathSave('successes', idx)}
-                title="Sucesso no teste de morte"
-                aria-label={`Sucesso ${idx + 1}`}
-              />
-            ))}
-          </div>
-          <span>Falhas</span>
-          <div className={styles.pips}>
-            {[0, 1, 2].map((idx) => (
-              <button
-                key={`fail-${idx}`}
-                type="button"
-                className={`${styles.pip} ${(vitals.deathSaves?.failures ?? 0) > idx ? styles.pipFailActive : ''}`}
-                onClick={() => handleToggleDeathSave('failures', idx)}
-                title="Falha no teste de morte"
-                aria-label={`Falha ${idx + 1}`}
-              />
-            ))}
-          </div>
+      {canEdit && (
+        <div className={styles.actionsRow}>
+          <button
+            type="button"
+            className={`${styles.actionBtn} ${styles.actionDamage}`}
+            onClick={() => handleOpenHp('damage')}
+          >
+            Dano
+          </button>
+          <button
+            type="button"
+            className={`${styles.actionBtn} ${styles.actionHeal}`}
+            onClick={() => handleOpenHp('heal')}
+          >
+            Cura
+          </button>
+          <button
+            type="button"
+            className={`${styles.actionBtn} ${styles.actionTemp}`}
+            onClick={() => handleOpenHp('temp')}
+          >
+            Temp
+          </button>
         </div>
       )}
 
@@ -297,45 +287,52 @@ export function HeroVitalCard({
             className={styles.addCondBtn}
             onClick={() => setIsCondModalOpen(true)}
           >
-            <Plus size={10} strokeWidth={2} /> Condição
+            <Plus size={12} strokeWidth={2} /> Condição
           </button>
         )}
       </div>
 
-      {canEdit && (
-        <div className={styles.actionsRow}>
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${styles.actionDamage}`}
-            onClick={() => handleOpenHp('damage')}
-          >
-            Dano
-          </button>
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${styles.actionHeal}`}
-            onClick={() => handleOpenHp('heal')}
-          >
-            Cura
-          </button>
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${styles.actionTemp}`}
-            onClick={() => handleOpenHp('temp')}
-          >
-            Temp
-          </button>
-        </div>
-      )}
+      <div className={styles.deathSaves} role="group" aria-label="Testes contra a morte">
+        {(['successes', 'failures'] as const).map((type) => {
+          const isSuccess = type === 'successes'
+          const count = vitals.deathSaves?.[type] ?? 0
+          const label = isSuccess ? 'Sucesso' : 'Falha'
+          return (
+            <div key={type} className={styles.deathBox}>
+              <span className={styles.deathLabel}>
+                {isSuccess ? (
+                  <HeartPulse size={16} strokeWidth={1.75} aria-hidden="true" />
+                ) : (
+                  <Skull size={16} strokeWidth={1.75} aria-hidden="true" />
+                )}
+                {isSuccess ? 'Sucessos' : 'Falhas'}
+              </span>
+              <div className={styles.pips}>
+                {[0, 1, 2].map((idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`${styles.pip} ${count > idx ? (isSuccess ? styles.pipSuccessActive : styles.pipFailActive) : ''}`}
+                    onClick={() => handleToggleDeathSave(type, idx)}
+                    disabled={!canEdit}
+                    title={`${label} no teste contra a morte`}
+                    aria-label={`${label} ${idx + 1}`}
+                    aria-pressed={count > idx}
+                  />
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
 
       {isOwner && !member.characterSheetId && onSelectCharacter && (
         <button
           type="button"
-          className={styles.actionBtn}
+          className={`${styles.actionBtn} ${styles.linkBtn}`}
           onClick={onSelectCharacter}
-          style={{ marginTop: 'var(--space-1)', width: '100%' }}
         >
-          Vincular Ficha de Personagem
+          Vincular ficha de PJ
         </button>
       )}
 

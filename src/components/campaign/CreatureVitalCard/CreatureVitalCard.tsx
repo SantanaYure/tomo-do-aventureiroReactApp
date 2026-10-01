@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CopyPlus, Dices, Eye, Pencil, Shield, Skull, Trash2, Plus, X, ExternalLink } from 'lucide-react'
+import { CopyPlus, ExternalLink, Pencil, Plus, Skull, Trash2, X } from 'lucide-react'
 import type { CampaignCreature } from '../../../types/campaign/campaign'
 import { ConditionsModal } from '../ConditionsModal/ConditionsModal'
 import { HpAdjustModal } from '../HpAdjustModal/HpAdjustModal'
@@ -100,32 +100,24 @@ export function CreatureVitalCard({
     ? `/monstro/${creature.monsterSheetId}?campaign=${campaignId || ''}${creature.ownerId ? `&owner=${creature.ownerId}` : ''}`
     : null
 
+  const isDown = creature.hpCurrent <= 0
+  const portrait = avatar ? (
+    <img src={avatar} alt={creature.name} className={styles.portraitImg} />
+  ) : (
+    <span className={styles.portraitPlaceholder} aria-hidden="true">
+      <Skull size={40} strokeWidth={1.25} />
+    </span>
+  )
+
   return (
     <article
-      className={`${styles.card} ${isActiveTurn ? styles.cardActive : ''}`}
+      className={`${styles.card} ${isActiveTurn ? styles.cardActive : ''} ${isDown ? styles.cardDown : ''}`}
       aria-label={`Status de ${creature.name}`}
       aria-current={isActiveTurn ? 'true' : undefined}
     >
       {isActiveTurn && <span className={styles.turnTag}>Vez de agir</span>}
-      <div className={styles.header}>
-        {sheetUrl ? (
-          <Link to={sheetUrl} title="Abrir ficha da criatura">
-            {avatar ? (
-              <img src={avatar} alt={creature.name} className={styles.avatar} />
-            ) : (
-              <div className={styles.avatarPlaceholder} aria-hidden="true">
-                <Skull size={20} strokeWidth={1.5} />
-              </div>
-            )}
-          </Link>
-        ) : avatar ? (
-          <img src={avatar} alt={creature.name} className={styles.avatar} />
-        ) : (
-          <div className={styles.avatarPlaceholder} aria-hidden="true">
-            <Skull size={20} strokeWidth={1.5} />
-          </div>
-        )}
 
+      <header className={styles.header}>
         <div className={styles.titleArea}>
           {isRenaming ? (
             <input
@@ -172,71 +164,109 @@ export function CreatureVitalCard({
           <p className={styles.subtitle}>
             {creature.monsterSheetId ? 'Com ficha vinculada' : 'Criatura avulsa'}
           </p>
+          <p className={styles.subtitle}>
+            <abbr title="Percepção passiva">Perc. passiva</abbr> {creature.passivePerception ?? 10}
+            {typeof creature.initiative === 'number' && (
+              <>
+                {' · '}
+                <abbr title="Iniciativa">Inic.</abbr> {creature.initiative}
+              </>
+            )}
+          </p>
         </div>
-
-        {isDm && onDuplicate && (
-          <button
-            type="button"
-            className={styles.iconBtn}
-            onClick={() => onDuplicate(creature.id)}
-            title="Replicar criatura"
-            aria-label={`Replicar ${creature.name}`}
-          >
-            <CopyPlus size={14} strokeWidth={1.75} />
-          </button>
-        )}
 
         {isDm && (
-          <button
-            type="button"
-            className={styles.removeBtn}
-            onClick={handleConfirmRemove}
-            title="Remover do encontro"
-            aria-label={`Remover ${creature.name}`}
-          >
-            <Trash2 size={14} strokeWidth={1.75} />
-          </button>
-        )}
-      </div>
-
-      <div className={styles.statsRow}>
-        <div className={styles.statBadge}>
-          <Shield size={14} strokeWidth={1.75} />
-          <span>CA</span>
-          <span className={styles.statVal}>{creature.armorClass}</span>
-        </div>
-        <div className={styles.statBadge}>
-          <Eye size={14} strokeWidth={1.75} />
-          <abbr title="Percepção passiva">Perc.</abbr>
-          <span className={styles.statVal}>{creature.passivePerception ?? 10}</span>
-        </div>
-        {typeof creature.initiative === 'number' && (
-          <div className={styles.statBadge}>
-            <Dices size={14} strokeWidth={1.75} />
-            <abbr title="Iniciativa">Inic.</abbr>
-            <span className={styles.statVal}>{creature.initiative}</span>
+          <div className={styles.headerActions}>
+            {onDuplicate && (
+              <button
+                type="button"
+                className={styles.iconBtn}
+                onClick={() => onDuplicate(creature.id)}
+                title="Replicar criatura"
+                aria-label={`Replicar ${creature.name}`}
+              >
+                <CopyPlus size={15} strokeWidth={1.75} />
+              </button>
+            )}
+            <button
+              type="button"
+              className={`${styles.iconBtn} ${styles.removeBtn}`}
+              onClick={handleConfirmRemove}
+              title="Remover do encontro"
+              aria-label={`Remover ${creature.name}`}
+            >
+              <Trash2 size={15} strokeWidth={1.75} />
+            </button>
           </div>
         )}
+      </header>
+
+      {sheetUrl ? (
+        <Link to={sheetUrl} className={styles.portrait} title="Abrir ficha da criatura">
+          {portrait}
+        </Link>
+      ) : (
+        <div className={styles.portrait}>{portrait}</div>
+      )}
+
+      <div className={styles.divider} aria-hidden="true" />
+
+      <dl className={styles.statsRow}>
+        <div className={styles.stat}>
+          <dt>CA</dt>
+          <dd>{creature.armorClass}</dd>
+        </div>
+        <div className={styles.stat}>
+          <dt>PV Temp</dt>
+          <dd className={creature.hpTemp > 0 ? styles.tempValue : undefined}>{creature.hpTemp}</dd>
+        </div>
+        <div className={styles.stat}>
+          <dt>PV</dt>
+          <dd className={isHpLow ? styles.lowValue : undefined}>
+            {creature.hpCurrent}/{creature.hpMax}
+          </dd>
+        </div>
+      </dl>
+
+      <div
+        className={styles.track}
+        role="meter"
+        aria-label="Pontos de vida"
+        aria-valuemin={0}
+        aria-valuemax={creature.hpMax}
+        aria-valuenow={creature.hpCurrent}
+      >
+        <div
+          className={`${styles.fill} ${isHpLow ? styles.fillLow : ''}`}
+          style={{ width: `${hpPercent}%` }}
+        />
       </div>
 
-      <div className={styles.hpSection}>
-        <div className={styles.hpHeader}>
-          <span>Pontos de Vida</span>
-          <span className={styles.hpNumbers}>
-            {creature.hpCurrent} / {creature.hpMax}
-            {creature.hpTemp > 0 && (
-              <span className={styles.tempHpTag}> (+{creature.hpTemp})</span>
-            )}
-          </span>
+      {isDm && (
+        <div className={styles.actionsRow}>
+          <button
+            type="button"
+            className={`${styles.actionBtn} ${styles.actionDamage}`}
+            onClick={() => handleOpenHp('damage')}
+          >
+            Dano
+          </button>
+          <button
+            type="button"
+            className={`${styles.actionBtn} ${styles.actionHeal}`}
+            onClick={() => handleOpenHp('heal')}
+          >
+            Cura
+          </button>
+          <button
+            type="button"
+            className={`${styles.actionBtn} ${styles.actionTemp}`}
+            onClick={() => handleOpenHp('temp')}
+          >
+            Temp
+          </button>
         </div>
-
-        <div className={styles.track}>
-          <div
-            className={`${styles.fill} ${isHpLow ? styles.fillLow : ''}`}
-            style={{ width: `${hpPercent}%` }}
-          />
-        </div>
-      </div>
+      )}
 
       <div className={styles.conditionsArea}>
         {(creature.conditions || []).map((cond) => (
@@ -266,35 +296,18 @@ export function CreatureVitalCard({
             className={styles.addCondBtn}
             onClick={() => setIsCondModalOpen(true)}
           >
-            <Plus size={10} strokeWidth={2} /> Condição
+            <Plus size={12} strokeWidth={2} /> Condição
           </button>
         )}
       </div>
 
-      {isDm && (
-        <div className={styles.actionsRow}>
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${styles.actionDamage}`}
-            onClick={() => handleOpenHp('damage')}
-          >
-            Dano
-          </button>
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${styles.actionHeal}`}
-            onClick={() => handleOpenHp('heal')}
-          >
-            Cura
-          </button>
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${styles.actionTemp}`}
-            onClick={() => handleOpenHp('temp')}
-          >
-            Temp
-          </button>
-        </div>
+      {/* Monstros e NPCs não fazem testes contra a morte: a 0 PV estão fora de
+          combate (mortos, ou inconscientes se o golpe foi não letal). */}
+      {isDown && (
+        <p className={styles.downBanner} role="status">
+          <Skull size={16} strokeWidth={1.75} aria-hidden="true" />
+          Abatido
+        </p>
       )}
 
       {isHpModalOpen && (

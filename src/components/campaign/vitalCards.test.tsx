@@ -40,7 +40,7 @@ describe('Componentes Vitais e Combate da Fase 2', () => {
   }
 
   describe('HeroVitalCard', () => {
-    it('renderiza dados do herói, classe, CA, Percepção e PV', () => {
+    it('segue o modelo: nome, retrato, CA | PV Temp | PV, ações, condição e testes contra a morte', () => {
       render(
         <HeroVitalCard
           member={mockMember}
@@ -51,11 +51,39 @@ describe('Componentes Vitais e Combate da Fase 2', () => {
       )
 
       expect(screen.getByText('Thorin Escudo-de-Carvalho')).toBeInTheDocument()
-      expect(screen.getByText('Guerreiro 3')).toBeInTheDocument()
-      expect(screen.getByText('17')).toBeInTheDocument()
-      expect(screen.getByText('13')).toBeInTheDocument()
-      expect(screen.getByText(/25 \/ 30/)).toBeInTheDocument()
+      expect(screen.getByText('Jogador 1 · Guerreiro 3')).toBeInTheDocument()
+      expect(screen.getByText(/Perc. passiva/).parentElement).toHaveTextContent('13')
+
+      const stat = (label: string) => screen.getByText(label, { selector: 'dt' }).nextElementSibling
+      expect(stat('CA')).toHaveTextContent('17')
+      expect(stat('PV Temp')).toHaveTextContent('5')
+      expect(stat('PV')).toHaveTextContent('25/30')
+
+      for (const name of ['Dano', 'Cura', 'Temp']) {
+        expect(screen.getByRole('button', { name })).toBeInTheDocument()
+      }
+      expect(screen.getByRole('button', { name: /Condição/ })).toBeInTheDocument()
       expect(screen.getByText(/Caído/)).toBeInTheDocument()
+      expect(screen.getByRole('group', { name: 'Testes contra a morte' })).toBeInTheDocument()
+    })
+
+    it('marca testes contra a morte com PV acima de zero; quem só olha não marca', () => {
+      const onUpdate = vi.fn()
+      const { rerender } = render(
+        <HeroVitalCard member={mockMember} isDm={true} currentUserId="u1" onUpdateVitals={onUpdate} />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Falha 2' }))
+      expect(onUpdate).toHaveBeenCalledWith(
+        'u1',
+        expect.objectContaining({ deathSaves: { successes: 0, failures: 2 } }),
+      )
+
+      rerender(
+        <HeroVitalCard member={mockMember} isDm={false} currentUserId="outro" onUpdateVitals={onUpdate} />,
+      )
+      expect(screen.getByRole('button', { name: 'Sucesso 1' })).toBeDisabled()
+      expect(screen.queryByRole('button', { name: 'Dano' })).not.toBeInTheDocument()
     })
 
     it('permite alternar Inspiração Heróica', () => {
@@ -144,12 +172,54 @@ describe('Componentes Vitais e Combate da Fase 2', () => {
       )
 
       expect(screen.getByText('Goblin 1')).toBeInTheDocument()
-      expect(screen.getByText('15')).toBeInTheDocument()
-      expect(screen.getByText(/7 \/ 7/)).toBeInTheDocument()
+      const stat = (label: string) => screen.getByText(label, { selector: 'dt' }).nextElementSibling
+      expect(stat('CA')).toHaveTextContent('15')
+      expect(stat('PV Temp')).toHaveTextContent('0')
+      expect(stat('PV')).toHaveTextContent('7/7')
+      for (const name of ['Dano', 'Cura', 'Temp']) {
+        expect(screen.getByRole('button', { name })).toBeInTheDocument()
+      }
 
       const removeBtn = screen.getByLabelText('Remover Goblin 1')
       fireEvent.click(removeBtn)
       expect(onRemove).toHaveBeenCalledWith('c1')
+    })
+
+    it('abre os modais de PV e de condição fora do card (o backdrop-filter prendia o overlay)', () => {
+      render(
+        <CreatureVitalCard creature={mockCreature} isDm={true} onUpdate={vi.fn()} onRemove={vi.fn()} />,
+      )
+      const card = screen.getByRole('article', { name: 'Status de Goblin 1' })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Dano' }))
+      const hpDialog = screen.getByText('Ajuste de Pontos de Vida').closest('[role="presentation"]')
+      expect(hpDialog?.parentElement).toBe(document.body)
+      expect(card).not.toContainElement(hpDialog as HTMLElement)
+      fireEvent.keyDown(document, { key: 'Escape' })
+
+      fireEvent.click(screen.getByRole('button', { name: /Condição/ }))
+      const condDialog = screen.getByText('Condições de D&D 2024').closest('[role="presentation"]')
+      expect(condDialog?.parentElement).toBe(document.body)
+    })
+
+    it('segue as regras de monstros e NPCs: sem testes contra a morte nem inspiração; a 0 PV fica abatido', () => {
+      const { rerender } = render(
+        <CreatureVitalCard creature={mockCreature} isDm={true} onUpdate={vi.fn()} onRemove={vi.fn()} />,
+      )
+      expect(screen.queryByRole('group', { name: 'Testes contra a morte' })).not.toBeInTheDocument()
+      expect(screen.queryByTitle(/Inspiração/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+
+      rerender(
+        <CreatureVitalCard
+          creature={{ ...mockCreature, hpCurrent: 0 }}
+          isDm={true}
+          onUpdate={vi.fn()}
+          onRemove={vi.fn()}
+        />,
+      )
+      expect(screen.getByRole('status')).toHaveTextContent('Abatido')
+      expect(screen.queryByRole('group', { name: 'Testes contra a morte' })).not.toBeInTheDocument()
     })
   })
 
